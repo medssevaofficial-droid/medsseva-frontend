@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { showError } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -83,7 +84,7 @@ const newBooking = {
     } catch (err: any) {
       setIsProcessing(false);
       const errorMessage = err.response?.data?.error || err.message || "Network Error";
-      Alert.alert("Booking Failed", `Error: ${errorMessage}`, [{ text: "OK" }]);
+     showError(`Booking Failed: ${errorMessage}`);
     }
   };
 
@@ -103,7 +104,7 @@ const handlePayNow = async () => {
         setIsRazorpayVisible(true);
       } catch (error) {
         setIsProcessing(false);
-        Alert.alert("Payment Error", "Could not initialize payment with server.");
+       showError("Could not initialize payment with server.");
       }
     }
   };
@@ -242,7 +243,7 @@ const handlePayNow = async () => {
         }}
         onFailed={(error) => {
           setIsRazorpayVisible(false);
-          Alert.alert("Payment Failed", error.error?.description || "Something went wrong.");
+     showError(error.error?.description || "Something went wrong.");
         }}
         onClose={() => setIsRazorpayVisible(false)}
       />

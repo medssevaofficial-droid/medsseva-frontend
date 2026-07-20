@@ -10,9 +10,8 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
-  TouchableWithoutFeedback,
+TouchableWithoutFeedback,
   Keyboard,
-  Alert,
   ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -21,6 +20,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBar } from 'expo-status-bar';
 
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
+import { showError } from '../../src/store/toastStore';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 import { apiService } from '../../src/services/api';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
@@ -69,7 +70,9 @@ export default function PaymentMethodsScreen() {
   // UPI Entry Form States
   const [newUpiId, setNewUpiId] = useState('');
   const [selectedProvider, setSelectedProvider] = useState('GPay');
-  const [isSavingUpi, setIsSavingUpi] = useState(false);
+const [isSavingUpi, setIsSavingUpi] = useState(false);
+  const [deleteCardTarget, setDeleteCardTarget] = useState<string | null>(null);
+  const [deleteUpiTarget, setDeleteUpiTarget] = useState<string | null>(null);
 
   const { data: fetchedCards, isLoading: cardsLoading } = useQuery({
     queryKey: ['paymentMethods', user?.mobile],
@@ -106,20 +109,20 @@ export default function PaymentMethodsScreen() {
 
   // Action handler to dynamically inject new credit card
   const handleAddCard = async () => {
-    if (newCardNumber.replace(/\s/g, '').length < 16) {
-      Alert.alert('Error', 'Please enter a valid 16-digit card number.');
+if (newCardNumber.replace(/\s/g, '').length < 16) {
+      showError('Please enter a valid 16-digit card number.');
       return;
     }
     if (newCardExpiry.length < 5) {
-      Alert.alert('Error', 'Please enter a valid expiry date (MM/YY).');
+      showError('Please enter a valid expiry date (MM/YY).');
       return;
     }
     if (newCardCVV.length < 3) {
-      Alert.alert('Error', 'Please enter a valid 3-digit CVV code.');
+      showError('Please enter a valid 3-digit CVV code.');
       return;
     }
     if (!newCardHolder.trim()) {
-      Alert.alert('Error', 'Please enter the Card Holder name.');
+      showError('Please enter the Card Holder name.');
       return;
     }
 
@@ -137,8 +140,8 @@ export default function PaymentMethodsScreen() {
       await queryClient.invalidateQueries({ queryKey: ['paymentMethods', user?.mobile] });
       setAddCardOpen(false);
       resetCardForm();
-    } catch (error) {
-      Alert.alert('Error', 'Failed to save card. Please try again.');
+   } catch (error) {
+      showError('Failed to save card. Please try again.');
     } finally {
       setIsSavingCard(false);
     }
@@ -153,8 +156,8 @@ export default function PaymentMethodsScreen() {
 
   // Action handler to inject new linked UPI ID
   const handleLinkUpi = () => {
-    if (!newUpiId.includes('@') || newUpiId.length < 5) {
-      Alert.alert('Error', 'Please enter a valid UPI handle (e.g. user@bank).');
+if (!newUpiId.includes('@') || newUpiId.length < 5) {
+      showError('Please enter a valid UPI handle (e.g. user@bank).');
       return;
     }
     setIsSavingUpi(true);
@@ -178,33 +181,30 @@ export default function PaymentMethodsScreen() {
     setUpis(upis.map(u => ({ ...u, primary: u.id === id })));
   };
 
-  const deleteCard = (id: string) => {
-    Alert.alert(
-      'Remove Instrument',
-      'Are you sure you want to securely remove this credit/debit card from MedsSeva?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Remove Securely', style: 'destructive', onPress: async () => {
-           try {
-             await apiService.removePaymentMethod(id);
-             queryClient.invalidateQueries({ queryKey: ['paymentMethods', user?.mobile] });
-           } catch(e) {
-             Alert.alert('Error', 'Could not remove card.');
-           }
-        } }
-      ]
-    );
+const deleteCard = (id: string) => {
+    setDeleteCardTarget(id);
+  };
+
+  const confirmDeleteCard = async () => {
+    if (!deleteCardTarget) return;
+    const id = deleteCardTarget;
+    setDeleteCardTarget(null);
+    try {
+      await apiService.removePaymentMethod(id);
+      queryClient.invalidateQueries({ queryKey: ['paymentMethods', user?.mobile] });
+    } catch (e) {
+      showError('Could not remove card.');
+    }
   };
 
   const deleteUpi = (id: string) => {
-    Alert.alert(
-      'Unlink UPI ID',
-      'Would you like to unlink this UPI address from your profile?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Unlink Address', style: 'destructive', onPress: () => setUpis(upis.filter(u => u.id !== id)) }
-      ]
-    );
+    setDeleteUpiTarget(id);
+  };
+
+  const confirmDeleteUpi = () => {
+    if (!deleteUpiTarget) return;
+    setUpis(upis.filter(u => u.id !== deleteUpiTarget));
+    setDeleteUpiTarget(null);
   };
 
   return (

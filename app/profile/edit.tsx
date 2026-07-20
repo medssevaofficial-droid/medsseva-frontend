@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, 
+View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   ScrollView, 
   TextInput, 
   Platform, 
-  Alert, 
   Modal, 
   Dimensions,
   FlatList,
@@ -22,6 +21,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { RootState } from '../../src/store';
 import { updateProfile } from '../../src/store/slices/authSlice';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
+import { showSuccess, showError, showInfo } from '../../src/store/toastStore';
 
 const { width } = Dimensions.get('window');
 
@@ -98,7 +98,7 @@ export default function EditProfileScreen() {
     const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
     
     if (permissionResult.granted === false) {
-      Alert.alert("Permission Required", "Please allow access to your photos to change your profile picture.");
+    showInfo("Please allow access to your photos to change your profile picture.");
       return;
     }
 
@@ -116,24 +116,23 @@ export default function EditProfileScreen() {
 
   const handleSave = () => {
     // Validations
-    if (!name.trim()) {
-      Alert.alert("Error", "Please provide your full name.");
+if (!name.trim()) {
+      showError("Please provide your full name.");
       return;
     }
-
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (email && !emailRegex.test(email)) {
-      Alert.alert("Error", "Please enter a valid email address.");
+     showError("Please enter a valid email address.");
       return;
     }
 
     if (altPhone && !/^[0-9]{10}$/.test(altPhone)) {
-      Alert.alert("Error", "Alternative Mobile number must be exactly 10 digits.");
+      showError("Alternative Mobile number must be exactly 10 digits.");
       return;
     }
 
     if (pincode && !/^[0-9]{6}$/.test(pincode)) {
-      Alert.alert("Error", "Pincode must be exactly 6 digits.");
+    showError("Pincode must be exactly 6 digits.");
       return;
     }
 
@@ -150,11 +149,8 @@ export default function EditProfileScreen() {
       avatar: avatarUrl || undefined,
     }));
 
-    Alert.alert(
-      "Update Successful ✅", 
-      "Your personal profile and location details have been synchronized!",
-      [{ text: "Done", onPress: () => router.back() }]
-    );
+showSuccess("Your personal profile and location details have been synchronized!");
+    router.back();
   };
 
   return (
@@ -316,7 +312,7 @@ export default function EditProfileScreen() {
                 
                 <View style={{ flex: 1, marginLeft: 8 }}>
                   <Text style={styles.inputLabel}>BLOOD GROUP</Text>
-                  <TouchableOpacity style={styles.bloodPicker} onPress={() => Alert.alert("Select", "Custom Blood Picker")}>
+               <TouchableOpacity style={styles.bloodPicker} onPress={() => showInfo("Blood group picker coming soon.")}>
                     <Text style={styles.bloodVal}>{bloodGroup}</Text>
                     <MaterialCommunityIcons name="chevron-down" size={18} color="#64748B" />
                   </TouchableOpacity>

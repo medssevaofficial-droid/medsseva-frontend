@@ -38,6 +38,20 @@ api.interceptors.request.use(
   }
 );
 
+export const couponApiService = {
+  validate: async (data: {
+    code: string;
+    cartTotal: number;
+    testIds?: string[];
+    packageIds?: string[];
+    collectionMode?: string;
+    branchId?: string;
+  }) => {
+    const response = await api.post('/coupons/validate', data);
+    return response.data;
+  },
+};
+
 export const apiService = {
   getAllCategories: () => api.get('/categories').then(res => res.data),
   getAllTests: () => api.get('/tests').then(res => res.data),

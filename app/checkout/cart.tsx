@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
+import { showSuccess } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,6 +11,7 @@ import { setCollectionMode } from '../../src/store/slices/bookingSlice';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { PremiumBottomSheet } from '../../src/components/PremiumBottomSheet';
 import { PremiumScratchModal } from '../../src/components/PremiumScratchModal';
+import { couponApiService } from '../../src/services/api';  
 import { LinearGradient } from 'expo-linear-gradient';
 
 export default function CartScreen() {
@@ -22,7 +24,36 @@ export default function CartScreen() {
   
   const [isCouponSheetOpen, setCouponSheetOpen] = useState(false);
   const [isScratchOpen, setScratchOpen] = useState(false);
-  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string, val: number } | null>(null);
+const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; val: number; couponId: string } | null>(null);
+  const [couponInput, setCouponInput] = useState('');
+  const [couponLoading, setCouponLoading] = useState(false);
+  const [couponError, setCouponError] = useState('');
+
+const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
+  const packageIds = cart.items.filter(i => i.itemType === 'package').map(i => i.id);
+  const baseCartTotal = cart.finalAmount;
+
+  const handleApplyCoupon = async (code: string) => {
+    if (!code.trim()) return;
+    setCouponLoading(true);
+    setCouponError('');
+    try {
+      const result = await couponApiService.validate({
+        code: code.trim().toUpperCase(),
+        cartTotal: baseCartTotal,
+        testIds,
+        packageIds,
+        collectionMode: visitMode === 'home' ? 'HOME' : 'LAB',
+      });
+      setAppliedCoupon({ code: result.code, val: result.discount, couponId: result.couponId });
+      setCouponInput('');
+      setCouponSheetOpen(false);
+    } catch (err: any) {
+      setCouponError(err.response?.data?.error || 'Invalid coupon code');
+    } finally {
+      setCouponLoading(false);
+    }
+  };
 
   // Dynamic offsets
   const hasHomeCollection = cart.items.some(i => i.homeCollection);
@@ -237,27 +268,39 @@ export default function CartScreen() {
           </TouchableOpacity>
 
           <Text style={styles.modalHeading}>Available Promos</Text>
-          
-          {[
-            { code: 'WELCOME150', val: 150, desc: 'Flat ₹150 OFF on your first booking' },
-            { code: 'HEALTH50', val: 50, desc: 'Additional ₹50 wellness benefit' }
-          ].map((coupon) => (
-            <View key={coupon.code} style={styles.promoItem}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.promoCode}>{coupon.code}</Text>
-                <Text style={styles.promoDesc}>{coupon.desc}</Text>
-              </View>
-              <TouchableOpacity 
-                style={styles.promoApplyBtn} 
-                onPress={() => {
-                  setAppliedCoupon({ code: coupon.code, val: coupon.val });
-                  setCouponSheetOpen(false);
-                }}
-              >
-                <Text style={styles.promoApplyBtnText}>Apply</Text>
-              </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
+            <View style={{ flex: 1, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#F8FAFC' }}>
+              <Text style={{ fontSize: 12, color: '#64748B' }} onPress={() => {}}>
+                <Text
+                  style={{ fontSize: 13, color: '#0F172A' }}
+                  suppressHighlighting
+                >
+                  {couponInput}
+                </Text>
+              </Text>
+              <TextInput
+                style={{ fontSize: 13, color: '#0F172A', padding: 0 }}
+                placeholder="Enter coupon code"
+                placeholderTextColor="#94A3B8"
+                value={couponInput}
+                onChangeText={setCouponInput}
+                autoCapitalize="characters"
+              />
             </View>
-          ))}
+            <TouchableOpacity
+              style={[styles.promoApplyBtn, { paddingHorizontal: 16, justifyContent: 'center' }]}
+              onPress={() => handleApplyCoupon(couponInput)}
+              disabled={couponLoading}
+            >
+              {couponLoading
+                ? <ActivityIndicator size="small" color={COLORS.primary} />
+                : <Text style={styles.promoApplyBtnText}>Apply</Text>
+              }
+            </TouchableOpacity>
+          </View>
+          {couponError ? (
+            <Text style={{ fontSize: 11, color: '#EF4444', marginBottom: 12, paddingHorizontal: 4 }}>{couponError}</Text>
+          ) : null}
         </View>
       </PremiumBottomSheet>
 
@@ -265,9 +308,9 @@ export default function CartScreen() {
       <PremiumScratchModal
         visible={isScratchOpen}
         onClose={() => setScratchOpen(false)}
-        onApplyReward={(code, val) => {
-          setAppliedCoupon({ code, val });
-          Alert.alert("Reward Unlocked!", `Congratulations! You successfully scratched and applied ${code} to save ₹${val}!`);
+       onApplyReward={(code, val) => {
+          setAppliedCoupon({ code, val, couponId: '' });
+        showSuccess(`Congratulations! You successfully scratched and applied ${code} to save ₹${val}!`);
         }}
       />
     </View>

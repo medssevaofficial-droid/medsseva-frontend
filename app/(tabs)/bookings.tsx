@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, DeviceEventEmitter, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, DeviceEventEmitter, ActivityIndicator } from 'react-native';
+import { showInfo } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -172,7 +173,7 @@ const filteredBookings = bookings.filter((b: any) =>
             ) : (
               <TouchableOpacity 
                 style={[styles.actionButtonPrimary, { backgroundColor: COLORS.success }]} 
-                onPress={() => Alert.alert("Lab Walk-in", "Please visit MedsSeva Hub - Central Plaza at your chosen time window. No home collection tracking is required.")}
+              onPress={() => showInfo("Please visit MedsSeva Hub - Central Plaza at your chosen time window. No home collection tracking is required.")}
               >
                 <Text style={styles.actionButtonTextPrimary}>Lab Info</Text>
               </TouchableOpacity>

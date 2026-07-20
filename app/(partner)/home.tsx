@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  RefreshControl, StatusBar, Switch, Alert, ActivityIndicator
+  RefreshControl, StatusBar, Switch, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSelector } from 'react-redux';
@@ -9,6 +9,8 @@ import { useRouter } from 'expo-router';
 import { RootState } from '../../src/store';
 import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
+import { showError } from '../../src/store/toastStore';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 interface BookingRequest {
   id: string;
@@ -39,7 +41,8 @@ export default function PartnerHomeScreen() {
   const [stats, setStats] = useState<Stats>({ todayJobs: 0, pending: 0, accepted: 0, completedToday: 0, completedPercent: 0 });
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [acceptingId, setAcceptingId] = useState<string | null>(null);
+const [acceptingId, setAcceptingId] = useState<string | null>(null);
+  const [declineTarget, setDeclineTarget] = useState<string | null>(null);
 
   const loadData = useCallback(async () => {
     try {
@@ -67,7 +70,7 @@ export default function PartnerHomeScreen() {
       await apiService.toggleAvailability(val);
     } catch {
       setIsAvailable(!val);
-      Alert.alert('Error', 'Could not update availability. Try again.');
+   showError('Could not update availability. Try again.');
     }
   };
 
@@ -80,28 +83,27 @@ const handleAccept = async (bookingId: string) => {
       // Navigate to Bookings tab where the accepted job now appears
       router.push('/(partner)/bookings');
     } catch {
-      Alert.alert('Error', 'Could not accept booking. Try again.');
+     showError('Could not accept booking. Try again.');
     } finally {
       setAcceptingId(null);
     }
   };
 
-  const handleDecline = async (bookingId: string) => {
-    Alert.alert('Decline Booking', 'Are you sure you want to decline this booking?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Decline', style: 'destructive',
-        onPress: async () => {
-          try {
-            await apiService.rejectBooking(bookingId);
-            setRequests(prev => prev.filter(b => b.id !== bookingId));
-            setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1) }));
-          } catch {
-            Alert.alert('Error', 'Could not decline booking.');
-          }
-        }
-      }
-    ]);
+const handleDecline = (bookingId: string) => {
+    setDeclineTarget(bookingId);
+  };
+
+  const confirmDecline = async () => {
+    if (!declineTarget) return;
+    const id = declineTarget;
+    setDeclineTarget(null);
+    try {
+      await apiService.rejectBooking(id);
+      setRequests(prev => prev.filter(b => b.id !== id));
+      setStats(prev => ({ ...prev, pending: Math.max(0, prev.pending - 1) }));
+    } catch {
+      showError('Could not decline booking.');
+    }
   };
 
   if (isLoading) {
@@ -113,7 +115,17 @@ const handleAccept = async (bookingId: string) => {
   }
 
   return (
-    <View style={styles.container}>
+ <View style={styles.container}>
+      <ConfirmSheet
+        visible={declineTarget !== null}
+        title="Decline Booking"
+        message="Are you sure you want to decline this booking?"
+        confirmLabel="Decline"
+        cancelLabel="Cancel"
+        confirmDestructive
+        onConfirm={confirmDecline}
+        onCancel={() => setDeclineTarget(null)}
+      />
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       {/* Header */}

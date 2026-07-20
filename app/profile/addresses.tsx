@@ -1,12 +1,11 @@
 import React from 'react';
 import { 
-  View, 
+View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
   ScrollView, 
-  Platform, 
-  Alert 
+  Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
@@ -16,11 +15,13 @@ import { useFocusEffect } from 'expo-router';
 import { RootState, AppDispatch } from '../../src/store';
 import { removeAddressThunk, fetchAddressesThunk } from '../../src/store/slices/addressSlice';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 export default function SavedAddressesScreen() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
-  const addresses = useSelector((state: RootState) => state.address.addresses);
+const addresses = useSelector((state: RootState) => state.address.addresses);
+  const [deleteTarget, setDeleteTarget] = React.useState<string | null>(null);
   const user = useSelector((state: RootState) => state.auth.user);
 
   useFocusEffect(
@@ -31,25 +32,27 @@ export default function SavedAddressesScreen() {
     }, [dispatch, user?.mobile])
   );
 
-  const handleDelete = (id: string) => {
-    Alert.alert(
-      "Delete Address",
-      "Are you sure you want to permanently delete this saved location?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive", 
-          onPress: () => {
-            dispatch(removeAddressThunk(id));
-          } 
-        }
-      ]
-    );
+const handleDelete = (id: string) => {
+    setDeleteTarget(id);
   };
 
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    dispatch(removeAddressThunk(deleteTarget));
+    setDeleteTarget(null);
+  };
   return (
-    <View style={styles.container}>
+  <View style={styles.container}>
+      <ConfirmSheet
+        visible={deleteTarget !== null}
+        title="Delete Address"
+        message="Are you sure you want to permanently delete this saved location?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        confirmDestructive
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
       {/* App Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>

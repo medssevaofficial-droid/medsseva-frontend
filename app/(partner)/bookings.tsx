@@ -1,12 +1,14 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity,
-  RefreshControl, StatusBar, Alert, ActivityIndicator, Linking
+View, Text, StyleSheet, FlatList, TouchableOpacity,
+  RefreshControl, StatusBar, ActivityIndicator, Linking
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, usePathname } from 'expo-router';
 import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
+import { showError } from '../../src/store/toastStore';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 interface Booking {
   id: string;
@@ -39,6 +41,7 @@ export default function PartnerBookingsScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [declineTarget, setDeclineTarget] = useState<string | null>(null);
 
 const loadBookings = useCallback(async () => {
     try {
@@ -86,9 +89,9 @@ const loadBookings = useCallback(async () => {
       });
 
       setBookings(merged);
-    } catch {
-      Alert.alert('Error', 'Could not load bookings.');
-    } finally {
+ } catch {
+      showError('Could not load bookings.');
+    }finally {
       setIsLoading(false);
       setRefreshing(false);
     }
@@ -135,8 +138,8 @@ const handleUpdateStatus = async (booking: Booking) => {
           setBookings(prev =>
             prev.map(b => b.id === booking.id ? { ...b, status: 'SAMPLE_COLLECTED' } : b)
           );
-        } catch {
-          Alert.alert('Error', 'Could not update status.');
+   } catch {
+          showError('Could not update status.');
         } finally {
           setUpdatingId(null);
         }
@@ -155,7 +158,7 @@ const handleUpdateStatus = async (booking: Booking) => {
       await apiService.updateBookingStatus(booking.id, next);
       setBookings(prev => prev.map(b => b.id === booking.id ? { ...b, status: next } : b));
     } catch {
-      Alert.alert('Error', 'Could not update status.');
+      showError('Could not update status.');
     } finally {
       setUpdatingId(null);
     }
@@ -167,28 +170,26 @@ const handleAccept = async (bookingId: string) => {
       // Refresh full list so the booking moves from WAITING → ASSIGNED with correct data
       await loadBookings();
     } catch {
-      Alert.alert('Error', 'Could not accept booking.');
+       showError('Could not accept booking.');
     } finally {
       setUpdatingId(null);
     }
   };
 
 const handleReject = (bookingId: string) => {
-    Alert.alert('Decline Booking', 'Are you sure you want to decline this booking?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Decline', style: 'destructive',
-        onPress: async () => {
-          try {
-            await apiService.rejectBooking(bookingId);
-            // Reload so declined booking disappears from list
-            await loadBookings();
-          } catch {
-            Alert.alert('Error', 'Could not decline booking.');
-          }
-        }
-      }
-    ]);
+    setDeclineTarget(bookingId);
+  };
+
+  const confirmDecline = async () => {
+    if (!declineTarget) return;
+    const id = declineTarget;
+    setDeclineTarget(null);
+    try {
+      await apiService.rejectBooking(id);
+      await loadBookings();
+    } catch {
+      showError('Could not decline booking.');
+    }
   };
 
   const handleCall = (mobile?: string) => {
@@ -321,6 +322,16 @@ const handleReject = (bookingId: string) => {
         </TouchableOpacity>
       </View>
 
+    <ConfirmSheet
+        visible={declineTarget !== null}
+        title="Decline Booking"
+        message="Are you sure you want to decline this booking?"
+        confirmLabel="Decline"
+        cancelLabel="Cancel"
+        confirmDestructive
+        onConfirm={confirmDecline}
+        onCancel={() => setDeclineTarget(null)}
+      />
       <FlatList
         data={bookings}
         keyExtractor={item => item.id}

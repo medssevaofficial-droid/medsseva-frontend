@@ -1,13 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, ScrollView, Linking, useWindowDimensions
+View, Text, StyleSheet, TouchableOpacity, TextInput,
+  ActivityIndicator, ScrollView, Linking, useWindowDimensions
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
+import { showError } from '../../src/store/toastStore';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 type Step = 'otp' | 'payment' | 'upi_waiting' | 'done' | 'sample_collected';
 
@@ -29,6 +31,7 @@ const [otp, setOtp] = useState<string[]>(['', '', '', '']);
   const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
   const otpRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 const [isCollectingCash, setIsCollectingCash] = useState(false);
+  const [showCashConfirm, setShowCashConfirm] = useState(false);
   const [isInitiatingUpi, setIsInitiatingUpi] = useState(false);
   const [upiUrl, setUpiUrl] = useState('');
   const [upiPollCount, setUpiPollCount] = useState(0);
@@ -120,28 +123,21 @@ const otpValue = otp.join('');
     }
   };
 
-  const handleCashCollected = async () => {
-    Alert.alert(
-      'Confirm Cash Collection',
-      'Have you received the full cash payment from the patient?',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Yes, Collected',
-          onPress: async () => {
-            setIsCollectingCash(true);
-            try {
-              await apiService.collectCash(bookingId);
-              setStep('done');
-            } catch (e: any) {
-              Alert.alert('Error', e?.response?.data?.error || 'Could not record payment. Try again.');
-            } finally {
-              setIsCollectingCash(false);
-            }
-          }
-        }
-      ]
-    );
+const handleCashCollected = () => {
+    setShowCashConfirm(true);
+  };
+
+  const confirmCashCollected = async () => {
+    setShowCashConfirm(false);
+    setIsCollectingCash(true);
+    try {
+      await apiService.collectCash(bookingId);
+      setStep('done');
+    } catch (e: any) {
+      showError(e?.response?.data?.error || 'Could not record payment. Try again.');
+    } finally {
+      setIsCollectingCash(false);
+    }
   };
 
   const handleInitiateUpi = async () => {
@@ -150,8 +146,8 @@ const otpValue = otp.join('');
       const result = await apiService.initiateUpiCollection(bookingId);
       setUpiUrl(result.paymentLinkUrl);
       setStep('upi_waiting');
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error || 'Could not create UPI payment link.');
+   } catch (e: any) {
+      showError(e?.response?.data?.error || 'Could not create UPI payment link.');
     } finally {
       setIsInitiatingUpi(false);
     }
@@ -161,8 +157,8 @@ const handleCollectSample = async () => {
     try {
       await apiService.updateBookingStatus(bookingId, 'SAMPLE_COLLECTED');
       setStep('sample_collected');
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error || 'Could not update status.');
+  } catch (e: any) {
+      showError(e?.response?.data?.error || 'Could not update status.');
     }
   };
 
@@ -170,15 +166,24 @@ const handleCollectSample = async () => {
     try {
       await apiService.updateBookingStatus(bookingId, 'DELIVERED_TO_LAB');
       router.back();
-    } catch (e: any) {
-      Alert.alert('Error', e?.response?.data?.error || 'Could not update status.');
+  } catch (e: any) {
+      showError(e?.response?.data?.error || 'Could not update status.');
     }
   };
 
-  // ── OTP STEP ────────────────────────────────────────────────────────────────
-  if (step === 'otp') {
+
+if (step === 'otp') {
     return (
       <View style={styles.container}>
+        <ConfirmSheet
+          visible={showCashConfirm}
+          title="Confirm Cash Collection"
+          message="Have you received the full cash payment from the patient?"
+          confirmLabel="Yes, Collected"
+          cancelLabel="Cancel"
+          onConfirm={confirmCashCollected}
+          onCancel={() => setShowCashConfirm(false)}
+        />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
             <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />

@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Dimensions, Alert, ActivityIndicator, DeviceEventEmitter, Keyboard } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Modal, TextInput, ScrollView, Dimensions, ActivityIndicator, DeviceEventEmitter, Keyboard } from 'react-native';
+import { showError, showInfo } from '../store/toastStore';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Location from 'expo-location';
@@ -145,7 +146,7 @@ const resetForm = () => {
 
 const handleBook = () => {
     if (!targetTest) {
-      Alert.alert('Select a Test', 'Please search and select a test or package to continue.');
+     showInfo('Please search and select a test or package to continue.');
       return;
     }
 
@@ -169,7 +170,7 @@ const handleBook = () => {
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Please enable location permission in settings to auto-fill address.');
+      showInfo('Please enable location permission in settings to auto-fill address.');
         setLocationLoading(false);
         return;
       }
@@ -218,7 +219,7 @@ const handleBook = () => {
         }
       }
     } catch (error) {
-      Alert.alert('Location Error', 'Unable to determine location accurately. Please type address manually.');
+    showError('Unable to determine location accurately. Please type address manually.');
     } finally {
       setLocationLoading(false);
     }

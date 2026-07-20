@@ -1,19 +1,24 @@
 /*eslint-disabled*/
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar } from 'react-native';
+import {
+  View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar,
+  TextInput, Linking
+} from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
 import * as yup from 'yup';
 import { useDispatch } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-
-import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
-import { InputBox } from '../../src/components/InputBox';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { showError } from '../../src/store/toastStore';
 import { loginSuccess } from '../../src/store/slices/authSlice';
 import { apiService } from '../../src/services/api';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Alert } from 'react-native';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
+
+import { COLORS } from '../../src/theme/theme';
+const PRIMARY = COLORS.primary;
 
 const registerSchema = yup.object().shape({
   name: yup.string().required('Full name is required').min(3, 'Name is too short'),
@@ -21,360 +26,348 @@ const registerSchema = yup.object().shape({
   mobile: yup.string()
     .required('Mobile number is required')
     .matches(/^[0-9]{10}$/, 'Mobile number must be exactly 10 digits'),
-  // Password required only for standard signup; OTP-verified users skip it
-  password: yup.string().when('$isFromOtp', {
-    is: true,
-    then: (schema) => schema.notRequired(),
-    otherwise: (schema) => schema.required('Password is required').min(6, 'Password must be at least 6 characters'),
-  }),
+  password: yup.string()
+    .required('Password is required')
+    .min(6, 'Password must be at least 6 characters'),
+  confirmPassword: yup.string()
+    .required('Please confirm your password')
+    .oneOf([yup.ref('password')], 'Passwords do not match'),
 });
+
+function getPasswordStrength(password: string): number {
+  if (!password) return 0;
+  let score = 0;
+  if (password.length >= 6) score++;
+  if (password.length >= 10) score++;
+  if (/[A-Z]/.test(password)) score++;
+  if (/[0-9]/.test(password)) score++;
+  return Math.min(score, 4);
+}
 
 export default function RegisterScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const dispatch = useDispatch();
   const [isLoading, setIsLoading] = useState(false);
+  const [showAccountSheet, setShowAccountSheet] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [termsAccepted, setTermsAccepted] = useState(false);
+  const [passwordValue, setPasswordValue] = useState('');
 
-// Capture incoming params from OTP/WhatsApp flow securely
   const prefilledMobile = (params?.mobile as string) || '';
   const prefilledName = (params?.name as string) || '';
   const isFromOtp = params?.fromOtp === '1';
 
-const { control: rawControl, handleSubmit, setValue } = useForm({
+  const { control: rawControl, handleSubmit, setValue, formState: { errors } } = useForm({
     resolver: yupResolver(registerSchema),
-    context: { isFromOtp },
     defaultValues: {
       name: prefilledName,
       email: '',
       mobile: prefilledMobile,
       password: '',
+      confirmPassword: '',
     },
   });
-
-  // InputBox is typed against a fixed field-values shape; the resolver's
-  // context generic makes react-hook-form's inferred Control type stricter
-  // than that shape expects. Widening here avoids a type clash with no
-  // runtime effect — form behavior (validation, values) is unchanged.
   const control = rawControl as any;
-  // Ensure reactive parameters trigger dynamic field pre-fills cleanly
-  useEffect(() => {
-    if (prefilledMobile) {
-      setValue('mobile', prefilledMobile);
-    }
-    if (prefilledName) {
-      setValue('name', prefilledName);
-    }
-  }, [prefilledMobile, prefilledName]);
- const onSubmit = async (data: any) => {
-    setIsLoading(true);
 
+  useEffect(() => {
+    if (prefilledMobile) setValue('mobile', prefilledMobile);
+    if (prefilledName) setValue('name', prefilledName);
+  }, [prefilledMobile, prefilledName]);
+
+  const onSubmit = async (data: any) => {
+    if (!termsAccepted) {
+      showError('Please accept Terms & Conditions and Privacy Policy.');
+      return;
+    }
+    setIsLoading(true);
     try {
       const response = await apiService.register({
         name: data.name,
         email: data.email,
         mobile: data.mobile,
-        // OTP-verified users skip password entirely; standard signup still sends it
-        ...(isFromOtp ? {} : { password: data.password }),
+        password: data.password,
       });
-
       const userObj = {
         id: response.user.id,
         name: response.user.name,
         email: response.user.email,
         mobile: response.user.mobile,
+        role: response.user.role,
       };
-
       await AsyncStorage.setItem('user', JSON.stringify(userObj));
       await AsyncStorage.setItem('token', response.token);
-
       dispatch(loginSuccess(userObj));
-      
       router.replace('/(tabs)');
-   } catch (error: any) {
+    } catch (error: any) {
       const errorMsg = error.response?.data?.error || '';
       const isMobileExists = errorMsg.includes('already registered');
-
       if (isMobileExists) {
-        // Mobile already exists — auto login karo silently
         try {
-          const loginResponse = await apiService.login({
-            mobile: data.mobile,
-            password: data.password,
-          });
-
+          const loginResponse = await apiService.login({ mobile: data.mobile, password: data.password });
           const userObj = {
             id: loginResponse.user.id,
             name: loginResponse.user.name,
             email: loginResponse.user.email,
             mobile: loginResponse.user.mobile,
+            role: loginResponse.user.role,
           };
-
           await AsyncStorage.setItem('user', JSON.stringify(userObj));
           await AsyncStorage.setItem('token', loginResponse.token);
           dispatch(loginSuccess(userObj));
           router.replace('/(tabs)');
         } catch (loginError: any) {
-          Alert.alert('Account Exists', 'This mobile is already registered. Please login instead.', [
-            { text: 'Go to Login', onPress: () => router.replace('/(auth)/login') },
-            { text: 'Cancel', style: 'cancel' },
-          ]);
+          const loginErrMsg = loginError.response?.data?.error || '';
+          if (loginErrMsg.includes('Invalid')) {
+            showError('An account already exists with this mobile number. Please enter the correct password or use Forgot Password.');
+          } else {
+            setShowAccountSheet(true);
+          }
         }
       } else {
-        Alert.alert('Registration Failed', errorMsg || 'Failed to register. Please try again.');
+        showError(errorMsg || 'Failed to register. Please try again.');
       }
     } finally {
       setIsLoading(false);
     }
   };
 
-  return (
-    <KeyboardAvoidingView 
-     behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      style={styles.container}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+  const strengthScore = getPasswordStrength(passwordValue);
+  const strengthColors = ['#E2E8F0', '#EF4444', '#F59E0B', '#3B82F6', '#10B981'];
+  const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
-      <ScrollView 
-        contentContainerStyle={styles.scrollContent}
-       showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
-      >
-        {/* Top Navigation */}
-        <View style={styles.topBar}>
-          <TouchableOpacity 
-            style={styles.backCircle} 
-            onPress={() => router.back()}
-            activeOpacity={0.7}
-          >
-            <MaterialCommunityIcons name="chevron-left" size={26} color="#334155" />
-          </TouchableOpacity>
-          {prefilledMobile.length > 0 && (
-            <View style={styles.verifiedBadge}>
-              <MaterialCommunityIcons name="check-decagram" size={14} color="#10B981" style={{ marginRight: 4 }} />
-              <Text style={styles.verifiedBadgeText}>Number Verified</Text>
-            </View>
-          )}
-        </View>
+return (
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
 
-        {/* Header Text Info */}
-        <View style={styles.introBlock}>
-          <Text style={styles.mainTitle}>Create Account</Text>
-          <Text style={styles.introSubtitle}>Complete your MedsSeva healthcare profile in 30 seconds.</Text>
-        </View>
+        <ConfirmSheet
+          visible={showAccountSheet}
+          title="Account Exists"
+          message="This mobile is already registered. Please login instead."
+          confirmLabel="Go to Login"
+          cancelLabel="Cancel"
+          onConfirm={() => { setShowAccountSheet(false); router.replace('/(auth)/login'); }}
+          onCancel={() => setShowAccountSheet(false)}
+        />
 
-        {/* Premium Registration Card Wrapper */}
-        <View style={styles.formCard}>
-          <InputBox
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#334155" />
+        </TouchableOpacity>
+
+        {prefilledMobile.length > 0 && (
+          <View style={styles.verifiedBadge}>
+            <MaterialCommunityIcons name="check-decagram" size={14} color="#10B981" style={{ marginRight: 4 }} />
+            <Text style={styles.verifiedBadgeText}>Number Verified</Text>
+          </View>
+        )}
+
+        <Text style={styles.pageTitle}>Create Account</Text>
+        <Text style={styles.pageSubtitle}>Join MedsSeva for clinical excellence in diagnostics and pharmacy.</Text>
+
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <MaterialCommunityIcons name="account-outline" size={18} color={PRIMARY} />
+            <Text style={styles.sectionTitle}>Personal Details</Text>
+          </View>
+
+          <Text style={styles.fieldLabel}>Full Name</Text>
+          <Controller
             control={control}
             name="name"
-            label="Your Full Name"
-            placeholder="e.g. Amit Sharma"
-            icon="account-circle-outline"
-          />
-
-          <View style={{ marginTop: 16 }}>
-            <InputBox
-              control={control}
-              name="email"
-              label="Primary Email Address"
-              placeholder="example@email.com"
-              icon="email-outline"
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-          </View>
-
-          <View style={{ marginTop: 16 }}>
-            {/* Mobile field is rendered with readOnly look if it came verified from OTP/WhatsApp */}
-            <InputBox
-              control={control}
-              name="mobile"
-              label="Mobile Contact"
-              placeholder="Enter 10 digit number"
-              icon="phone-check-outline"
-              keyboardType="numeric"
-              maxLength={10}
-            />
-          </View>
-
-  {!isFromOtp && (
-            <View style={{ marginTop: 16, marginBottom: 28 }}>
-              <InputBox
-                control={control}
-                name="password"
-                label="Create Account Password"
-                placeholder="Choose at least 6 characters"
-                icon="lock-open-outline"
-                secureTextEntry
-              />
-            </View>
-          )}
-
-          <TouchableOpacity 
-            style={[styles.registerBtn, isLoading && styles.btnDisabled]} 
-            onPress={handleSubmit(onSubmit)}
-            disabled={isLoading}
-            activeOpacity={0.85}
-          >
-            {isLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
-            ) : (
-              <>
-                <Text style={styles.registerBtnText}>Confirm & Register</Text>
-                <MaterialCommunityIcons name="arrow-right" size={18} color="#FFF" style={{ marginLeft: 8 }} />
-              </>
+            render={({ field: { onChange, value } }) => (
+              <View style={[styles.inputWrap, errors.name && styles.inputWrapError]}>
+                <TextInput style={styles.input} placeholder="Enter your full name" placeholderTextColor="#94A3B8" value={value} onChangeText={onChange} />
+              </View>
             )}
+          />
+          {errors.name && <Text style={styles.errorText}>{errors.name.message}</Text>}
+
+          <Text style={styles.fieldLabel}>Email Address</Text>
+          <Controller
+            control={control}
+            name="email"
+            render={({ field: { onChange, value } }) => (
+              <View style={[styles.inputWrap, errors.email && styles.inputWrapError]}>
+                <TextInput style={styles.input} placeholder="Enter your email address" placeholderTextColor="#94A3B8" value={value} onChangeText={onChange} keyboardType="email-address" autoCapitalize="none" />
+              </View>
+            )}
+          />
+          {errors.email && <Text style={styles.errorText}>{errors.email.message}</Text>}
+
+          <Text style={styles.fieldLabel}>Mobile Number</Text>
+          <Controller
+            control={control}
+            name="mobile"
+            render={({ field: { onChange, value } }) => (
+              <View style={[styles.inputWrap, errors.mobile && styles.inputWrapError]}>
+                <TextInput style={styles.input} placeholder="Enter your mobile number" placeholderTextColor="#94A3B8" value={value} onChangeText={onChange} keyboardType="numeric" maxLength={10} editable={!isFromOtp} />
+              </View>
+            )}
+          />
+          {errors.mobile && <Text style={styles.errorText}>{errors.mobile.message}</Text>}
+
+          <Text style={styles.fieldLabel}>Password</Text>
+          <Controller
+            control={control}
+            name="password"
+            render={({ field: { onChange, value } }) => (
+              <View style={[styles.inputWrap, errors.password && styles.inputWrapError]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Enter your password"
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry={!showPassword}
+                  value={value}
+                  onChangeText={(text) => { onChange(text); setPasswordValue(text); }}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  <MaterialCommunityIcons name={showPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+          <View style={styles.strengthRow}>
+            {[1, 2, 3, 4].map((i) => (
+              <View key={i} style={[styles.strengthBar, { backgroundColor: strengthScore >= i ? strengthColors[strengthScore] : '#E2E8F0' }]} />
+            ))}
+          </View>
+          <Text style={styles.strengthLabel}>{passwordValue ? (strengthScore > 0 ? strengthLabels[strengthScore] + ' password' : 'Enter a strong password') : 'Enter a strong password'}</Text>
+          {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+
+          <Text style={styles.fieldLabel}>Confirm Password</Text>
+          <Controller
+            control={control}
+            name="confirmPassword"
+            render={({ field: { onChange, value } }) => (
+              <View style={[styles.inputWrap, errors.confirmPassword && styles.inputWrapError]}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="Re-enter your password"
+                  placeholderTextColor="#94A3B8"
+                  secureTextEntry={!showConfirmPassword}
+                  value={value}
+                  onChangeText={onChange}
+                />
+                <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+                  <MaterialCommunityIcons name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'} size={20} color="#94A3B8" />
+                </TouchableOpacity>
+              </View>
+            )}
+          />
+          {errors.confirmPassword && <Text style={styles.errorText}>{errors.confirmPassword.message}</Text>}
+        </View>
+
+        <TouchableOpacity style={styles.checkboxRow} onPress={() => setTermsAccepted(!termsAccepted)} activeOpacity={0.8}>
+          <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
+            {termsAccepted && <MaterialCommunityIcons name="check" size={14} color="#fff" />}
+          </View>
+          <Text style={styles.checkboxText}>
+            By clicking "Continue", you agree to MedsSeva's{' '}
+            <Text style={styles.checkboxLink} onPress={() => Linking.openURL('https://medsseva-app.onrender.com/terms')}>Terms & Conditions</Text>
+            {' '}and{' '}
+            <Text style={styles.checkboxLink} onPress={() => Linking.openURL('https://medsseva-app.onrender.com/privacy')}>Privacy Policy</Text>
+            .
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.submitBtn, isLoading && styles.btnDisabled]}
+          onPress={handleSubmit(onSubmit)}
+          disabled={isLoading}
+          activeOpacity={0.85}
+        >
+          {isLoading ? <ActivityIndicator color="#fff" /> : (
+            <>
+              <Text style={styles.submitBtnText}>Create Account</Text>
+              <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" style={{ marginLeft: 8 }} />
+            </>
+          )}
+        </TouchableOpacity>
+
+        <View style={styles.signinRow}>
+          <Text style={styles.signinText}>Already have an account? </Text>
+          <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
+            <Text style={styles.signinLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
 
-        {/* Subtle Terms Note */}
-        <Text style={styles.disclaimer}>
-          By registering, you agree to MedsSeva Privacy Policies.
-        </Text>
-
-        {/* Sign In Alternate Route Footer */}
-        <View style={styles.footerContainer}>
-          <Text style={styles.footerText}>Already verified member? </Text>
-          <TouchableOpacity onPress={() => router.push('/(auth)/login')}>
-            <Text style={styles.footerLink}>Sign In</Text>
+        <Text style={styles.copyright}>© {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
+        <View style={styles.footerLinks}>
+          <TouchableOpacity onPress={() => Linking.openURL('https://medsseva-app.onrender.com/terms')}>
+            <Text style={styles.footerLink}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={styles.footerSep}> · </Text>
+          <TouchableOpacity onPress={() => Linking.openURL('https://medsseva-app.onrender.com/privacy')}>
+            <Text style={styles.footerLink}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
 }
-
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'ios' ? 60 : 40,
-    paddingBottom: 40,
-  },
-  meshOverlayTop: {
-    position: 'absolute',
-    top: -90,
-    right: -90,
-    width: 240,
-    height: 240,
-    borderRadius: 120,
-    backgroundColor: 'rgba(13, 148, 136, 0.05)',
-    zIndex: -1,
-  },
-  meshOverlayBottom: {
-    position: 'absolute',
-    bottom: -100,
-    left: -60,
-    width: 260,
-    height: 260,
-    borderRadius: 130,
-    backgroundColor: 'rgba(59, 130, 246, 0.05)',
-    zIndex: -1,
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 32,
-  },
-  backCircle: {
-    width: 42,
-    height: 42,
-    borderRadius: 21,
-    backgroundColor: '#FFFFFF',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...SHADOWS.soft,
-    elevation: 2,
+  container: { flex: 1, backgroundColor: '#E8F0F3' },
+  scrollContent: { flexGrow: 1, padding: 20, paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingBottom: 40 },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20,
+    elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4,
   },
   verifiedBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1,
-    borderColor: '#A7F3D0',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#ECFDF5', borderWidth: 1, borderColor: '#A7F3D0',
+    paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20,
+    alignSelf: 'flex-start', marginBottom: 16,
   },
-  verifiedBadgeText: {
-    fontSize: 12,
-    color: '#059669',
-    fontWeight: '700',
+  verifiedBadgeText: { fontSize: 12, color: '#059669', fontWeight: '700' },
+  pageTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginBottom: 4 },
+  pageSubtitle: { fontSize: 13, color: '#64748B', marginBottom: 24 },
+  section: {
+    backgroundColor: '#fff', borderRadius: 16, padding: 16,
+    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16,
+    elevation: 2, shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4,
   },
-  introBlock: {
-    marginBottom: 32,
-    paddingLeft: 4,
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', marginBottom: 16, gap: 8 },
+  sectionTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A' },
+  fieldLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6 },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center',
+    backgroundColor: '#F8FAFC', borderRadius: 10,
+    paddingHorizontal: 14, height: 50, marginBottom: 14,
+    borderWidth: 1, borderColor: '#E2E8F0',
   },
-  mainTitle: {
-    ...TYPOGRAPHY.h1,
-    color: '#0F172A',
-    fontWeight: '900',
-    letterSpacing: -0.5,
-    marginBottom: 8,
+  inputWrapError: { borderColor: '#EF4444' },
+  input: { flex: 1, fontSize: 14, color: '#0F172A' },
+  errorText: { fontSize: 12, color: '#EF4444', marginTop: -10, marginBottom: 10, marginLeft: 4 },
+  strengthRow: { flexDirection: 'row', gap: 6, marginBottom: 6, marginTop: -8 },
+  strengthBar: { flex: 1, height: 4, borderRadius: 2 },
+  strengthLabel: { fontSize: 12, color: '#64748B', marginBottom: 14 },
+  checkboxRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 20, gap: 10 },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 5,
+    borderWidth: 2, borderColor: '#CBD5E1',
+    justifyContent: 'center', alignItems: 'center',
+    marginTop: 2, flexShrink: 0,
   },
-  introSubtitle: {
-    ...TYPOGRAPHY.body,
-    color: '#64748B',
-    lineHeight: 22,
+  checkboxChecked: { backgroundColor: PRIMARY, borderColor: PRIMARY },
+  checkboxText: { flex: 1, fontSize: 12, color: '#64748B', lineHeight: 20 },
+  checkboxLink: { color: PRIMARY, fontWeight: '700' },
+  submitBtn: {
+    backgroundColor: PRIMARY, height: 52, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center',
+    flexDirection: 'row', marginBottom: 20,
+    elevation: 2,
   },
-  formCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 28,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...SHADOWS.soft,
-    elevation: 3,
-  },
-  registerBtn: {
-    backgroundColor: COLORS.primary,
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    height: 56,
-    borderRadius: 16,
-    ...SHADOWS.glow,
-    elevation: 4,
-  },
-  btnDisabled: {
-    opacity: 0.65,
-  },
-  registerBtnText: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    fontWeight: '800',
-    letterSpacing: 0.5,
-  },
-  disclaimer: {
-    fontSize: 11,
-    color: '#94A3B8',
-    textAlign: 'center',
-    marginTop: 24,
-    paddingHorizontal: 32,
-    lineHeight: 16,
-    fontWeight: '500',
-  },
-  footerContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 36,
-  },
-  footerText: {
-    fontSize: 14,
-    color: '#64748B',
-  },
-  footerLink: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: COLORS.primary,
-  },
+  btnDisabled: { opacity: 0.65 },
+  submitBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  signinRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginBottom: 24 },
+  signinText: { fontSize: 14, color: '#64748B' },
+  signinLink: { fontSize: 14, fontWeight: '800', color: PRIMARY },
+  copyright: { fontSize: 12, color: '#7A9AAA', textAlign: 'center', marginBottom: 8 },
+  footerLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  footerLink: { fontSize: 13, color: '#5A7080' },
+  footerSep: { fontSize: 13, color: '#94A3B8', marginHorizontal: 4 },
 });

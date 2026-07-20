@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, Alert, ScrollView, StatusBar, Platform, KeyboardAvoidingView
+  ActivityIndicator, ScrollView, StatusBar, Platform, KeyboardAvoidingView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
+import { showError, showInfo } from '../../src/store/toastStore';
 import { loginSuccess } from '../../src/store/slices/authSlice';
 import { apiService } from '../../src/services/api';
 
@@ -21,7 +22,7 @@ export default function PartnerLoginScreen() {
 
   const handleLogin = async () => {
     if (!identifier || !password) {
-      Alert.alert('Missing Fields', 'Please enter your email/mobile and password.');
+     showInfo('Please enter your email/mobile and password.');
       return;
     }
     setIsLoading(true);
@@ -33,7 +34,7 @@ export default function PartnerLoginScreen() {
       });
 
       if (response.user.role !== 'PATHOLOGY_PARTNER') {
-        Alert.alert('Access Denied', 'This login is only for Pathology Partners.');
+      showError('This login is only for Pathology Partners.');
         return;
       }
 
@@ -56,7 +57,7 @@ export default function PartnerLoginScreen() {
         router.replace('/(auth)/partner-pending');
         return;
       }
-      Alert.alert('Login Failed', err?.error || 'Please try again.');
+   showError(err?.error || 'Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -72,7 +73,7 @@ export default function PartnerLoginScreen() {
 
         <View style={styles.logoRow}>
           <MaterialCommunityIcons name="plus-box-outline" size={22} color={COLORS.primary} />
-          <Text style={styles.logoText}>MedsSeva</Text>
+        
         </View>
 
         <View style={styles.card}>
@@ -141,7 +142,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20, ...SHADOWS.soft,
   },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 28 },
-  logoText: { fontSize: 18, fontWeight: '800', color: COLORS.primary },
+ 
   card: {
     backgroundColor: '#fff', borderRadius: 20, padding: 24,
     borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', ...SHADOWS.soft,

@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Alert, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { showError, showInfo } from '../../src/store/toastStore';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -24,7 +26,8 @@ export default function AddressScreen() {
 const [selectedId, setSelectedId] = useState<string | null>(addresses.length > 0 ? addresses[0].id : null);
   const [loadingLocation, setLoadingLocation] = useState(false);
   const collectionMode = useSelector((state: RootState) => state.booking.collectionMode);
-  const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+const [selectedBranchId, setSelectedBranchId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
 
 const { data: branches = [], isLoading: branchesLoading } = useQuery({
     queryKey: ['branches'],
@@ -53,7 +56,7 @@ const { data: branches = [], isLoading: branchesLoading } = useQuery({
 const handleContinue = () => {
     if (collectionMode === 'lab') {
       if (!selectedBranchId) {
-        Alert.alert('Select Branch', 'Please select a lab branch to continue.');
+       showInfo('Please select a lab branch to continue.');
         return;
       }
      const branch = branches.find((b: any) => b.id === selectedBranchId);
@@ -71,24 +74,17 @@ const handleContinue = () => {
       router.push('/checkout/slot');
     }
   };
-  const handleDelete = (id: string) => {
-    Alert.alert(
-      "Delete Address",
-      "Are you sure you want to permanently delete this saved location?",
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Delete", 
-          style: "destructive", 
-          onPress: () => {
-            dispatch(removeAddressThunk(id));
-            if (selectedId === id) {
-              setSelectedId(null);
-            }
-          } 
-        }
-      ]
-    );
+const handleDelete = (id: string) => {
+    setDeleteTarget(id);
+  };
+
+  const confirmDelete = () => {
+    if (!deleteTarget) return;
+    dispatch(removeAddressThunk(deleteTarget));
+    if (selectedId === deleteTarget) {
+      setSelectedId(null);
+    }
+    setDeleteTarget(null);
   };
 
   const handleCurrentLocation = async () => {
@@ -97,11 +93,7 @@ const handleContinue = () => {
       // Request permission
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert(
-          "Location Required",
-          "Please enable location services in your device settings to fetch the current address.",
-          [{ text: "OK" }]
-        );
+     showInfo("Please enable location services in your device settings to fetch the current address.");
         setLoadingLocation(false);
         return;
       }
@@ -142,14 +134,24 @@ const handleContinue = () => {
       }
     } catch (error) {
       console.warn(error);
-      Alert.alert("Fetching Failed", "Could not fetch your device location. Please enter it manually.");
+     showError("Could not fetch your device location. Please enter it manually.");
     } finally {
       setLoadingLocation(false);
     }
   };
 
   return (
-    <View style={styles.container}>
+  <View style={styles.container}>
+      <ConfirmSheet
+        visible={deleteTarget !== null}
+        title="Delete Address"
+        message="Are you sure you want to permanently delete this saved location?"
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        confirmDestructive
+        onConfirm={confirmDelete}
+        onCancel={() => setDeleteTarget(null)}
+      />
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>

@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Alert, Platform, StatusBar, KeyboardAvoidingView
+ View, Text, StyleSheet, TouchableOpacity, ScrollView,
+  TextInput, ActivityIndicator, Platform, StatusBar, KeyboardAvoidingView
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
+import { showError, showInfo } from '../../src/store/toastStore';
 import { apiService } from '../../src/services/api';
 import * as Location from 'expo-location';
 const PARTNER_ROLES = ['Phlebotomist', 'Lab Technician', 'Lab Assistant', 'Sample Collector'];
@@ -23,7 +24,7 @@ const [showRoleDropdown, setShowRoleDropdown] = useState(false);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permission Denied', 'Location permission is required to auto-detect your address.');
+       showError('Location permission is required to auto-detect your address.');
         return;
       }
       const coords = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
@@ -39,7 +40,7 @@ const [showRoleDropdown, setShowRoleDropdown] = useState(false);
         if (g.city) updateField('city', g.city);
       }
     } catch (error) {
-      Alert.alert('Error', 'Could not fetch location. Please enter manually.');
+     showError('Could not fetch location. Please enter manually.');
     } finally {
       setLocationLoading(false);
     }
@@ -52,7 +53,7 @@ const [showRoleDropdown, setShowRoleDropdown] = useState(false);
 
   const updateField = (key: string, val: string) => setForm(prev => ({ ...prev, [key]: val }));
 
-const otpRefs = React.useRef<any[]>([]);
+const otpRefs = React.useRef<(TextInput | null)[]>([]);
 
   const handleOtpChange = (val: string, i: number) => {
     const newOtp = [...otp];
@@ -68,15 +69,15 @@ const otpRefs = React.useRef<any[]>([]);
 
   const validateAndSendOtp = () => {
     if (!form.name || !form.mobile || !form.password || !form.labName || !form.role) {
-      Alert.alert('Missing Fields', 'Please fill all required fields.');
+    showInfo('Please fill all required fields.');
       return;
     }
     if (form.mobile.length !== 10) {
-      Alert.alert('Invalid Mobile', 'Enter a valid 10-digit mobile number.');
+    showError('Enter a valid 10-digit mobile number.');
       return;
     }
     if (form.password !== form.confirmPassword) {
-      Alert.alert('Password Mismatch', 'Passwords do not match.');
+      showError('Passwords do not match.');
       return;
     }
     setOtpStep(true);
@@ -85,7 +86,7 @@ const otpRefs = React.useRef<any[]>([]);
   const handleVerifyAndSubmit = async () => {
     const otpVal = otp.join('');
     if (otpVal !== '1234') {
-      Alert.alert('Invalid OTP', 'Use 1234 for now.');
+     showError('Use 1234 for now.');
       return;
     }
     setIsLoading(true);
@@ -99,7 +100,7 @@ const otpRefs = React.useRef<any[]>([]);
       });
       router.replace('/(auth)/partner-pending');
     } catch (error: any) {
-      Alert.alert('Registration Failed', error.response?.data?.error || 'Please try again.');
+     showError(error.response?.data?.error || 'Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -126,7 +127,7 @@ const otpRefs = React.useRef<any[]>([]);
               {otp.map((d, i) => (
                 <TextInput
                   key={i}
-                  ref={ref => (otpRefs.current[i] = ref)}
+                 ref={ref => { otpRefs.current[i] = ref; }}
                   style={[styles.otpBox, d ? styles.otpBoxFilled : null]}
                   maxLength={1} keyboardType="number-pad"
                   value={d} onChangeText={v => handleOtpChange(v, i)}
@@ -163,7 +164,7 @@ const otpRefs = React.useRef<any[]>([]);
           </TouchableOpacity>
           <View style={styles.logoRow}>
             <MaterialCommunityIcons name="plus-box-outline" size={20} color={COLORS.primary} />
-            <Text style={styles.logoText}>MedsSeva</Text>
+         
           </View>
         </View>
 
@@ -324,7 +325,7 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#E2E8F0', ...SHADOWS.soft,
   },
   logoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  logoText: { fontSize: 16, fontWeight: '700', color: COLORS.primary },
+ 
   pageTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginBottom: 4 },
   pageSubtitle: { fontSize: 13, color: '#64748B', marginBottom: 24 },
   section: {

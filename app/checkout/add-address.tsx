@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  View, 
+View, 
   Text, 
   StyleSheet, 
   TextInput, 
@@ -8,8 +8,7 @@ import {
   ScrollView, 
   KeyboardAvoidingView, 
   Platform, 
-  Alert, 
-  ActivityIndicator 
+  ActivityIndicator
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
@@ -26,6 +25,7 @@ import { RootState } from '../../src/store';
 import { addAddress } from '../../src/store/slices/addressSlice';
 import { apiService } from '../../src/services/api';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
+import { showSuccess, showError, showInfo } from '../../src/store/toastStore';
 
 export default function AddAddressScreen() {
   const router = useRouter();
@@ -107,7 +107,7 @@ export default function AddAddressScreen() {
 
   const handleSaveAddress = async () => {
     if (!flatNo || !area || !city || !pincode) {
-      Alert.alert("Missing Fields", "Please fill in all mandatory address fields.");
+showInfo("Please fill in all mandatory address fields.");
       return;
     }
 
@@ -142,11 +142,11 @@ try {
       });
       console.log('[ADD-ADDRESS DEBUG] Backend saved ID:', saved.id);
       dispatch(addAddress({ ...newAddr, id: saved.id }));
-      Alert.alert("Success", "Address added to your account successfully!");
+    showSuccess("Address added to your account successfully!");
       router.back();
     } catch (error) {
       console.error('Failed to add address to backend:', error);
-      Alert.alert("Error", "Failed to save address. Please try again.");
+  showError("Failed to save address. Please try again.");
     }
   };
 

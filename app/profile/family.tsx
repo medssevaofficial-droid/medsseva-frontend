@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  View, 
+View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
@@ -8,7 +8,6 @@ import {
   TextInput, 
   Modal, 
   Platform, 
-  Alert,
   ActivityIndicator
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -18,6 +17,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { RootState, AppDispatch } from '../../src/store';
 import { addFamilyMemberThunk, removeFamilyMemberThunk, fetchFamilyMembers, FamilyMember } from '../../src/store/slices/familySlice';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
+import { showSuccess, showError, showInfo } from '../../src/store/toastStore';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 type RelationType = FamilyMember['relation'];
 
@@ -31,7 +32,8 @@ export default function FamilyMembersScreen() {
   const [age, setAge] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'other'>('male');
   const [relation, setRelation] = useState<RelationType>('Wife');
-  const [isSaving, setIsSaving] = useState(false);
+const [isSaving, setIsSaving] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null);
 
   useEffect(() => {
     dispatch(fetchFamilyMembers());
@@ -45,8 +47,8 @@ export default function FamilyMembersScreen() {
   };
 
   const handleAddMember = async () => {
-    if (!name.trim()) {
-      Alert.alert("Input Required", "Please enter your family member's name.");
+if (!name.trim()) {
+      showInfo("Please enter your family member's name.");
       return;
     }
 
@@ -59,39 +61,43 @@ export default function FamilyMembersScreen() {
         age: age ? parseInt(age) : undefined,
       })).unwrap();
       
-      Alert.alert("Success", `${name} added to your family successfully!`);
+    showSuccess(`${name} added to your family successfully!`);
       setIsModalVisible(false);
       resetForm();
     } catch (err: any) {
-      Alert.alert("Error", err || "Failed to add family member");
+     showError(err || "Failed to add family member");
     } finally {
       setIsSaving(false);
     }
   };
 
-  const handleDeleteMember = (id: string, memberName: string) => {
-    Alert.alert(
-      "Remove Member",
-      `Are you sure you want to remove ${memberName} from your family profile?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        { 
-          text: "Remove", 
-          style: "destructive", 
-          onPress: async () => {
-            try {
-              await dispatch(removeFamilyMemberThunk(id)).unwrap();
-            } catch (err: any) {
-              Alert.alert("Error", err || "Failed to remove family member");
-            }
-          } 
-        }
-      ]
-    );
+const handleDeleteMember = (id: string, memberName: string) => {
+    setDeleteTarget({ id, name: memberName });
+  };
+
+  const confirmDeleteMember = async () => {
+    if (!deleteTarget) return;
+    const { id } = deleteTarget;
+    setDeleteTarget(null);
+    try {
+      await dispatch(removeFamilyMemberThunk(id)).unwrap();
+    } catch (err: any) {
+      showError(err || "Failed to remove family member");
+    }
   };
 
   return (
-    <View style={styles.container}>
+ <View style={styles.container}>
+      <ConfirmSheet
+        visible={deleteTarget !== null}
+        title="Remove Member"
+        message={`Are you sure you want to remove ${deleteTarget?.name} from your family profile?`}
+        confirmLabel="Remove"
+        cancelLabel="Cancel"
+        confirmDestructive
+        onConfirm={confirmDeleteMember}
+        onCancel={() => setDeleteTarget(null)}
+      />
       {/* Custom App Bar Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>

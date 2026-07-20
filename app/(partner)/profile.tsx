@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, Alert, ActivityIndicator
+View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  StatusBar, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
@@ -11,6 +11,7 @@ import { RootState } from '../../src/store';
 import { logout } from '../../src/store/slices/authSlice';
 import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 interface PartnerProfile {
   labName: string;
@@ -27,7 +28,8 @@ export default function PartnerProfileScreen() {
   const router = useRouter();
   const user = useSelector((s: RootState) => s.auth.user);
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+const [isLoading, setIsLoading] = useState(true);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     apiService.getPartnerProfile()
@@ -36,20 +38,16 @@ export default function PartnerProfileScreen() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Logout', style: 'destructive',
-        onPress: async () => {
-          await AsyncStorage.multiRemove(['user', 'token']);
-          dispatch(logout());
-          router.replace('/(auth)/account-type');
-        }
-      }
-    ]);
+const handleLogout = () => {
+    setShowLogoutConfirm(true);
   };
 
+  const confirmLogout = async () => {
+    setShowLogoutConfirm(false);
+    await AsyncStorage.multiRemove(['user', 'token']);
+    dispatch(logout());
+    router.replace('/(auth)/account-type');
+  };
   const menuItems = [
     { icon: 'calendar-clock', label: 'Availability', subtitle: 'Manage your work hours', onPress: () => {} },
     { icon: 'file-document-outline', label: 'Documents', subtitle: 'Licenses and certificates', onPress: () => {} },
@@ -67,7 +65,17 @@ export default function PartnerProfileScreen() {
   }
 
   return (
-    <View style={styles.container}>
+  <View style={styles.container}>
+      <ConfirmSheet
+        visible={showLogoutConfirm}
+        title="Logout"
+        message="Are you sure you want to logout?"
+        confirmLabel="Logout"
+        cancelLabel="Cancel"
+        confirmDestructive
+        onConfirm={confirmLogout}
+        onCancel={() => setShowLogoutConfirm(false)}
+      />
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
       <View style={styles.header}>
         <View style={styles.logoRow}>
