@@ -7,8 +7,8 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import * as Location from 'expo-location';
-
 import { RootState } from '../../src/store';
+import { confirmAndLogout } from '../../src/utils/logout';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 
 import { useQuery } from '@tanstack/react-query';
@@ -759,7 +759,7 @@ const filteredTests = activeCategory === 'all'
 
             {/* Drawer Footer */}
             <View style={styles.drawerFooter}>
-              <TouchableOpacity style={styles.logoutBtn} onPress={() => router.replace('/(auth)/login')}>
+<TouchableOpacity style={styles.logoutBtn} onPress={() => { closeDrawer(() => confirmAndLogout()); }}>
                 <MaterialCommunityIcons name="logout" size={20} color={COLORS.danger} />
                 <Text style={styles.logoutBtnText}>Log Out</Text>
               </TouchableOpacity>

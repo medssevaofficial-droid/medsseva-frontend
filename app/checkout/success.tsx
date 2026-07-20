@@ -77,9 +77,9 @@ const recentBooking = booking.pastBookings?.[0] || { id: '', bookingCode: '', da
       </View>
 
       <Animated.View style={[styles.footer, { opacity: opacityAnim }]}>
-   <TouchableOpacity 
+ <TouchableOpacity 
           style={styles.trackBtn} 
-          onPress={() => router.push(`/tracking/${recentBooking.id}`)}
+          onPress={() => router.push(isLabVisit ? `/tracking/lab/${recentBooking.id}` : `/tracking/${recentBooking.id}`)}
         >
           <MaterialCommunityIcons name="map-marker-path" size={20} color={COLORS.textLight} />
           <Text style={styles.trackBtnText}>Track Booking</Text>

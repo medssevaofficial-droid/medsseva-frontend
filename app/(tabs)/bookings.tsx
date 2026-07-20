@@ -3,42 +3,14 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, DeviceE
 import { showInfo } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
+import messaging from '@react-native-firebase/messaging';
 
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { apiService } from '../../src/services/api';
 import { RootState } from '../../src/store';
 
-const MOCK_BOOKINGS = [
-  {
-    id: 'BKG-102934',
-    testName: 'Complete Health Package',
-    date: '12 May 2026',
-    time: '08:00 AM - 09:00 AM',
-    status: 'Upcoming',
-    patient: 'John Doe',
-    homeCollection: true,
-  },
-  {
-    id: 'BKG-098122',
-    testName: 'Advanced Lipid Profile',
-    date: '02 Apr 2026',
-    time: '07:30 AM - 08:30 AM',
-    status: 'Completed',
-    patient: 'John Doe',
-    homeCollection: true,
-  },
-  {
-    id: 'BKG-087233',
-    testName: 'Thyroid Care Profile',
-    date: '15 Mar 2026',
-    time: '09:00 AM - 10:00 AM',
-    status: 'Cancelled',
-    patient: 'Sarah Doe',
-    homeCollection: false,
-  }
-];
 
 export default function BookingsScreen() {
   const router = useRouter();
@@ -53,11 +25,35 @@ const user = useSelector((state: RootState) => state.auth.user);
     enabled: !!user?.mobile,
   });
 
-useEffect(() => {
+const queryClient = useQueryClient();
+
+  useEffect(() => {
     const sub = DeviceEventEmitter.addListener('bookingCreated', () => {
       refetch();
     });
     return () => sub.remove();
+  }, [refetch]);
+
+  useEffect(() => {
+    const unsub = messaging().onMessage(async (msg) => {
+      const type = msg.data?.type;
+      if (
+        type === 'BOOKING_CREATED' ||
+        type === 'BOOKING_ACCEPTED' ||
+        type === 'BOOKING_REJECTED' ||
+        type === 'BOOKING_CANCELLED' ||
+        type === 'BOOKING_RESCHEDULED' ||
+        type === 'PARTNER_ON_THE_WAY' ||
+        type === 'PARTNER_ARRIVED' ||
+        type === 'SAMPLE_COLLECTED' ||
+        type === 'SAMPLE_RECEIVED_IN_LAB' ||
+        type === 'PAYMENT_SUCCESS' ||
+        type === 'PAYMENT_FAILED'
+      ) {
+        refetch();
+      }
+    });
+    return unsub;
   }, [refetch]);
 
   const bookings = React.useMemo(() => {
@@ -67,9 +63,10 @@ useEffect(() => {
      const scheduledDate = b.scheduledDate ? new Date(b.scheduledDate) : null;
     const isPast = scheduledDate ? scheduledDate < new Date() : false;
 
-   let mappedStatus = 'Upcoming';
+  let mappedStatus = 'Upcoming';
     if (b.status === 'COMPLETED') mappedStatus = 'Completed';
     else if (b.status === 'CANCELLED') mappedStatus = 'Cancelled';
+    else if (b.status === 'REJECTED') mappedStatus = 'Rejected';
     else if (b.status === 'PENDING' && isPast) mappedStatus = 'Completed';
     else if (b.status === 'WAITING_FOR_PARTNER') mappedStatus = 'Upcoming';
       
@@ -96,21 +93,23 @@ useEffect(() => {
 const filteredBookings = bookings.filter((b: any) =>
     activeTab === 'upcoming'
       ? b.status === 'Upcoming'
-      : b.status === 'Completed' || b.status === 'Cancelled'
+      : b.status === 'Completed' || b.status === 'Cancelled' || b.status === 'Rejected'
   );
-  const renderBookingCard = ({ item }: { item: typeof MOCK_BOOKINGS[0] }) => (
+const renderBookingCard = ({ item }: { item: any }) => (
     <View style={styles.bookingCard}>
       <View style={styles.cardHeader}>
         <View style={styles.badgeRow}>
-          <View style={[
+  <View style={[
             styles.statusBadge,
-            item.status === 'Upcoming' ? styles.statusUpcoming : 
-            item.status === 'Completed' ? styles.statusCompleted : styles.statusCancelled
+            item.status === 'Upcoming' ? styles.statusUpcoming :
+            item.status === 'Completed' ? styles.statusCompleted :
+            item.status === 'Rejected' ? styles.statusRejected : styles.statusCancelled
           ]}>
             <Text style={[
               styles.statusText,
-              item.status === 'Upcoming' ? styles.statusTextUpcoming : 
-              item.status === 'Completed' ? styles.statusTextCompleted : styles.statusTextCancelled
+              item.status === 'Upcoming' ? styles.statusTextUpcoming :
+              item.status === 'Completed' ? styles.statusTextCompleted :
+              item.status === 'Rejected' ? styles.statusTextRejected : styles.statusTextCancelled
             ]}>
               {item.status}
             </Text>
@@ -170,10 +169,10 @@ const filteredBookings = bookings.filter((b: any) =>
                   {(item as any).rawStatus === 'WAITING_FOR_PARTNER' ? 'Searching...' : 'Track Tech'}
                 </Text>
               </TouchableOpacity>
-            ) : (
-              <TouchableOpacity 
-                style={[styles.actionButtonPrimary, { backgroundColor: COLORS.success }]} 
-              onPress={() => showInfo("Please visit MedsSeva Hub - Central Plaza at your chosen time window. No home collection tracking is required.")}
+      ) : (
+              <TouchableOpacity
+                style={[styles.actionButtonPrimary, { backgroundColor: COLORS.success }]}
+                onPress={() => router.push(`/tracking/lab/${(item as any).realId}` as any)}
               >
                 <Text style={styles.actionButtonTextPrimary}>Lab Info</Text>
               </TouchableOpacity>
@@ -341,8 +340,11 @@ const styles = StyleSheet.create({
   statusCompleted: {
     backgroundColor: COLORS.successLight,
   },
-  statusCancelled: {
+statusCancelled: {
     backgroundColor: COLORS.dangerLight,
+  },
+  statusRejected: {
+    backgroundColor: '#FEF2F2',
   },
   statusText: {
     ...TYPOGRAPHY.caption,
@@ -356,8 +358,11 @@ const styles = StyleSheet.create({
   statusTextCompleted: {
     color: COLORS.success,
   },
-  statusTextCancelled: {
+statusTextCancelled: {
     color: COLORS.danger,
+  },
+  statusTextRejected: {
+    color: '#DC2626',
   },
   testName: {
     ...TYPOGRAPHY.h3,

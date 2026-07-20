@@ -30,6 +30,7 @@ interface AuthState {
   user: User | null;
   isAuthenticated: boolean;
   isLoading: boolean;
+  isLoggingOut: boolean;
   error: string | null;
 }
 
@@ -37,6 +38,7 @@ const initialState: AuthState = {
   user: null,
   isAuthenticated: false,
   isLoading: false,
+  isLoggingOut: false,
   error: null,
 };
 
@@ -57,9 +59,13 @@ const authSlice = createSlice({
       state.isLoading = false;
       state.error = action.payload;
     },
+ setLoggingOut: (state, action: PayloadAction<boolean>) => {
+      state.isLoggingOut = action.payload;
+    },
     logout: (state) => {
       state.user = null;
       state.isAuthenticated = false;
+      state.isLoggingOut = false;
     },
     updateProfile: (state, action: PayloadAction<Partial<User>>) => {
       if (state.user) {
@@ -69,6 +75,6 @@ const authSlice = createSlice({
   },
 });
 
-export const { loginStart, loginSuccess, loginFailure, logout, updateProfile } = authSlice.actions;
+export const { loginStart, loginSuccess, loginFailure, logout, setLoggingOut, updateProfile } = authSlice.actions;
 
 export default authSlice.reducer;

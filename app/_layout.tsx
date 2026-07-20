@@ -1,24 +1,42 @@
 import 'react-native-gesture-handler';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import { Stack } from 'expo-router';
-import { Provider, useDispatch } from 'react-redux';
+import { Stack, useRouter } from 'expo-router';
+import { Provider, useDispatch, useSelector } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { store } from '../src/store';
-import { View, StyleSheet, ActivityIndicator } from 'react-native';
+import { store, RootState } from '../src/store';
+import { View, StyleSheet, ActivityIndicator, AppState, Modal } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { COLORS } from '../src/theme/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginSuccess } from '../src/store/slices/authSlice';
+import * as Notifications from 'expo-notifications';
+import messaging from '@react-native-firebase/messaging';
+import {
+  registerFcmToken,
+  setupTokenRefreshListener,
+  getDeepLinkRoute,
+} from '../src/services/notificationService';
 
 import { GlobalSchedulerOverlay } from '../src/components/GlobalSchedulerOverlay';
 import { ToastHost } from '../src/components/ToastHost';
+import { initLogout } from '../src/utils/logout';
 
 const queryClient = new QueryClient();
 
 function AppContent() {
   const dispatch = useDispatch();
+  const router = useRouter();
+const user = useSelector((s: RootState) => s.auth.user);
+  const isLoggingOut = useSelector((s: RootState) => s.auth.isLoggingOut);
   const [rehydrated, setRehydrated] = useState(false);
+  const notificationListener = useRef<any>(null);
+  const responseListener = useRef<any>(null);
+  const tokenRefreshUnsub = useRef<(() => void) | null>(null);
+
+useEffect(() => {
+    initLogout(queryClient, router);
+  }, []);
 
   useEffect(() => {
     const restoreSession = async () => {
@@ -37,6 +55,63 @@ function AppContent() {
     };
     restoreSession();
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    registerFcmToken();
+    tokenRefreshUnsub.current = setupTokenRefreshListener();
+
+    messaging().setBackgroundMessageHandler(async () => {});
+
+    const unsubForeground = messaging().onMessage(async (remoteMessage) => {
+      const { title, body } = remoteMessage.notification || {};
+      if (!title || !body) return;
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title,
+          body,
+          data: remoteMessage.data || {},
+        },
+        trigger: null,
+      });
+    });
+
+    notificationListener.current = Notifications.addNotificationReceivedListener(() => {});
+
+    responseListener.current = Notifications.addNotificationResponseReceivedListener((response) => {
+      const data = response.notification.request.content.data as Record<string, string>;
+      const route = getDeepLinkRoute(data);
+      if (route) {
+        router.push(route as any);
+      }
+    });
+
+    messaging()
+      .getInitialNotification()
+      .then((remoteMessage) => {
+        if (remoteMessage?.data) {
+          const route = getDeepLinkRoute(remoteMessage.data as Record<string, string>);
+          if (route) {
+            setTimeout(() => router.push(route as any), 1000);
+          }
+        }
+      });
+
+    messaging().onNotificationOpenedApp((remoteMessage) => {
+      if (remoteMessage?.data) {
+        const route = getDeepLinkRoute(remoteMessage.data as Record<string, string>);
+        if (route) router.push(route as any);
+      }
+    });
+
+    return () => {
+      unsubForeground();
+      tokenRefreshUnsub.current?.();
+      notificationListener.current?.remove();
+      responseListener.current?.remove();
+    };
+  }, [user]);
 
   if (!rehydrated) {
     return (
@@ -58,8 +133,13 @@ function AppContent() {
      <Stack.Screen name="(partner)" options={{ headerShown: false }} />
         <Stack.Screen name="support" options={{ headerShown: false }} />
       </Stack>
-      <GlobalSchedulerOverlay />
+    <GlobalSchedulerOverlay />
       <ToastHost />
+      <Modal visible={isLoggingOut} transparent animationType="fade">
+        <View style={styles.logoutOverlay}>
+          <ActivityIndicator size="large" color="#fff" />
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -79,8 +159,14 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  container: {
+container: {
     flex: 1,
     backgroundColor: COLORS.primary,
+  },
+  logoutOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

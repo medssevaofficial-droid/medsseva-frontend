@@ -51,9 +51,13 @@ export default function LoginScreen() {
         role: response.user.role,
         partner: response.user.partner,
       };
-      await AsyncStorage.setItem('user', JSON.stringify(fullUserObj));
+await AsyncStorage.setItem('user', JSON.stringify(fullUserObj));
       await AsyncStorage.setItem('token', response.token);
       dispatch(loginSuccess(fullUserObj));
+
+      const { registerFcmToken } = await import('../../src/services/notificationService');
+      registerFcmToken().catch(console.warn);
+
       if (response.user.role === 'PATHOLOGY_PARTNER') {
         router.replace('/(partner)/home');
       } else {

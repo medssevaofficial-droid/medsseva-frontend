@@ -7,7 +7,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { useFocusEffect } from 'expo-router';
-
+import { Home, Building2, Clock3 } from 'lucide-react-native';
 import { RootState, AppDispatch } from '../../src/store';
 import { setAddress, setAddressId, setBranch, setCollectionMode } from '../../src/store/slices/bookingSlice';
 import { fetchAddressesThunk, removeAddressThunk } from '../../src/store/slices/addressSlice';
@@ -200,13 +200,41 @@ const handleDelete = (id: string) => {
             style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: collectionMode === 'home' ? COLORS.primary : COLORS.surface }}
             onPress={() => dispatch(setCollectionMode('home'))}
           >
-            <Text style={{ color: collectionMode === 'home' ? COLORS.textLight : COLORS.textSecondary, fontWeight: 'bold', fontSize: 13 }}>🏠 Home Collection</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center'}}>
+  <Home
+    size={16}
+    color={collectionMode === 'home' ? COLORS.textLight : COLORS.textSecondary}
+  />
+  <Text
+    style={{
+      color: collectionMode === 'home' ? COLORS.textLight : COLORS.textSecondary,
+      fontWeight: 'bold',
+      fontSize: 13,
+    }}
+  >
+    Home Collection
+  </Text>
+</View>
           </TouchableOpacity>
           <TouchableOpacity
             style={{ flex: 1, paddingVertical: 12, alignItems: 'center', backgroundColor: collectionMode === 'lab' ? COLORS.primary : COLORS.surface }}
             onPress={() => dispatch(setCollectionMode('lab'))}
           >
-            <Text style={{ color: collectionMode === 'lab' ? COLORS.textLight : COLORS.textSecondary, fontWeight: 'bold', fontSize: 13 }}>🏥 Visit Lab</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+  <Building2
+    size={16}
+    color={collectionMode === 'lab' ? COLORS.textLight : COLORS.textSecondary}
+  />
+  <Text
+    style={{
+      color: collectionMode === 'lab' ? COLORS.textLight : COLORS.textSecondary,
+      fontWeight: 'bold',
+      fontSize: 13,
+    }}
+  >
+    Visit Lab
+  </Text>
+</View>
           </TouchableOpacity>
         </View>
 
@@ -240,7 +268,12 @@ const handleDelete = (id: string) => {
                     </View>
                   </View>
                   <Text style={styles.addressText}>{branch.line1}, {branch.city}, {branch.state} - {branch.pincode}</Text>
-                  {branch.hours && <Text style={[styles.phoneText, { color: COLORS.primary }]}>⏰ {branch.hours}</Text>}
+                  {branch.hours && <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+  <Clock3 size={14} color={COLORS.primary} />
+  <Text style={[styles.phoneText, { color: COLORS.primary }]}>
+    {branch.hours}
+  </Text>
+</View>}
                 </TouchableOpacity>
               ))
             )}

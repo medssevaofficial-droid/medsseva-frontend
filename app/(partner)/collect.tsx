@@ -18,7 +18,7 @@ export default function CollectScreen() {
 const { bookingId, paymentStatus, otpVerified } = useLocalSearchParams<{ bookingId: string; paymentStatus: string; otpVerified: string }>();
 
 const isAlreadyPaid = paymentStatus === 'SUCCESS';
-  // If OTP already verified in a previous session (partner re-enters screen), skip OTP step
+
   const isOtpAlreadyVerified = otpVerified === 'true';
 
   const [step, setStep] = useState<Step>(
@@ -62,7 +62,7 @@ const [isCollectingCash, setIsCollectingCash] = useState(false);
             setUpiMessage(result.message);
           }
         } catch {
-          // silent — keep polling
+       
         }
       }, 4000);
     }
@@ -73,10 +73,10 @@ const otpValue = otp.join('');
 
   const handleOtpChange = (text: string, index: number) => {
     const digit = text.replace(/[^0-9]/g, '');
-    if (!digit) return; // backspace handled by onKeyPress
+    if (!digit) return; 
 
     const newOtp = [...otp];
-    newOtp[index] = digit[digit.length - 1]; // always take last digit (handles paste/replace)
+    newOtp[index] = digit[digit.length - 1]; 
     setOtp(newOtp);
     setOtpError('');
 
@@ -92,7 +92,7 @@ const otpValue = otp.join('');
       if (newOtp[index]) {
         newOtp[index] = '';
         setOtp(newOtp);
-        // stay on same box — user can now type
+     
       } else if (index > 0) {
         newOtp[index - 1] = '';
         setOtp(newOtp);
@@ -115,7 +115,7 @@ const otpValue = otp.join('');
     } catch (e: any) {
       const msg = e?.response?.data?.error || 'Invalid OTP. Please try again.';
       setOtpError(msg);
-      // Clear OTP and refocus first box on error
+   
       setOtp(['', '', '', '']);
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
     } finally {
@@ -247,7 +247,7 @@ if (step === 'otp') {
     );
   }
 
-  // ── PAYMENT STEP ─────────────────────────────────────────────────────────────
+
   if (step === 'payment') {
     return (
       <View style={styles.container}>
@@ -263,7 +263,7 @@ if (step === 'otp') {
           <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
             <MaterialCommunityIcons name="check-decagram-outline" size={40} color="#D97706" />
           </View>
-          <Text style={styles.stepTitle}>OTP Verified ✓</Text>
+          <Text style={styles.stepTitle}>OTP Verified</Text>
           <Text style={styles.stepSubtitle}>
             Select how the patient will pay. This amount will be recorded against the booking.
           </Text>
@@ -301,7 +301,7 @@ if (step === 'otp') {
   }
 
 
-// ── UPI WAITING STEP ─────────────────────────────────────────────────────────
+
   if (step === 'upi_waiting') {
     return (
       <View style={styles.container}>
@@ -357,7 +357,6 @@ if (step === 'otp') {
     );
   }
 
-// ── SAMPLE COLLECTED STEP ────────────────────────────────────────────────────
   if (step === 'sample_collected') {
     return (
       <View style={styles.container}>
@@ -371,7 +370,7 @@ if (step === 'otp') {
           <View style={[styles.iconCircle, { backgroundColor: '#EDE9FE' }]}>
             <MaterialCommunityIcons name="test-tube" size={40} color="#7C3AED" />
           </View>
-          <Text style={styles.stepTitle}>Sample Collected ✓</Text>
+          <Text style={styles.stepTitle}>Sample Collected</Text>
           <Text style={styles.stepSubtitle}>
             Sample has been collected successfully. Please deliver it to the lab and confirm below.
           </Text>
@@ -411,7 +410,6 @@ if (step === 'otp') {
     );
   }
 
-  // ── DONE / COLLECT SAMPLE STEP ────────────────────────────────────────────────
   return (
     <View style={styles.container}>
       <View style={styles.header}>
@@ -425,7 +423,7 @@ if (step === 'otp') {
           <MaterialCommunityIcons name="check-circle" size={40} color="#059669" />
         </View>
         <Text style={styles.stepTitle}>
-          {isAlreadyPaid ? 'Paid Online ✓' : 'Payment Collected ✓'}
+          {isAlreadyPaid ? 'Paid Online' : 'Payment Collected'}
         </Text>
         <Text style={styles.stepSubtitle}>
           {isAlreadyPaid

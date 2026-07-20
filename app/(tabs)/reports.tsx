@@ -1,11 +1,12 @@
 /* eslint-disable */
-import React, { useState } from 'react';
+import React, { useState ,useEffect} from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, FlatList, ActivityIndicator, Modal, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import ReactNativeBlobUtil from 'react-native-blob-util';
+import messaging from '@react-native-firebase/messaging';
 
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import * as Linking from 'expo-linking';
@@ -21,7 +22,18 @@ export default function ReportsScreen() {
   const [successFilePath, setSuccessFilePath] = useState<string | null>(null);
   const [successFileName, setSuccessFileName] = useState('');
 
-  const user = useSelector((state: RootState) => state.auth.user);
+ const user = useSelector((state: RootState) => state.auth.user);
+  const queryClient = useQueryClient();
+
+  useEffect(() => {
+    const unsub = messaging().onMessage(async (msg) => {
+      const type = msg.data?.type;
+      if (type === 'REPORT_READY' || type === 'REPORT_SENT' || type === 'REPORT_APPROVED') {
+        queryClient.invalidateQueries({ queryKey: ['my-reports'] });
+      }
+    });
+    return unsub;
+  }, []);
 
   const { data: reports = [], isLoading } = useQuery({
     queryKey: ['my-reports'],

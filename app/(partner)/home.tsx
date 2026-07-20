@@ -11,6 +11,9 @@ import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
 import { showError } from '../../src/store/toastStore';
 import { ConfirmSheet } from '../../src/components/ConfirmSheet';
+import { NotificationCenter } from '../../src/components/NotificationCenter';
+import { Modal } from 'react-native';
+
 
 interface BookingRequest {
   id: string;
@@ -42,7 +45,9 @@ export default function PartnerHomeScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 const [acceptingId, setAcceptingId] = useState<string | null>(null);
-  const [declineTarget, setDeclineTarget] = useState<string | null>(null);
+const [declineTarget, setDeclineTarget] = useState<string | null>(null);
+  const [showNotifCenter, setShowNotifCenter] = useState(false);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
   const loadData = useCallback(async () => {
     try {
@@ -60,7 +65,28 @@ const [acceptingId, setAcceptingId] = useState<string | null>(null);
     }
   }, []);
 
-  useEffect(() => { loadData(); }, [loadData]);
+useEffect(() => { loadData(); }, [loadData]);
+
+  useEffect(() => {
+    apiService.getMyNotifications(1, 5).then(res => {
+      setUnreadNotifCount(res.unreadCount);
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const { default: messaging } = require('@react-native-firebase/messaging');
+    const unsubscribe = messaging().onMessage(async (remoteMessage: any) => {
+      const type = remoteMessage?.data?.type;
+      if (
+        type === 'NEW_BOOKING_ASSIGNED' ||
+        type === 'BOOKING_CANCELLED_BY_USER' ||
+        type === 'BOOKING_RESCHEDULED'
+      ) {
+        loadData();
+      }
+    });
+    return () => unsubscribe();
+  }, [loadData]);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
@@ -116,6 +142,10 @@ const handleDecline = (bookingId: string) => {
 
   return (
  <View style={styles.container}>
+  <Modal visible={showNotifCenter} animationType="slide" onRequestClose={() => setShowNotifCenter(false)}>
+        <NotificationCenter onClose={() => setShowNotifCenter(false)} />
+      </Modal>
+
       <ConfirmSheet
         visible={declineTarget !== null}
         title="Decline Booking"
@@ -140,8 +170,13 @@ const handleDecline = (bookingId: string) => {
           </View>
         </View>
         <View style={styles.headerRight}>
-          <TouchableOpacity style={styles.notifBtn}>
+        <TouchableOpacity style={styles.notifBtn} onPress={() => setShowNotifCenter(true)}>
             <MaterialCommunityIcons name="bell-outline" size={22} color="#475569" />
+            {unreadNotifCount > 0 && (
+              <View style={styles.notifBadge}>
+                <Text style={styles.notifBadgeText}>{unreadNotifCount > 9 ? '9+' : unreadNotifCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
           <View style={styles.availToggle}>
             <Text style={[styles.availLabel, { color: isAvailable ? COLORS.primary : '#94A3B8' }]}>
@@ -277,11 +312,20 @@ const styles = StyleSheet.create({
   helloText: { fontSize: 12, color: '#64748B' },
   partnerName: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  notifBtn: {
+notifBtn: {
     width: 38, height: 38, borderRadius: 19, backgroundColor: '#F8FAFC',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: '#E2E8F0',
+    position: 'relative',
   },
+  notifBadge: {
+    position: 'absolute', top: -4, right: -4,
+    backgroundColor: '#EF4444', borderRadius: 8,
+    minWidth: 16, height: 16,
+    justifyContent: 'center', alignItems: 'center',
+    paddingHorizontal: 3, borderWidth: 1.5, borderColor: '#fff',
+  },
+  notifBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff' },
   availToggle: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   availLabel: { fontSize: 12, fontWeight: '800' },
   scrollContent: { padding: 20, paddingBottom: 40 },

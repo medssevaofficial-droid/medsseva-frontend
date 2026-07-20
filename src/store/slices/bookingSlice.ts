@@ -83,16 +83,19 @@ finalizeBooking: (state, action: PayloadAction<any>) => {
 setCollectionMode: (state, action: PayloadAction<'home' | 'lab'>) => {
       state.collectionMode = action.payload;
     },
-    clearBookingFlow: (state) => {
+clearBookingFlow: (state) => {
       state.selectedAddress = null;
       state.selectedAddressId = null;
       state.selectedDate = null;
       state.selectedTimeSlot = null;
       state.patientDetails = null;
       state.paymentMethod = null;
-   state.collectionMode = 'home';
+      state.collectionMode = 'home';
       state.selectedBranchId = null;
       state.selectedBranchName = null;
+      state.bookings = [];
+      state.pastBookings = [];
+      state.bookingsLastFetched = null;
     }
   },
 });

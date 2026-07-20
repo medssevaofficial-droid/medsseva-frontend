@@ -61,7 +61,11 @@ export const apiService = {
   createRazorpayOrder: (amount: number) => api.post('/bookings/razorpay/create-order', { amount }).then(res => res.data),
   login: (data: any) => api.post('/auth/login', data).then(res => res.data),
   register: (data: any) => api.post('/auth/register', data).then(res => res.data),
-  checkMobile: (mobile: string) => api.get(`/auth/check-mobile?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
+checkMobile: (mobile: string) => api.get(`/auth/check-mobile?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
+  sendOtp: (mobile: string) => api.post('/auth/otp/send', { mobile }).then(res => res.data),
+  verifyOtp: (mobile: string, otp: string) => api.post('/auth/otp/verify', { mobile, otp }).then(res => res.data),
+  loginWithOtp: (mobile: string, otp: string) => api.post('/auth/otp/login', { mobile, otp }).then(res => res.data),
+  resetPassword: (mobile: string, password: string) => api.post('/auth/reset-password', { mobile, password }).then(res => res.data),
   getAddresses: (mobile: string) => api.get(`/addresses?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
   addAddress: (data: any) => api.post('/addresses', data).then(res => res.data),
   removeAddress: (id: string) => api.delete(`/addresses/${id}`).then(res => res.data),
@@ -92,7 +96,10 @@ getBookingDetails: (bookingId: string) => api.get(`/bookings?id=${bookingId}`).t
     const data = res.data;
     return Array.isArray(data) ? data[0] ?? null : data;
   }),
-  acceptBooking: (bookingId: string) => api.patch(`/partner/bookings/${bookingId}/accept`).then(res => res.data),
+acceptBooking: (bookingId: string) => api.patch(`/partner/bookings/${bookingId}/accept`).then(res => res.data),
+acceptLabBooking: (bookingId: string) => api.patch(`/bookings/${bookingId}/accept-lab`).then(res => res.data),
+  patientReachedLab: (bookingId: string) => api.patch(`/bookings/${bookingId}/patient-reached`).then(res => res.data),
+  rejectLabBooking: (bookingId: string, reason?: string) => api.patch(`/bookings/${bookingId}/reject-lab`, { reason }).then(res => res.data),
   rejectBooking: (bookingId: string, reason?: string) => api.patch(`/partner/bookings/${bookingId}/reject`, { reason }).then(res => res.data),
   updateBookingStatus: (bookingId: string, status: string, note?: string) => api.patch(`/partner/bookings/${bookingId}/status`, { status, note }).then(res => res.data),
   toggleAvailability: (isAvailable: boolean) => api.patch('/partner/availability', { isAvailable }).then(res => res.data),
@@ -110,6 +117,16 @@ getPartnerStats: () => api.get('/partner/stats').then(res => res.data),
   getMyPrescriptions: () => api.get('/prescriptions/my').then(res => res.data),
 
 deletePrescription: (id: string) => api.delete(`/prescriptions/${id}`).then(res => res.data),
+
+registerFcmToken: (token: string, platform: string) => api.post('/notifications/token/register', { token, platform }).then(res => res.data),
+  unregisterFcmToken: (token: string) => api.post('/notifications/token/unregister', { token }).then(res => res.data),
+  getMyNotifications: (page = 1, limit = 20) => api.get(`/notifications/my?page=${page}&limit=${limit}`).then(res => res.data),
+  markNotificationRead: (id: string) => api.patch(`/notifications/my/${id}/read`).then(res => res.data),
+  markAllNotificationsRead: () => api.patch('/notifications/my/read-all').then(res => res.data),
+  deleteNotification: (id: string) => api.delete(`/notifications/my/${id}`).then(res => res.data),
+  sendBroadcast: (data: any) => api.post('/notifications/broadcast', data).then(res => res.data),
+  getNotificationLogs: (page = 1, status?: string) => api.get(`/notifications/logs?page=${page}${status ? `&status=${status}` : ''}`).then(res => res.data),
+  retryFailedNotifications: () => api.post('/notifications/retry-failed').then(res => res.data),
 
   getOrCreateConversation: () => api.get('/chat/conversation').then(res => res.data),
   getChatMessages: (conversationId: string, cursor?: string) =>

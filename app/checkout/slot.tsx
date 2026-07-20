@@ -229,12 +229,13 @@ const handleContinue = () => {
         onDateSelect={handleDateSelect}
       />
 
-      <MaterialTimeSlotModal
+ <MaterialTimeSlotModal
         visible={isTimePickerVisible}
         onClose={() => setTimePickerVisible(false)}
         slots={availableSlots}
         initialSlot={selectedTime || ''}
         onSlotSelect={(slot) => setSelectedTime(slot)}
+        selectedDate={selectedDateObj}
       />
     </View>
   );

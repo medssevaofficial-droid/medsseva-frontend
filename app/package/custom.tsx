@@ -70,7 +70,7 @@ export default function CustomPackageScreen() {
 
   // 2. Live Search and Filter logic
   const filteredTests = useMemo(() => {
-    return displayTests.filter(test => {
+   return displayTests.filter((test: any) => {
       const matchesSearch = test.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
                             (test.category && test.category.toLowerCase().includes(searchQuery.toLowerCase()));
       
@@ -115,8 +115,8 @@ export default function CustomPackageScreen() {
   const totals = useMemo(() => {
     let raw = 0;
     let final = 0;
-    selectedTestIds.forEach(id => {
-      const t = displayTests.find(x => x.id === id);
+  selectedTestIds.forEach(id => {
+      const t = displayTests.find((x: any) => x.id === id);
       if (t) {
         raw += t.originalPrice;
         final += t.customDiscountPrice;
@@ -130,7 +130,7 @@ export default function CustomPackageScreen() {
     if (totals.count === 0) return;
 
     // Package item description string based on selection names
-    const selectedNames = selectedTestIds.map(id => displayTests.find(x => x.id === id)?.name).join(', ');
+  const selectedNames = selectedTestIds.map(id => displayTests.find((x: any) => x.id === id)?.name).join(', ');
 
     dispatch(addToCart({
       id: `custom_package_${Date.now()}`,
@@ -220,7 +220,7 @@ export default function CustomPackageScreen() {
                 <Text style={styles.emptyText}>No tests found matching filter.</Text>
               </View>
             ) : (
-              filteredTests.map((item, index) => {
+              filteredTests.map((item: any, index: number) => {
                 const isSelected = selectedTestIds.includes(item.id);
                 const isLast = index === filteredTests.length - 1;
 
@@ -243,7 +243,7 @@ export default function CustomPackageScreen() {
                           styles.actionBtnText,
                           isSelected && styles.actionBtnTextActive
                         ]}>
-                          {isSelected ? 'ADDED ✓' : 'ADD'}
+                          {isSelected ? 'ADDED' : 'ADD'}
                         </Text>
                       </TouchableOpacity>
                     </View>

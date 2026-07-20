@@ -4,14 +4,13 @@ View, Text, StyleSheet, ScrollView, TouchableOpacity,
   StatusBar, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useDispatch, useSelector } from 'react-redux';
+import { useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootState } from '../../src/store';
-import { logout } from '../../src/store/slices/authSlice';
 import { apiService } from '../../src/services/api';
+import { confirmAndLogout } from '../../src/utils/logout';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
-import { ConfirmSheet } from '../../src/components/ConfirmSheet';
+
 
 interface PartnerProfile {
   labName: string;
@@ -24,12 +23,10 @@ interface PartnerProfile {
 }
 
 export default function PartnerProfileScreen() {
-  const dispatch = useDispatch();
-  const router = useRouter();
+ const router = useRouter();
   const user = useSelector((s: RootState) => s.auth.user);
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
-const [isLoading, setIsLoading] = useState(true);
-  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     apiService.getPartnerProfile()
@@ -39,14 +36,7 @@ const [isLoading, setIsLoading] = useState(true);
   }, []);
 
 const handleLogout = () => {
-    setShowLogoutConfirm(true);
-  };
-
-  const confirmLogout = async () => {
-    setShowLogoutConfirm(false);
-    await AsyncStorage.multiRemove(['user', 'token']);
-    dispatch(logout());
-    router.replace('/(auth)/account-type');
+    confirmAndLogout();
   };
   const menuItems = [
     { icon: 'calendar-clock', label: 'Availability', subtitle: 'Manage your work hours', onPress: () => {} },
@@ -64,18 +54,8 @@ const handleLogout = () => {
     );
   }
 
-  return (
-  <View style={styles.container}>
-      <ConfirmSheet
-        visible={showLogoutConfirm}
-        title="Logout"
-        message="Are you sure you want to logout?"
-        confirmLabel="Logout"
-        cancelLabel="Cancel"
-        confirmDestructive
-        onConfirm={confirmLogout}
-        onCancel={() => setShowLogoutConfirm(false)}
-      />
+return (
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
       <View style={styles.header}>
         <View style={styles.logoRow}>

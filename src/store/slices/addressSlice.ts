@@ -34,11 +34,11 @@ export const fetchAddressesThunk = createAsyncThunk(
       const user = state.auth.user;
       
       const response = await apiService.getAddresses(mobile);
-      return response.map((addr: any) => ({
+     return response.map((addr: any) => ({
         id: addr.id,
         type: addr.type,
-        name: user?.name || 'John Doe',
-        phone: user?.mobile || mobile || '+91 9876543210',
+        name: user?.name ?? '',
+        phone: user?.mobile ? `+91 ${user.mobile}` : (mobile ?? ''),
         address: `${addr.line1}${addr.line2 ? `, ${addr.line2}` : ''}, ${addr.city}, ${addr.state} ${addr.pincode}`,
         flatNo: addr.line1?.split(',')[0] || '',
         landmark: addr.line2 || '',

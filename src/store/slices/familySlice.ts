@@ -65,7 +65,9 @@ export const removeFamilyMemberThunk = createAsyncThunk(
 const familySlice = createSlice({
   name: 'family',
   initialState,
-  reducers: {},
+  reducers: {
+    resetFamily: () => initialState,
+  },
   extraReducers: (builder) => {
     // Fetch members
     builder.addCase(fetchFamilyMembers.pending, (state) => {
@@ -93,4 +95,5 @@ const familySlice = createSlice({
   }
 });
 
+export const { resetFamily } = familySlice.actions;
 export default familySlice.reducer;

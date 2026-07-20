@@ -1,15 +1,15 @@
 import React, { useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, Linking } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { COLORS, TYPOGRAPHY } from '../../src/theme/theme';
-import { logout } from '../../src/store/slices/authSlice';
 import { fetchFamilyMembers } from '../../src/store/slices/familySlice';
 import { RootState, AppDispatch } from '../../src/store';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { performLogout } from '../../src/utils/logout';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 export default function ProfileScreen() {
   const router = useRouter();
@@ -18,22 +18,15 @@ export default function ProfileScreen() {
   const members = useSelector((state: RootState) => state.family.members);
   
 const [isNotificationsEnabled, setIsNotificationsEnabled] = React.useState(true);
+const [showLogoutSheet, setShowLogoutSheet] = React.useState(false);
 
   useEffect(() => {
     dispatch(fetchFamilyMembers());
   }, [dispatch]);
 
-  const handleLogout = async () => {
-    try {
-      await AsyncStorage.removeItem('user');
-      await AsyncStorage.removeItem('token');
-    } catch (e) {
-      console.error('Failed to remove user session from AsyncStorage', e);
-    }
-    dispatch(logout());
-    router.replace('/(auth)/login');
+const handleLogout = () => {
+    setShowLogoutSheet(true);
   };
-
   const renderSettingItem = (icon: string, title: string, subtitle?: string, rightComponent?: React.ReactNode, onPress?: () => void) => (
     <TouchableOpacity 
       style={styles.settingItem} 
@@ -67,8 +60,8 @@ const [isNotificationsEnabled, setIsNotificationsEnabled] = React.useState(true)
             </View>
           </View>
           <View style={styles.profileInfo}>
-            <Text style={styles.profileName}>{user?.name || 'John Doe'}</Text>
-            <Text style={styles.profilePhone}>+91 {user?.mobile || '9876543210'}</Text>
+          <Text style={styles.profileName}>{user?.name ?? ''}</Text>
+            <Text style={styles.profilePhone}>{user?.mobile ? `+91 ${user.mobile}` : ''}</Text>
             <View style={styles.uhidBadge}>
               <Text style={styles.uhidText}>{user?.uhid ? `UHID: ${user.uhid}` : 'Generating UHID...'}</Text>
             </View>
@@ -165,19 +158,19 @@ const [isNotificationsEnabled, setIsNotificationsEnabled] = React.useState(true)
             undefined, 
             () => router.push('/profile/contact')
           )}
-          {renderSettingItem(
+  {renderSettingItem(
             'shield-check-outline', 
             'Privacy Policy', 
             undefined, 
             undefined, 
-            () => router.push({ pathname: '/profile/info', params: { type: 'privacy', title: 'Privacy Policy' } })
+            () => Linking.openURL('https://medsseva-app.onrender.com/privacy')
           )}
           {renderSettingItem(
             'file-document-outline', 
             'Terms of Service', 
             undefined, 
             undefined, 
-            () => router.push({ pathname: '/profile/info', params: { type: 'terms', title: 'Terms of Service' } })
+            () => Linking.openURL('https://medsseva-app.onrender.com/terms')
           )}
         </View>
 
@@ -187,8 +180,18 @@ const [isNotificationsEnabled, setIsNotificationsEnabled] = React.useState(true)
           <Text style={styles.logoutText}>Log Out</Text>
         </TouchableOpacity>
         
-        <Text style={styles.versionText}>App Version 1.0.0 (Build 42)</Text>
+     <Text style={styles.versionText}>App Version 1.0.0 (Build 42)</Text>
       </ScrollView>
+      <ConfirmSheet
+        visible={showLogoutSheet}
+        title="Log Out"
+        message="Are you sure you want to log out of your account?"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        confirmDestructive
+        onConfirm={() => { setShowLogoutSheet(false); performLogout(); }}
+        onCancel={() => setShowLogoutSheet(false)}
+      />
    
     </View>
   );

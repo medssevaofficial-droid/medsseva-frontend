@@ -6,13 +6,10 @@ import {
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
+import { CheckCircle2 } from 'lucide-react-native';
 
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { apiService } from '../../src/services/api';
-
-// Single source of truth: exact backend status → which timeline step it completes.
-// A step is "done" when currentStatusRank >= that step's threshold rank.
-// "In Progress" is shown on the next step above the last completed one.
 const STATUS_ORDER = [
   'PENDING',           // rank 0
   'WAITING_FOR_PARTNER', // rank 1
@@ -27,8 +24,7 @@ const STATUS_ORDER = [
   'COMPLETED',         // rank 10
 ];
 
-// Each timeline step becomes "done" once the current status rank reaches its doneAtRank.
-// All three UI components (banner, horizontal, vertical) derive from currentStatusRank only.
+
 const TRACKING_STEPS = [
   { id: 1, title: 'Booking Requested', icon: 'clock-outline',      doneAtRank: 0  }, // PENDING and above = done
   { id: 2, title: 'Partner Assigned',  icon: 'account-check',      doneAtRank: 2  }, // ASSIGNED and above
@@ -215,9 +211,11 @@ const liveBooking = bookings;
 
      {/* Payment status */}
             {isPaidOnline ? (
-              <View style={styles.paidBadgeCard}>
+        <View style={styles.paidBadgeCard}>
                 <MaterialCommunityIcons name="check-circle" size={18} color="#10B981" />
-                <Text style={styles.paidBadgeText}>Payment Done ✓ — Invoice will be generated after sample collection</Text>
+                <Text style={styles.paidBadgeText}>Payment Done</Text>
+                <CheckCircle2 size={14} color="#10B981" style={{ marginHorizontal: 4 }} />
+                <Text style={styles.paidBadgeText}>— Invoice will be generated after sample collection</Text>
               </View>
             ) : liveBooking?.paymentStatus === 'PENDING' && ['ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'REACHED_LOCATION'].includes(liveBooking?.status) ? (
               <View style={styles.pendingPayCard}>

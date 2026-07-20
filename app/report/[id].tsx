@@ -5,7 +5,11 @@ import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import ReactNativeBlobUtil from 'react-native-blob-util';
-
+import {
+  Phone,
+  Mail,
+  Globe,
+} from "lucide-react-native";
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import * as Linking from 'expo-linking';
 import * as Sharing from 'expo-sharing';
@@ -168,11 +172,20 @@ const handleDownload = async () => {
               <Text style={styles.brandTagline}>Quality Diagnostics & Precision Care</Text>
             </View>
           </View>
-          <View style={styles.contactBlock}>
-            <Text style={styles.contactText}>📞 +91 98765 43210</Text>
-            <Text style={styles.contactText}>✉️ reports@medsseva.com</Text>
-            <Text style={styles.contactText}>🌐 www.medsseva.com</Text>
-          </View>
+         <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+  <Phone size={12} color="#E0F2FE" style={{ marginRight: 4 }} />
+  <Text style={styles.contactText}>+91 98765 43210</Text>
+</View>
+
+<View style={{ flexDirection: 'row', alignItems: 'center' }}>
+  <Mail size={12} color="#E0F2FE" style={{ marginRight: 4 }} />
+  <Text style={styles.contactText}>reports@medsseva.com</Text>
+</View>
+
+<View style={{ flexDirection: 'row', alignItems: 'center' }}>
+  <Globe size={12} color="#E0F2FE" style={{ marginRight: 4 }} />
+  <Text style={styles.contactText}>www.medsseva.com</Text>
+</View>
         </View>
 
         <View style={styles.metaContainer}>

@@ -262,7 +262,7 @@ showSuccess("Your personal profile and location details have been synchronized!"
               </View>
               <Text style={styles.lockNotice}>Primary contact locked after OTP verification.</Text>
 
-              {/* 📅 NEW: Calendar DOB Integration */}
+          
               <Text style={styles.inputLabel}>DATE OF BIRTH (DOB)</Text>
               <TouchableOpacity 
                 style={styles.inputRow} 
@@ -276,7 +276,7 @@ showSuccess("Your personal profile and location details have been synchronized!"
                 <MaterialCommunityIcons name="chevron-down" size={20} color="#64748B" style={{ marginRight: 12 }} />
               </TouchableOpacity>
 
-              {/* 📞 NEW: Alternative Mobile Field */}
+        
               <Text style={styles.inputLabel}>ALTERNATIVE MOBILE (OPTIONAL)</Text>
               <View style={styles.inputRow}>
                 <MaterialCommunityIcons name="cellphone" size={20} color="#64748B" style={styles.inputIcon} />
@@ -321,11 +321,11 @@ showSuccess("Your personal profile and location details have been synchronized!"
             </View>
           </View>
         ) : (
-          /* ------------------- TAB B: ADDRESS DETAILS ------------------- */
+        
           <View style={styles.formSection}>
             <View style={styles.cardContainer}>
               
-              {/* 🏡 NEW: Full Address Input */}
+            
               <Text style={styles.inputLabel}>FULL RESIDENTIAL ADDRESS</Text>
               <View style={[styles.inputRow, styles.textAreaRow]}>
                 <MaterialCommunityIcons name="home-city-outline" size={20} color="#64748B" style={[styles.inputIcon, { marginTop: 14 }]} />
@@ -341,7 +341,7 @@ showSuccess("Your personal profile and location details have been synchronized!"
                 />
               </View>
 
-              {/* 📍 NEW: Pincode Field */}
+             
               <Text style={styles.inputLabel}>PINCODE</Text>
               <View style={styles.inputRow}>
                 <MaterialCommunityIcons name="map-marker-outline" size={20} color="#64748B" style={styles.inputIcon} />
@@ -392,7 +392,7 @@ showSuccess("Your personal profile and location details have been synchronized!"
           </View>
         )}
 
-        {/* Submit Actions Button */}
+     
         <TouchableOpacity style={styles.primaryUpdateBtn} onPress={handleSave} activeOpacity={0.85}>
           <Text style={styles.primaryUpdateBtnText}>Save Changes & Sync</Text>
           <MaterialCommunityIcons name="sync" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
@@ -401,12 +401,12 @@ showSuccess("Your personal profile and location details have been synchronized!"
         <View style={{ height: 50 }} />
       </ScrollView>
 
-      {/* 🗓️ Custom Premium Grid-based Calendar Modal */}
+    
       <Modal visible={isCalendarVisible} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.calendarSheet}>
             
-            {/* Header Controls */}
+          
             <View style={styles.calSheetHeader}>
               <Text style={styles.calSheetHeadline}>Select Date of Birth</Text>
               <TouchableOpacity onPress={() => setIsCalendarVisible(false)}>
@@ -415,7 +415,7 @@ showSuccess("Your personal profile and location details have been synchronized!"
             </View>
 
             <View style={styles.pickerSelectorsRow}>
-              {/* Month Custom Cycle Scroll */}
+             
               <View style={styles.pickerDropdownWrapper}>
                 <Text style={styles.pickerLabel}>MONTH</Text>
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.monthsHScroll}>
@@ -433,7 +433,7 @@ showSuccess("Your personal profile and location details have been synchronized!"
             </View>
 
             <View style={styles.pickerSelectorsRow}>
-              {/* Year List Dropdown simulation */}
+             
               <View style={{ width: '100%' }}>
                 <Text style={styles.pickerLabel}>YEAR: {currYear}</Text>
                 <FlatList
@@ -454,7 +454,7 @@ showSuccess("Your personal profile and location details have been synchronized!"
               </View>
             </View>
 
-            {/* 31-Day Dynamic Matrix Grid */}
+          
             <Text style={[styles.pickerLabel, { marginTop: 20, marginBottom: 12 }]}>SELECT DAY IN {MONTHS[currMonth].toUpperCase()}</Text>
             <View style={styles.daysMatrix}>
               {daysArray.map((d) => (
@@ -716,7 +716,6 @@ const styles = StyleSheet.create({
     fontWeight: '800',
   },
 
-  // 🗓️ Custom Calendar Modal Layout
   modalBackdrop: {
     flex: 1,
     backgroundColor: 'rgba(15, 23, 42, 0.6)',

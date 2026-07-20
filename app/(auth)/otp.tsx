@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { COLORS, SHADOWS } from '../../src/theme/theme';
+import { COLORS } from '../../src/theme/theme';
 import { loginSuccess } from '../../src/store/slices/authSlice';
 import { apiService } from '../../src/services/api';
 
@@ -25,7 +25,7 @@ export default function OTPScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [countdown, setCountdown] = useState(30);
-const [canResend, setCanResend] = useState(false);
+  const [canResend, setCanResend] = useState(false);
   const [otpError, setOtpError] = useState('');
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
@@ -50,16 +50,26 @@ const [canResend, setCanResend] = useState(false);
   }, [step]);
 
   const maskedNumber = mobileNumber.length === 10
-    ? `+91 ••••••${mobileNumber.slice(-3)}`
+    ? `+91 ••••••${mobileNumber.slice(-4)}`
     : `+91 ${mobileNumber}`;
 
-  const handleSendOtp = () => {
+  const handleSendOtp = async () => {
     if (mobileNumber.length !== 10) return;
     setIsSending(true);
-    setTimeout(() => {
-      setIsSending(false);
+    try {
+      const result = await apiService.checkMobile(mobileNumber);
+      if (!result.exists) {
+        showError('This mobile number is not registered.');
+        setIsSending(false);
+        return;
+      }
+      await apiService.sendOtp(mobileNumber);
       setStep('otp');
-    }, 1200);
+    } catch {
+      showError('Failed to send OTP. Please try again.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   const handleOtpChange = (value: string, index: number) => {
@@ -77,56 +87,59 @@ const [canResend, setCanResend] = useState(false);
     }
   };
 
-  const handleResend = () => {
+  const handleResend = async () => {
     if (!canResend) return;
     setOtp(['', '', '', '']);
-    handleSendOtp();
+    await handleSendOtp();
   };
 
   const verifyOtp = async () => {
     const otpValue = otp.join('');
     if (otpValue.length !== 4) return;
-if (otpValue !== '1234') {
-      setOtpError('Incorrect code. Please try again.');
-      return;
-    }
     setOtpError('');
     setIsLoading(true);
     try {
-      const result = await apiService.checkMobile(mobileNumber);
-      router.push({
-        pathname: '/(auth)/register',
-        params: { mobile: mobileNumber, fromOtp: '1' }
-      });
+      await apiService.verifyOtp(mobileNumber, otpValue);
+      const loginResult = await apiService.loginWithOtp(mobileNumber, otpValue);
+      const userObj = {
+        id: loginResult.user.id,
+        name: loginResult.user.name,
+        email: loginResult.user.email,
+        mobile: loginResult.user.mobile,
+        role: loginResult.user.role,
+        uhid: loginResult.user.uhid,
+        partner: loginResult.user.partner,
+      };
+      await AsyncStorage.setItem('user', JSON.stringify(userObj));
+      await AsyncStorage.setItem('token', loginResult.token);
+      dispatch(loginSuccess(userObj));
+
+      const { registerFcmToken } = await import('../../src/services/notificationService');
+      registerFcmToken().catch(console.warn);
+
+      if (loginResult.user.role === 'PATHOLOGY_PARTNER') {
+        router.replace('/(partner)/home');
+      } else {
+        router.replace('/(tabs)');
+      }
     } catch (error: any) {
-      console.error('OTP verification / account check failed:', error);
-      showError('Unable to verify your account right now. Please try again.');
+      const msg = error.response?.data?.error || 'Incorrect code. Please try again.';
+      setOtpError(msg);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-      style={styles.container}
-    >
-      <StatusBar barStyle="dark-content" backgroundColor="#F1F5F9" />
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-      >
+    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
+      <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
+      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
         <View style={styles.card}>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => {
-              if (step === 'otp') {
-                setStep('mobile');
-                setOtp(['', '', '', '']);
-              } else {
-                router.back();
-              }
+              if (step === 'otp') { setStep('mobile'); setOtp(['', '', '', '']); }
+              else { router.back(); }
             }}
             activeOpacity={0.7}
           >
@@ -136,9 +149,7 @@ if (otpValue !== '1234') {
           {step === 'mobile' ? (
             <>
               <Text style={styles.title}>Login with OTP</Text>
-              <Text style={styles.subtitle}>
-                Enter your mobile number to receive a secure 4-digit verification code.
-              </Text>
+              <Text style={styles.subtitle}>Enter your registered mobile number to receive a verification code.</Text>
 
               <Text style={styles.fieldLabel}>Mobile Number</Text>
               <View style={styles.mobileInputWrap}>
@@ -174,15 +185,22 @@ if (otpValue !== '1234') {
                   </>
                 )}
               </TouchableOpacity>
+
+              <View style={styles.registerRow}>
+                <Text style={styles.registerText}>Don't have an account? </Text>
+                <TouchableOpacity onPress={() => router.push('/(auth)/register')}>
+                  <Text style={styles.registerLink}>Create Account</Text>
+                </TouchableOpacity>
+              </View>
             </>
           ) : (
             <>
               <Text style={styles.title}>Verify Mobile Number</Text>
               <Text style={styles.subtitleOtp}>
-                We've sent a 4-digit verification code to{'\n'}
+                Enter the 4-digit code sent to{'\n'}
                 <Text style={styles.maskedNum}>{maskedNumber} </Text>
                 <Text style={styles.changeLink} onPress={() => { setStep('mobile'); setOtp(['', '', '', '']); }}>
-                  Change Number
+                  Change
                 </Text>
               </Text>
 
@@ -190,7 +208,7 @@ if (otpValue !== '1234') {
                 {otp.map((digit, index) => (
                   <TextInput
                     key={index}
-                    ref={(ref) => (inputRefs.current[index] = ref)}
+                    ref={(ref) => { inputRefs.current[index] = ref; }}
                     style={[styles.otpBox, digit ? styles.otpBoxFilled : null]}
                     maxLength={1}
                     keyboardType="number-pad"
@@ -201,7 +219,7 @@ if (otpValue !== '1234') {
                 ))}
               </View>
 
-           {otpError ? <Text style={styles.otpError}>{otpError}</Text> : null}
+              {otpError ? <Text style={styles.otpError}>{otpError}</Text> : null}
 
               <View style={styles.resendRow}>
                 <Text style={styles.resendText}>Didn't receive the code? </Text>
@@ -220,14 +238,8 @@ if (otpValue !== '1234') {
                 disabled={isLoading || otp.join('').length !== 4}
                 activeOpacity={0.85}
               >
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.primaryBtnText}>Verify & Continue</Text>
-                )}
+                {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Verify & Login</Text>}
               </TouchableOpacity>
-
-             
             </>
           )}
         </View>
@@ -238,136 +250,44 @@ if (otpValue !== '1234') {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#E8F0F3' },
-scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 20,
-    paddingVertical: 40,
-    justifyContent: 'center',
-  },
-  card: {
-    backgroundColor: '#fff',
-    borderRadius: 24,
-    padding: 24,
-  },
-  backBtn: {
-    marginBottom: 24,
-    alignSelf: 'flex-start',
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '800',
-    color: '#0F172A',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    lineHeight: 22,
-    marginBottom: 28,
-  },
-  subtitleOtp: {
-    fontSize: 14,
-    color: '#64748B',
-    lineHeight: 22,
-    marginBottom: 32,
-  },
-  maskedNum: {
-    color: '#0F172A',
-    fontWeight: '600',
-  },
-  changeLink: {
-    color: PRIMARY,
-    fontWeight: '700',
-    fontSize: 14,
-  },
-  fieldLabel: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 8,
-  },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 20, paddingVertical: 40, justifyContent: 'center' },
+  card: { backgroundColor: '#fff', borderRadius: 24, padding: 24 },
+  backBtn: { marginBottom: 24, alignSelf: 'flex-start' },
+  title: { fontSize: 26, fontWeight: '800', color: '#0F172A', marginBottom: 12 },
+  subtitle: { fontSize: 14, color: '#64748B', lineHeight: 22, marginBottom: 28 },
+  subtitleOtp: { fontSize: 14, color: '#64748B', lineHeight: 22, marginBottom: 32 },
+  maskedNum: { color: '#0F172A', fontWeight: '600' },
+  changeLink: { color: PRIMARY, fontWeight: '700', fontSize: 14 },
+  fieldLabel: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 8 },
   mobileInputWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    height: 56,
-    paddingHorizontal: 14,
-    marginBottom: 28,
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
+    borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0',
+    height: 56, paddingHorizontal: 14, marginBottom: 28,
   },
-  countryCode: {
-    borderRightWidth: 1.5,
-    borderColor: '#E2E8F0',
-    paddingRight: 12,
-    marginRight: 12,
-  },
-  countryCodeText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#475569',
-  },
-  mobileInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#0F172A',
-    fontWeight: '600',
-    letterSpacing: 1,
-  },
-  otpRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-    paddingHorizontal: 4,
-  },
+  countryCode: { borderRightWidth: 1.5, borderColor: '#E2E8F0', paddingRight: 12, marginRight: 12 },
+  countryCodeText: { fontSize: 15, fontWeight: '700', color: '#475569' },
+  mobileInput: { flex: 1, fontSize: 15, color: '#0F172A', fontWeight: '600', letterSpacing: 1 },
+  otpRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 24, paddingHorizontal: 4 },
   otpBox: {
-    width: (width - 40 - 48 - 24) / 4,
-    height: 60,
-    borderRadius: 14,
-    backgroundColor: '#F1F5F9',
-    textAlign: 'center',
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#0F172A',
-    borderWidth: 0,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
+    width: (width - 40 - 48 - 24) / 4, height: 60, borderRadius: 14,
+    backgroundColor: '#F1F5F9', textAlign: 'center', fontSize: 24,
+    fontWeight: '700', color: '#0F172A', elevation: 2,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4,
   },
-  otpBoxFilled: {
-    backgroundColor: '#E6F4F3',
-    borderWidth: 1.5,
-    borderColor: PRIMARY,
-  },
-  resendRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 28,
-  },
+  otpBoxFilled: { backgroundColor: '#E6F4F3', borderWidth: 1.5, borderColor: PRIMARY },
+  resendRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 28 },
   resendText: { fontSize: 13, color: '#64748B' },
   resendLink: { fontSize: 13, fontWeight: '700', color: PRIMARY },
   countdownText: { fontSize: 13, fontWeight: '700', color: PRIMARY },
   primaryBtn: {
-    backgroundColor: PRIMARY,
-    height: 54,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    flexDirection: 'row',
-    marginBottom: 20,
-    elevation: 3,
-    shadowColor: PRIMARY,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
+    backgroundColor: PRIMARY, height: 54, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center', flexDirection: 'row', marginBottom: 20,
+    elevation: 3, shadowColor: PRIMARY, shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.3, shadowRadius: 8,
   },
   btnDisabled: { opacity: 0.5, backgroundColor: '#94A3B8', shadowOpacity: 0 },
   primaryBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  supportRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
-  supportText: { fontSize: 13, color: '#64748B' },
-supportLink: { fontSize: 13, fontWeight: '700', color: '#0F172A' },
   otpError: { fontSize: 13, color: '#EF4444', marginBottom: 12, marginLeft: 4 },
+  registerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
+  registerText: { fontSize: 13, color: '#64748B' },
+  registerLink: { fontSize: 13, fontWeight: '700', color: PRIMARY },
 });

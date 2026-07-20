@@ -4,6 +4,7 @@ import { showSuccess } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Sparkles } from 'lucide-react-native';
 
 import { RootState } from '../../src/store';
 import { removeFromCart, updateQuantity } from '../../src/store/slices/cartSlice';
@@ -259,8 +260,12 @@ const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
           >
             <LinearGradient colors={['#FEF3C7', '#FFFBEB']} style={styles.scratchInviteGrad}>
               <MaterialCommunityIcons name="gift" size={36} color="#F59E0B" />
-              <View style={{ marginLeft: 12, flex: 1 }}>
-                <Text style={styles.inviteTitle}>✨ Lucky Scratch Card ✨</Text>
+       <View style={{ marginLeft: 12, flex: 1 }}>
+                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
+                  <Sparkles size={14} color="#F59E0B" style={{ marginRight: 4 }} />
+                  <Text style={styles.inviteTitle}>Lucky Scratch Card</Text>
+                  <Sparkles size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
+                </View>
                 <Text style={styles.inviteDesc}>Try your luck! Swipe to reveal a randomized cashback reward up to ₹300.</Text>
               </View>
               <MaterialCommunityIcons name="chevron-right" size={24} color="#D97706" />
