@@ -1,0 +1,175 @@
+import React, { useState } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  ActivityIndicator, Alert, ScrollView, StatusBar, Platform, KeyboardAvoidingView
+} from 'react-native';
+import { useRouter } from 'expo-router';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useDispatch } from 'react-redux';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { COLORS, SHADOWS } from '../../src/theme/theme';
+import { loginSuccess } from '../../src/store/slices/authSlice';
+import { apiService } from '../../src/services/api';
+
+export default function PartnerLoginScreen() {
+  const router = useRouter();
+  const dispatch = useDispatch();
+  const [identifier, setIdentifier] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const handleLogin = async () => {
+    if (!identifier || !password) {
+      Alert.alert('Missing Fields', 'Please enter your email/mobile and password.');
+      return;
+    }
+    setIsLoading(true);
+    try {
+      const isEmail = identifier.includes('@');
+      const response = await apiService.login({
+        ...(isEmail ? { email: identifier } : { mobile: identifier }),
+        password,
+      });
+
+      if (response.user.role !== 'PATHOLOGY_PARTNER') {
+        Alert.alert('Access Denied', 'This login is only for Pathology Partners.');
+        return;
+      }
+
+      const userObj = {
+        id: response.user.id,
+        name: response.user.name,
+        email: response.user.email,
+        mobile: response.user.mobile,
+        role: response.user.role,
+        partner: response.user.partner,
+      };
+
+      await AsyncStorage.setItem('user', JSON.stringify(userObj));
+      await AsyncStorage.setItem('token', response.token);
+      dispatch(loginSuccess(userObj));
+      router.replace('/(partner)/home');
+    } catch (error: any) {
+      const err = error.response?.data;
+      if (err?.pendingApproval) {
+        router.replace('/(auth)/partner-pending');
+        return;
+      }
+      Alert.alert('Login Failed', err?.error || 'Please try again.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+ <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+        <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#334155" />
+        </TouchableOpacity>
+
+        <View style={styles.logoRow}>
+          <MaterialCommunityIcons name="plus-box-outline" size={22} color={COLORS.primary} />
+          <Text style={styles.logoText}>MedsSeva</Text>
+        </View>
+
+        <View style={styles.card}>
+          <View style={styles.iconCircle}>
+            <MaterialCommunityIcons name="microscope" size={32} color={COLORS.primary} />
+          </View>
+          <Text style={styles.cardTitle}>Pathology Partner</Text>
+          <Text style={styles.cardSubtitle}>Welcome back, specialist. Access your lab portal.</Text>
+
+          <Text style={styles.fieldLabel}>Email or Mobile Number</Text>
+          <View style={styles.inputWrap}>
+            <MaterialCommunityIcons name="at" size={18} color="#94A3B8" style={styles.inputIcon} />
+            <TextInput
+              style={styles.input} placeholder="e.g. partner@medsseva.com"
+              placeholderTextColor="#94A3B8" value={identifier}
+              onChangeText={setIdentifier} autoCapitalize="none"
+            />
+          </View>
+
+          <Text style={styles.fieldLabel}>Password</Text>
+          <View style={styles.inputWrap}>
+            <MaterialCommunityIcons name="lock-outline" size={18} color="#94A3B8" style={styles.inputIcon} />
+            <TextInput
+              style={[styles.input, { flex: 1 }]} placeholder="••••••••"
+              placeholderTextColor="#94A3B8" secureTextEntry={!showPassword}
+              value={password} onChangeText={setPassword}
+            />
+            <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+              <MaterialCommunityIcons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color="#94A3B8" />
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity style={styles.forgotBtn}>
+            <Text style={styles.forgotText}>Forgot Password?</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.loginBtn, isLoading && { opacity: 0.6 }]}
+            onPress={handleLogin} disabled={isLoading}
+          >
+            {isLoading
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.loginBtnText}>Login</Text>
+            }
+          </TouchableOpacity>
+
+          <View style={styles.registerRow}>
+            <Text style={styles.registerText}>Don't have an account? </Text>
+            <TouchableOpacity onPress={() => router.push('/(auth)/partner-register')}>
+              <Text style={styles.registerLink}>Become a Partner</Text>
+            </TouchableOpacity>
+          </View>
+
+          <Text style={styles.secureLabel}>SECURE PROFESSIONAL PORTAL</Text>
+        </View>
+</ScrollView>
+    </KeyboardAvoidingView>
+  );
+}
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  content: { padding: 24, paddingTop: Platform.OS === 'ios' ? 56 : 36, paddingBottom: 40 },
+  backBtn: {
+    width: 40, height: 40, borderRadius: 20, backgroundColor: '#fff',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20, ...SHADOWS.soft,
+  },
+  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 28 },
+  logoText: { fontSize: 18, fontWeight: '800', color: COLORS.primary },
+  card: {
+    backgroundColor: '#fff', borderRadius: 20, padding: 24,
+    borderWidth: 1, borderColor: '#E2E8F0', alignItems: 'center', ...SHADOWS.soft,
+  },
+  iconCircle: {
+    width: 72, height: 72, borderRadius: 36, backgroundColor: '#F0FDFA',
+    justifyContent: 'center', alignItems: 'center',
+    borderWidth: 1, borderColor: '#CCFBF1', marginBottom: 16,
+  },
+  cardTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 6 },
+  cardSubtitle: { fontSize: 13, color: '#64748B', textAlign: 'center', marginBottom: 28 },
+  fieldLabel: { fontSize: 12, fontWeight: '700', color: '#475569', marginBottom: 6, alignSelf: 'flex-start' },
+  inputWrap: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
+    borderRadius: 12, borderWidth: 1.5, borderColor: '#E2E8F0',
+    paddingHorizontal: 14, height: 50, marginBottom: 16, width: '100%',
+  },
+  inputIcon: { marginRight: 10 },
+  input: { flex: 1, fontSize: 14, color: '#0F172A' },
+  forgotBtn: { alignSelf: 'flex-end', marginBottom: 24 },
+  forgotText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
+  loginBtn: {
+    backgroundColor: COLORS.primary, height: 50, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center', width: '100%', marginBottom: 20, ...SHADOWS.soft,
+  },
+  loginBtnText: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  registerRow: { flexDirection: 'row', marginBottom: 20 },
+  registerText: { fontSize: 13, color: '#64748B' },
+  registerLink: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
+  secureLabel: { fontSize: 10, color: '#94A3B8', letterSpacing: 1.5 },
+});

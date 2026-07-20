@@ -1,0 +1,542 @@
+import React, { useState, useEffect, useRef } from 'react';
+import {
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  ActivityIndicator, Alert, ScrollView, Linking, useWindowDimensions
+} from 'react-native';
+import QRCode from 'react-native-qrcode-svg';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter, useLocalSearchParams } from 'expo-router';
+import { apiService } from '../../src/services/api';
+import { COLORS, SHADOWS } from '../../src/theme/theme';
+
+type Step = 'otp' | 'payment' | 'upi_waiting' | 'done' | 'sample_collected';
+
+export default function CollectScreen() {
+  const router = useRouter();
+const { bookingId, paymentStatus, otpVerified } = useLocalSearchParams<{ bookingId: string; paymentStatus: string; otpVerified: string }>();
+
+const isAlreadyPaid = paymentStatus === 'SUCCESS';
+  // If OTP already verified in a previous session (partner re-enters screen), skip OTP step
+  const isOtpAlreadyVerified = otpVerified === 'true';
+
+  const [step, setStep] = useState<Step>(
+    isAlreadyPaid ? 'done' :
+    isOtpAlreadyVerified ? 'payment' :
+    'otp'
+  );
+const [otp, setOtp] = useState<string[]>(['', '', '', '']);
+  const [otpError, setOtpError] = useState('');
+  const [isVerifyingOtp, setIsVerifyingOtp] = useState(false);
+  const otpRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
+const [isCollectingCash, setIsCollectingCash] = useState(false);
+  const [isInitiatingUpi, setIsInitiatingUpi] = useState(false);
+  const [upiUrl, setUpiUrl] = useState('');
+  const [upiPollCount, setUpiPollCount] = useState(0);
+  const [upiMessage, setUpiMessage] = useState('Waiting for patient to scan and pay...');
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const { width } = useWindowDimensions();
+  const qrSize = Math.min(width - 80, 240);
+
+  // If already paid online, skip straight to collect sample
+  useEffect(() => {
+    if (isAlreadyPaid) setStep('done');
+  }, [isAlreadyPaid]);
+
+  // Poll UPI status every 4 seconds while on upi_waiting step
+  useEffect(() => {
+    if (step === 'upi_waiting') {
+      pollRef.current = setInterval(async () => {
+        try {
+          const result = await apiService.checkUpiPaymentStatus(bookingId);
+          setUpiPollCount(c => c + 1);
+          if (result.paymentStatus === 'SUCCESS') {
+            clearInterval(pollRef.current!);
+            setStep('done');
+          } else if (result.razorpayStatus === 'expired') {
+            clearInterval(pollRef.current!);
+            setUpiMessage('Payment link expired. Go back and try again.');
+          } else if (result.message) {
+            setUpiMessage(result.message);
+          }
+        } catch {
+          // silent — keep polling
+        }
+      }, 4000);
+    }
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [step, bookingId]);
+
+const otpValue = otp.join('');
+
+  const handleOtpChange = (text: string, index: number) => {
+    const digit = text.replace(/[^0-9]/g, '');
+    if (!digit) return; // backspace handled by onKeyPress
+
+    const newOtp = [...otp];
+    newOtp[index] = digit[digit.length - 1]; // always take last digit (handles paste/replace)
+    setOtp(newOtp);
+    setOtpError('');
+
+    if (index < 3) {
+      otpRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyPress = (e: any, index: number) => {
+    if (e.nativeEvent.key === 'Backspace') {
+      setOtpError('');
+      const newOtp = [...otp];
+      if (newOtp[index]) {
+        newOtp[index] = '';
+        setOtp(newOtp);
+        // stay on same box — user can now type
+      } else if (index > 0) {
+        newOtp[index - 1] = '';
+        setOtp(newOtp);
+        otpRefs.current[index - 1]?.focus();
+      }
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    const joined = otp.join('');
+    if (joined.length !== 4) {
+      setOtpError('Please enter the 4-digit OTP.');
+      return;
+    }
+    setOtpError('');
+    setIsVerifyingOtp(true);
+    try {
+      await apiService.verifyBookingOtp(bookingId, joined);
+      setStep('payment');
+    } catch (e: any) {
+      const msg = e?.response?.data?.error || 'Invalid OTP. Please try again.';
+      setOtpError(msg);
+      // Clear OTP and refocus first box on error
+      setOtp(['', '', '', '']);
+      setTimeout(() => otpRefs.current[0]?.focus(), 100);
+    } finally {
+      setIsVerifyingOtp(false);
+    }
+  };
+
+  const handleCashCollected = async () => {
+    Alert.alert(
+      'Confirm Cash Collection',
+      'Have you received the full cash payment from the patient?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Yes, Collected',
+          onPress: async () => {
+            setIsCollectingCash(true);
+            try {
+              await apiService.collectCash(bookingId);
+              setStep('done');
+            } catch (e: any) {
+              Alert.alert('Error', e?.response?.data?.error || 'Could not record payment. Try again.');
+            } finally {
+              setIsCollectingCash(false);
+            }
+          }
+        }
+      ]
+    );
+  };
+
+  const handleInitiateUpi = async () => {
+    setIsInitiatingUpi(true);
+    try {
+      const result = await apiService.initiateUpiCollection(bookingId);
+      setUpiUrl(result.paymentLinkUrl);
+      setStep('upi_waiting');
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.error || 'Could not create UPI payment link.');
+    } finally {
+      setIsInitiatingUpi(false);
+    }
+  };
+
+const handleCollectSample = async () => {
+    try {
+      await apiService.updateBookingStatus(bookingId, 'SAMPLE_COLLECTED');
+      setStep('sample_collected');
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.error || 'Could not update status.');
+    }
+  };
+
+  const handleDeliverToLab = async () => {
+    try {
+      await apiService.updateBookingStatus(bookingId, 'DELIVERED_TO_LAB');
+      router.back();
+    } catch (e: any) {
+      Alert.alert('Error', e?.response?.data?.error || 'Could not update status.');
+    }
+  };
+
+  // ── OTP STEP ────────────────────────────────────────────────────────────────
+  if (step === 'otp') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Verify OTP</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.iconCircle}>
+            <MaterialCommunityIcons name="shield-key-outline" size={40} color={COLORS.primary} />
+          </View>
+          <Text style={styles.stepTitle}>Enter Booking OTP</Text>
+          <Text style={styles.stepSubtitle}>
+            Ask the patient for their 4-digit booking verification OTP. This confirms you are at the correct location.
+          </Text>
+
+  <View style={styles.otpInputRow}>
+            {[0, 1, 2, 3].map(i => (
+             <TextInput
+                key={i}
+                ref={ref => { otpRefs.current[i] = ref; }}
+                style={[
+                  styles.otpBox,
+                  styles.otpDigit,
+                  otp[i] ? styles.otpBoxFilled : null,
+                  otpError ? styles.otpBoxError : null,
+                ]}
+                value={otp[i]}
+                onChangeText={text => handleOtpChange(text, i)}
+                onKeyPress={e => handleOtpKeyPress(e, i)}
+                onFocus={() => setOtpError('')}
+                keyboardType="number-pad"
+                maxLength={1}
+                autoFocus={i === 0}
+                caretHidden
+                textAlign="center"
+              />
+            ))}
+          </View>
+
+          {otpError ? (
+            <View style={styles.errorRow}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#EF4444" />
+              <Text style={styles.errorText}>{otpError}</Text>
+            </View>
+          ) : null}
+
+     <TouchableOpacity
+            style={[styles.primaryBtn, (otpValue.length !== 4 || isVerifyingOtp) && styles.primaryBtnDisabled]}
+            onPress={handleVerifyOtp}
+            disabled={otpValue.length !== 4 || isVerifyingOtp}
+          >
+            {isVerifyingOtp
+              ? <ActivityIndicator color="#fff" />
+              : <Text style={styles.primaryBtnText}>Verify OTP</Text>
+            }
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ── PAYMENT STEP ─────────────────────────────────────────────────────────────
+  if (step === 'payment') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => setStep('otp')} style={styles.backBtn}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Collect Payment</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
+            <MaterialCommunityIcons name="check-decagram-outline" size={40} color="#D97706" />
+          </View>
+          <Text style={styles.stepTitle}>OTP Verified ✓</Text>
+          <Text style={styles.stepSubtitle}>
+            Select how the patient will pay. This amount will be recorded against the booking.
+          </Text>
+
+          <TouchableOpacity style={styles.paymentOption} onPress={handleCashCollected} disabled={isCollectingCash}>
+            <View style={[styles.paymentIconBox, { backgroundColor: '#DCFCE7' }]}>
+              <MaterialCommunityIcons name="cash" size={28} color="#059669" />
+            </View>
+            <View style={styles.paymentOptionText}>
+              <Text style={styles.paymentOptionTitle}>Cash</Text>
+              <Text style={styles.paymentOptionDesc}>Patient pays in cash. Tap after receiving the full amount.</Text>
+            </View>
+            {isCollectingCash
+              ? <ActivityIndicator color={COLORS.primary} />
+              : <MaterialCommunityIcons name="chevron-right" size={22} color="#94A3B8" />
+            }
+          </TouchableOpacity>
+
+          <TouchableOpacity style={styles.paymentOption} onPress={handleInitiateUpi} disabled={isInitiatingUpi}>
+            <View style={[styles.paymentIconBox, { backgroundColor: '#EDE9FE' }]}>
+              <MaterialCommunityIcons name="qrcode-scan" size={28} color="#7C3AED" />
+            </View>
+            <View style={styles.paymentOptionText}>
+              <Text style={styles.paymentOptionTitle}>UPI / QR Code</Text>
+              <Text style={styles.paymentOptionDesc}>Patient scans Razorpay QR on your screen and pays online.</Text>
+            </View>
+            {isInitiatingUpi
+              ? <ActivityIndicator color={COLORS.primary} />
+              : <MaterialCommunityIcons name="chevron-right" size={22} color="#94A3B8" />
+            }
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+
+// ── UPI WAITING STEP ─────────────────────────────────────────────────────────
+  if (step === 'upi_waiting') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => { clearInterval(pollRef.current!); setStep('payment'); }} style={styles.backBtn}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>UPI Payment</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          {/* QR Code Card */}
+          {upiUrl ? (
+            <View style={styles.qrCard}>
+              <Text style={styles.qrLabel}>Scan to Pay</Text>
+              <Text style={styles.qrSubLabel}>Works with PhonePe, GPay, Paytm & all UPI apps</Text>
+              <View style={styles.qrWrapper}>
+                <QRCode
+                  value={upiUrl}
+                  size={qrSize}
+                  color="#0F172A"
+                  backgroundColor="#FFFFFF"
+                  logo={undefined}
+                />
+              </View>
+              <TouchableOpacity style={styles.upiLinkBtn} onPress={() => Linking.openURL(upiUrl)}>
+                <MaterialCommunityIcons name="open-in-new" size={16} color="#7C3AED" />
+                <Text style={styles.upiLinkText}>Open Payment Link Instead</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={[styles.qrCard, { paddingVertical: 40 }]}>
+              <ActivityIndicator color={COLORS.primary} size="large" />
+              <Text style={[styles.qrSubLabel, { marginTop: 16 }]}>Generating QR code...</Text>
+            </View>
+          )}
+
+          {/* Polling Status */}
+          <View style={styles.pollingCard}>
+            <View style={styles.pollingRow}>
+              <ActivityIndicator color={COLORS.primary} size="small" />
+              <Text style={styles.pollingText}>{upiMessage}</Text>
+            </View>
+            <Text style={styles.pollingCount}>Auto-checking every 4s · {upiPollCount} check{upiPollCount !== 1 ? 's' : ''} done</Text>
+          </View>
+
+          <Text style={styles.upiNote}>
+            Do NOT manually mark as paid. Status updates automatically once Razorpay confirms the payment.
+          </Text>
+        </ScrollView>
+      </View>
+    );
+  }
+
+// ── SAMPLE COLLECTED STEP ────────────────────────────────────────────────────
+  if (step === 'sample_collected') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <View style={{ width: 36 }} />
+          <Text style={styles.headerTitle}>Sample Collected</Text>
+          <View style={{ width: 36 }} />
+        </View>
+
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={[styles.iconCircle, { backgroundColor: '#EDE9FE' }]}>
+            <MaterialCommunityIcons name="test-tube" size={40} color="#7C3AED" />
+          </View>
+          <Text style={styles.stepTitle}>Sample Collected ✓</Text>
+          <Text style={styles.stepSubtitle}>
+            Sample has been collected successfully. Please deliver it to the lab and confirm below.
+          </Text>
+
+          <View style={styles.progressRow}>
+            {(['OTP', 'Payment', 'Sample', 'Lab'] as const).map((label, idx) => (
+              <React.Fragment key={label}>
+                <View style={styles.progressStep}>
+                  <View style={[styles.progressDot, idx <= 2 && styles.progressDotDone]}>
+                    {idx <= 2
+                      ? <MaterialCommunityIcons name="check" size={12} color="#fff" />
+                      : <View style={styles.progressDotInner} />
+                    }
+                  </View>
+                  <Text style={[styles.progressLabel, idx <= 2 && styles.progressLabelDone]}>{label}</Text>
+                </View>
+                {idx < 3 && (
+                  <View style={[styles.progressLine, idx < 2 && styles.progressLineDone]} />
+                )}
+              </React.Fragment>
+            ))}
+          </View>
+
+          <View style={styles.doneCard}>
+            <MaterialCommunityIcons name="information-outline" size={20} color="#7C3AED" />
+            <Text style={[styles.doneCardText, { color: '#7C3AED' }]}>
+              Once you have delivered the sample to the lab, tap the button below to complete this booking.
+            </Text>
+          </View>
+
+          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#7C3AED' }]} onPress={handleDeliverToLab}>
+            <MaterialCommunityIcons name="truck-delivery-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.primaryBtnText}>Delivered to Lab</Text>
+          </TouchableOpacity>
+        </ScrollView>
+      </View>
+    );
+  }
+
+  // ── DONE / COLLECT SAMPLE STEP ────────────────────────────────────────────────
+  return (
+    <View style={styles.container}>
+      <View style={styles.header}>
+        <View style={{ width: 36 }} />
+        <Text style={styles.headerTitle}>Payment Received</Text>
+        <View style={{ width: 36 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
+          <MaterialCommunityIcons name="check-circle" size={40} color="#059669" />
+        </View>
+        <Text style={styles.stepTitle}>
+          {isAlreadyPaid ? 'Paid Online ✓' : 'Payment Collected ✓'}
+        </Text>
+        <Text style={styles.stepSubtitle}>
+          {isAlreadyPaid
+            ? 'This booking was paid online during checkout. No payment collection needed.'
+            : 'Payment has been recorded successfully. You can now proceed to collect the sample.'}
+        </Text>
+
+        <View style={styles.doneCard}>
+          <MaterialCommunityIcons name="information-outline" size={20} color={COLORS.primary} />
+          <Text style={styles.doneCardText}>
+            Collect the sample from the patient and tap the button below.
+          </Text>
+        </View>
+
+        <TouchableOpacity style={styles.primaryBtn} onPress={handleCollectSample}>
+          <MaterialCommunityIcons name="test-tube" size={20} color="#fff" style={{ marginRight: 8 }} />
+          <Text style={styles.primaryBtnText}>Collect Sample</Text>
+        </TouchableOpacity>
+      </ScrollView>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingTop: 52, paddingBottom: 16,
+    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  scrollContent: { padding: 24, paddingBottom: 60, alignItems: 'center' },
+  iconCircle: {
+    width: 88, height: 88, borderRadius: 44, backgroundColor: '#F0FDFA',
+    justifyContent: 'center', alignItems: 'center', marginBottom: 24, marginTop: 16,
+  },
+  stepTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginBottom: 10, textAlign: 'center' },
+  stepSubtitle: { fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 32, paddingHorizontal: 8 },
+  otpInputRow: { flexDirection: 'row', gap: 14, marginBottom: 8 },
+ otpBox: {
+    width: 58, height: 66, borderRadius: 14, borderWidth: 2, borderColor: '#E2E8F0',
+    backgroundColor: '#fff', color: '#0F172A',
+    ...SHADOWS.soft,
+  },
+  otpBoxFilled: { borderColor: COLORS.primary, backgroundColor: '#F0FDFA' },
+  otpDigit: { fontSize: 26, fontWeight: '900', color: '#0F172A' },
+  otpBoxError: { borderColor: '#EF4444', backgroundColor: '#FFF1F2' },
+  errorRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
+  errorText: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
+  primaryBtn: {
+    flexDirection: 'row', backgroundColor: COLORS.primary, height: 52,
+    borderRadius: 14, justifyContent: 'center', alignItems: 'center',
+    width: '100%', marginTop: 16,
+  },
+  primaryBtnDisabled: { backgroundColor: '#CBD5E1' },
+  primaryBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
+  paymentOption: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
+    borderRadius: 16, padding: 18, borderWidth: 1, borderColor: '#E2E8F0',
+    marginBottom: 14, width: '100%', ...SHADOWS.soft,
+  },
+  paymentIconBox: {
+    width: 52, height: 52, borderRadius: 14,
+    justifyContent: 'center', alignItems: 'center', marginRight: 14,
+  },
+  paymentOptionText: { flex: 1 },
+  paymentOptionTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
+  paymentOptionDesc: { fontSize: 12, color: '#64748B', lineHeight: 18 },
+ qrCard: {
+    width: '100%', backgroundColor: '#fff', borderRadius: 20,
+    padding: 24, alignItems: 'center', marginBottom: 16,
+    borderWidth: 1, borderColor: '#E2E8F0', ...SHADOWS.soft,
+  },
+  qrLabel: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 4 },
+  qrSubLabel: { fontSize: 12, color: '#64748B', textAlign: 'center', marginBottom: 20 },
+  qrWrapper: {
+    padding: 16, backgroundColor: '#fff', borderRadius: 16,
+    borderWidth: 2, borderColor: '#EDE9FE',
+  },
+  upiLinkBtn: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    marginTop: 20, paddingVertical: 8, paddingHorizontal: 16,
+    backgroundColor: '#F5F3FF', borderRadius: 10,
+  },
+  upiLinkText: { fontSize: 13, fontWeight: '600', color: '#7C3AED' },
+  pollingCard: {
+    backgroundColor: '#fff', borderRadius: 16, padding: 16, width: '100%',
+    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, ...SHADOWS.soft,
+  },
+  pollingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
+  pollingText: { fontSize: 14, color: '#475569', fontWeight: '600', flex: 1 },
+  pollingCount: { fontSize: 12, color: '#94A3B8' },
+  upiNote: { fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18, paddingHorizontal: 8 },
+  doneCard: {
+    flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#F0FDFA',
+    borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#CCFBF1',
+    marginBottom: 24, width: '100%', gap: 10,
+  },
+ doneCardText: { fontSize: 14, color: COLORS.primary, lineHeight: 20, flex: 1 },
+  progressRow: {
+    flexDirection: 'row', alignItems: 'center', width: '100%',
+    marginBottom: 28, paddingHorizontal: 8,
+  },
+  progressStep: { alignItems: 'center', gap: 6 },
+  progressDot: {
+    width: 24, height: 24, borderRadius: 12, backgroundColor: '#E2E8F0',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  progressDotDone: { backgroundColor: '#7C3AED' },
+  progressDotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#94A3B8' },
+  progressLabel: { fontSize: 10, fontWeight: '600', color: '#94A3B8' },
+  progressLabelDone: { color: '#7C3AED' },
+  progressLine: { flex: 1, height: 2, backgroundColor: '#E2E8F0', marginBottom: 16 },
+  progressLineDone: { backgroundColor: '#7C3AED' },
+});

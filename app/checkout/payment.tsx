@@ -1,0 +1,440 @@
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Alert } from 'react-native';
+import { useRouter } from 'expo-router';
+import { useSelector, useDispatch } from 'react-redux';
+import { MaterialCommunityIcons } from '@expo/vector-icons';
+
+import { RootState } from '../../src/store';
+import { setPaymentMethod, finalizeBooking } from '../../src/store/slices/bookingSlice';
+import { clearCart } from '../../src/store/slices/cartSlice';
+import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
+import { apiService } from '../../src/services/api';
+import { RazorpayWebView } from '../../components/RazorpayWebView';
+
+// Payment methods shown depend on collectionMode — computed below from Redux
+const HOME_PAYMENT_METHODS = [
+  { id: 'upi', name: 'Pay Now via UPI', icon: 'qrcode-scan', description: 'Pay instantly. Booking confirmed immediately.' },
+  { id: 'cash', name: 'Pay at Home (Cash)', icon: 'cash', description: 'Pay the lab assistant at your doorstep before sample collection.' },
+];
+
+const LAB_PAYMENT_METHODS = [
+  { id: 'lab_walkin', name: 'Pay at Lab Counter', icon: 'hospital-building', description: 'Visit the branch and pay at the reception before your test.' },
+];
+export default function PaymentScreen() {
+  const router = useRouter();
+  const dispatch = useDispatch();
+
+  const cart = useSelector((state: RootState) => state.cart);
+  const booking = useSelector((state: RootState) => state.booking);
+
+const isLabVisit = booking.collectionMode === 'lab';
+  const branchId = booking.selectedBranchId;
+  const PAYMENT_METHODS = isLabVisit ? LAB_PAYMENT_METHODS : HOME_PAYMENT_METHODS;
+
+  // For lab visit: auto-select the only option
+  const [selectedMethod, setSelectedMethod] = useState<string | null>(isLabVisit ? 'lab_walkin' : null);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [isRazorpayVisible, setIsRazorpayVisible] = useState(false);
+  const [razorpayOrderId, setRazorpayOrderId] = useState<string>('');
+
+const processBackendBooking = async (paymentData?: any) => {
+    setIsProcessing(true);
+   try {
+      console.log('[PAYMENT DEBUG] booking state:', JSON.stringify(booking));
+const payload = {
+        tests: cart.items,
+        scheduledDate: booking.selectedDate,
+        scheduledSlot: booking.selectedTimeSlot,
+        totalPaid: cart.finalAmount,
+        patientName: booking.patientDetails?.name || 'Guest User',
+        patientAge: booking.patientDetails?.age ? Number(booking.patientDetails.age) : undefined,
+        patientGender: booking.patientDetails?.gender || undefined,
+        mobile: booking.patientDetails?.mobile || undefined,
+        addressId: booking.selectedAddressId,
+        branchId: isLabVisit ? branchId : undefined,
+        collectionMode: booking.collectionMode,
+        paymentMethod: selectedMethod,
+        razorpay_payment_id: paymentData?.razorpay_payment_id,
+        razorpay_order_id: paymentData?.razorpay_order_id,
+        razorpay_signature: paymentData?.razorpay_signature,
+      };
+      
+      const response = await apiService.createBooking(payload);
+
+      setIsProcessing(false);
+      
+const newBooking = {
+        id: response.id,
+        bookingCode: response.bookingCode,
+        date: booking.selectedDate,
+        time: booking.selectedTimeSlot,
+        status: response.status || 'PENDING',
+        collectionMode: booking.collectionMode,
+        tests: cart.items,
+        total: cart.finalAmount,
+        patientName: booking.patientDetails?.name,
+        paymentMethod: selectedMethod,
+      };
+      dispatch(setPaymentMethod(selectedMethod as string));
+      dispatch(finalizeBooking(newBooking));
+      dispatch(clearCart());
+      
+      router.replace('/checkout/success');
+    } catch (err: any) {
+      setIsProcessing(false);
+      const errorMessage = err.response?.data?.error || err.message || "Network Error";
+      Alert.alert("Booking Failed", `Error: ${errorMessage}`, [{ text: "OK" }]);
+    }
+  };
+
+const handlePayNow = async () => {
+    if (!selectedMethod) return;
+
+    // Cash at home or lab walk-in: create booking, no online payment
+    if (selectedMethod === 'cash' || selectedMethod === 'lab_walkin') {
+      processBackendBooking();
+    } else {
+      // UPI / online: go through Razorpay
+      setIsProcessing(true);
+      try {
+        const order = await apiService.createRazorpayOrder(cart.finalAmount);
+        setRazorpayOrderId(order.id);
+        setIsProcessing(false);
+        setIsRazorpayVisible(true);
+      } catch (error) {
+        setIsProcessing(false);
+        Alert.alert("Payment Error", "Could not initialize payment with server.");
+      }
+    }
+  };
+
+  return (
+    <View style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.textLight} />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Payment</Text>
+        <View style={{ width: 24 }} />
+      </View>
+
+      <ScrollView contentContainerStyle={styles.scrollContent}>
+        
+        {/* Summary Card */}
+        <View style={styles.summaryCard}>
+          <Text style={styles.summaryTitle}>Booking Summary</Text>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Total Tests</Text>
+            <Text style={styles.summaryValue}>{cart.items.length}</Text>
+          </View>
+          <View style={styles.summaryRow}>
+            <Text style={styles.summaryLabel}>Amount to Pay</Text>
+            <Text style={[styles.summaryValue, styles.amountHighlight]}>₹{cart.finalAmount}</Text>
+          </View>
+        </View>
+
+      <Text style={styles.sectionTitle}>
+          {isLabVisit ? 'Payment at Lab' : 'Select Payment Method'}
+        </Text>
+
+        {isLabVisit && (
+          <View style={styles.labInfoBanner}>
+            <MaterialCommunityIcons name="information-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.labInfoText}>
+              No online payment needed. Visit the lab at your scheduled time and pay at the counter. Show your Booking ID to the receptionist.
+            </Text>
+          </View>
+        )}
+
+        {PAYMENT_METHODS.map((method) => (
+          <TouchableOpacity 
+            key={method.id}
+            style={[
+              styles.methodCard,
+              selectedMethod === method.id && styles.methodCardSelected,
+              isLabVisit && styles.methodCardDisabled,
+            ]}
+            onPress={() => !isLabVisit && setSelectedMethod(method.id)}
+            activeOpacity={isLabVisit ? 1 : 0.7}
+          >
+            <View style={styles.methodIconBox}>
+              <MaterialCommunityIcons 
+                name={method.icon as any} 
+                size={24} 
+                color={selectedMethod === method.id ? COLORS.primary : COLORS.textSecondary} 
+              />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={[
+                styles.methodName,
+                selectedMethod === method.id && styles.methodNameSelected
+              ]}>
+                {method.name}
+              </Text>
+              <Text style={styles.methodDesc}>{method.description}</Text>
+            </View>
+            {!isLabVisit && (
+              <View style={styles.radioContainer}>
+                {selectedMethod === method.id ? (
+                  <MaterialCommunityIcons name="radiobox-marked" size={22} color={COLORS.primary} />
+                ) : (
+                  <MaterialCommunityIcons name="radiobox-blank" size={22} color="#CBD5E1" />
+                )}
+              </View>
+            )}
+          </TouchableOpacity>
+        ))}
+        <View style={styles.securityBox}>
+          <MaterialCommunityIcons name="shield-check" size={20} color={COLORS.success} />
+          <Text style={styles.securityText}>100% Secure & Encrypted Payments</Text>
+        </View>
+
+      </ScrollView>
+
+      {/* Footer */}
+<View style={styles.footer}>
+        <TouchableOpacity 
+          style={[styles.payBtn, !selectedMethod && styles.payBtnDisabled]} 
+          disabled={!selectedMethod}
+          onPress={handlePayNow}
+        >
+          <Text style={styles.payBtnText}>
+            {isLabVisit
+              ? 'Confirm Booking'
+              : selectedMethod === 'cash'
+              ? 'Confirm (Pay at Home)'
+              : `Pay ₹${cart.finalAmount}`}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Processing Overlay */}
+      {isProcessing && (
+        <View style={[StyleSheet.absoluteFill, styles.processingOverlay, { zIndex: 1000, elevation: 10 }]}>
+          <View style={styles.processingCard}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.processingTitle}>Processing Payment</Text>
+            <Text style={styles.processingSub}>Please do not close this window or press back.</Text>
+          </View>
+        </View>
+      )}
+
+      {/* Razorpay WebView Component */}
+      <RazorpayWebView
+        isVisible={isRazorpayVisible}
+        options={{
+          key: 'rzp_test_Stydll6RAngUmj',
+          order_id: razorpayOrderId,
+          amount: cart.finalAmount * 100,
+          currency: 'INR',
+          name: 'MedsSeva',
+          description: 'Checkout Booking',
+          prefill: {
+            name: booking.patientDetails?.name || '',
+            contact: booking.patientDetails?.mobile || '',
+          },
+          theme: { color: COLORS.primary }
+        }}
+        onSuccess={(data) => {
+          setIsRazorpayVisible(false);
+          processBackendBooking(data);
+        }}
+        onFailed={(error) => {
+          setIsRazorpayVisible(false);
+          Alert.alert("Payment Failed", error.error?.description || "Something went wrong.");
+        }}
+        onClose={() => setIsRazorpayVisible(false)}
+      />
+
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 50,
+    paddingBottom: 20,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    padding: 8,
+  },
+  headerTitle: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.textLight,
+  },
+  scrollContent: {
+    padding: 16,
+    paddingBottom: 100,
+  },
+  summaryCard: {
+    backgroundColor: COLORS.primaryLight + '15',
+    borderRadius: 16,
+    padding: 20,
+    marginBottom: 24,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight + '40',
+  },
+  summaryTitle: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.primary,
+    marginBottom: 16,
+  },
+  summaryRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginBottom: 8,
+  },
+  summaryLabel: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textDark,
+  },
+  summaryValue: {
+    ...TYPOGRAPHY.subtitle,
+    color: COLORS.textDark,
+    fontWeight: 'bold',
+  },
+  amountHighlight: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.primary,
+  },
+  sectionTitle: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.textDark,
+    marginBottom: 16,
+  },
+  methodCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    padding: 16,
+    borderRadius: 14,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  methodCardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(0, 128, 128, 0.02)',
+    borderWidth: 1.5,
+  },
+  methodIconBox: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: COLORS.background,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 16,
+  },
+methodName: {
+    ...TYPOGRAPHY.subtitle,
+    color: COLORS.textDark,
+    fontWeight: '600',
+    marginBottom: 2,
+  },
+  methodDesc: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    lineHeight: 16,
+  },
+  methodCardDisabled: {
+    opacity: 1,
+    borderColor: COLORS.primary,
+    backgroundColor: 'rgba(0, 128, 128, 0.03)',
+    borderWidth: 1.5,
+  },
+  labInfoBanner: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.primaryLight + '15',
+    borderRadius: 12,
+    padding: 14,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight + '40',
+    alignItems: 'flex-start',
+  },
+  labInfoText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primary,
+    flex: 1,
+    marginLeft: 10,
+    lineHeight: 18,
+  },
+  methodNameSelected: {
+    color: COLORS.primary,
+  },
+  radioContainer: {
+    marginLeft: 8,
+  },
+  securityBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 24,
+  },
+  securityText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.success,
+    marginLeft: 8,
+    fontWeight: 'bold',
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: COLORS.surface,
+    padding: 20,
+    paddingBottom: 30,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+  },
+  payBtn: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: 16,
+    borderRadius: 30,
+    alignItems: 'center',
+  },
+  payBtnDisabled: {
+    backgroundColor: COLORS.border,
+  },
+  payBtnText: {
+    ...TYPOGRAPHY.subtitle,
+    color: COLORS.textLight,
+    fontWeight: 'bold',
+  },
+  processingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.6)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  processingCard: {
+    backgroundColor: COLORS.surface,
+    padding: 32,
+    borderRadius: 24,
+    alignItems: 'center',
+    width: '80%',
+  },
+  processingTitle: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.textDark,
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  processingSub: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  }
+});
