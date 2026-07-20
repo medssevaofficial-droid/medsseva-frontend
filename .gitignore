@@ -1,3 +1,5 @@
+# Learn more: https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
 # Dependencies
 node_modules/
 
@@ -13,12 +15,19 @@ expo-env.d.ts
 .env.*
 !.env.example
 
-# Native (only if using Continuous Native Generation)
-android/
-ios/
-
-# Kotlin
+# Native
+/android
+/ios
 .kotlin/
+
+# Signing Keys
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.pem
 
 # Metro
 .metro-health-check*
@@ -47,18 +56,9 @@ Thumbs.db
 # Local Config
 *.local
 
-# Merge files
-*.orig
+# Generated Files
+*.orig.*
 
-# Signing Keys
-*.jks
-*.keystore
-*.p8
-*.p12
-*.key
-*.mobileprovision
-*.pem
-
-# Firebase
+# Example App
+app-example/
 google-services.json
-GoogleService-Info.plist
