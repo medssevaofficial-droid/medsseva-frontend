@@ -6,7 +6,7 @@ import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
 import ReactNativeBlobUtil from 'react-native-blob-util';
-import messaging from '@react-native-firebase/messaging';
+import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import * as Linking from 'expo-linking';
@@ -25,8 +25,9 @@ export default function ReportsScreen() {
  const user = useSelector((state: RootState) => state.auth.user);
   const queryClient = useQueryClient();
 
-  useEffect(() => {
-    const unsub = messaging().onMessage(async (msg) => {
+useEffect(() => {
+    const messaging = getMessaging();
+    const unsub = onMessage(messaging, async (msg) => {
       const type = msg.data?.type;
       if (type === 'REPORT_READY' || type === 'REPORT_SENT' || type === 'REPORT_APPROVED') {
         queryClient.invalidateQueries({ queryKey: ['my-reports'] });
@@ -253,24 +254,30 @@ export default function ReportsScreen() {
         ))}
       </View>
 
-      <FlatList
-        data={reportsList.filter((r: any) =>
-          activeTab === 'all' ? true :
-          activeTab === 'abnormal' ? r.abnormal :
-          r.status.toLowerCase() === activeTab
-        )}
-        keyExtractor={item => item.id}
-        renderItem={renderReportCard}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="file-document-remove-outline" size={48} color="#CBD5E1" />
-            <Text style={styles.emptyText}>No reports matching this status</Text>
-          </View>
-        }
-      />
-
+{isLoading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Fetching your reports...</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={reportsList.filter((r: any) =>
+            activeTab === 'all' ? true :
+            activeTab === 'abnormal' ? r.abnormal :
+            r.status.toLowerCase() === activeTab
+          )}
+          keyExtractor={item => item.id}
+          renderItem={renderReportCard}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <MaterialCommunityIcons name="file-document-remove-outline" size={48} color="#CBD5E1" />
+              <Text style={styles.emptyText}>No reports matching this status</Text>
+            </View>
+          }
+        />
+      )}
       <Modal
         visible={successVisible}
         transparent
@@ -345,6 +352,8 @@ const styles = StyleSheet.create({
   actionButtonPrimary: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', paddingVertical: 12, borderRadius: 30, backgroundColor: COLORS.primary },
   actionButtonTextSecondary: { ...TYPOGRAPHY.caption, color: COLORS.primary, fontWeight: 'bold', marginLeft: 8 },
   actionButtonTextPrimary: { ...TYPOGRAPHY.caption, color: COLORS.textLight, fontWeight: 'bold', marginLeft: 8 },
+ loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
+  loadingText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, marginTop: 16 },
   emptyContainer: { alignItems: 'center', justifyContent: 'center', paddingTop: 60 },
   emptyText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, marginTop: 12 },
   modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 },

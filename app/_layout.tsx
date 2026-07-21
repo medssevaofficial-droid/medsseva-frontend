@@ -5,13 +5,19 @@ import { Stack, useRouter } from 'expo-router';
 import { Provider, useDispatch, useSelector } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { store, RootState } from '../src/store';
-import { View, StyleSheet, ActivityIndicator, AppState, Modal } from 'react-native';
+import { View, StyleSheet, ActivityIndicator, Modal } from 'react-native';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { COLORS } from '../src/theme/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { loginSuccess } from '../src/store/slices/authSlice';
 import * as Notifications from 'expo-notifications';
-import messaging from '@react-native-firebase/messaging';
+import {
+  getMessaging,
+  onMessage,
+  getInitialNotification,
+  onNotificationOpenedApp,
+  setBackgroundMessageHandler,
+} from '@react-native-firebase/messaging';
 import {
   registerFcmToken,
   setupTokenRefreshListener,
@@ -39,13 +45,21 @@ useEffect(() => {
   }, []);
 
   useEffect(() => {
-    const restoreSession = async () => {
+const restoreSession = async () => {
       try {
         const token = await AsyncStorage.getItem('token');
         const userRaw = await AsyncStorage.getItem('user');
         if (token && userRaw) {
-          const user = JSON.parse(userRaw);
-          dispatch(loginSuccess(user));
+          const cached = JSON.parse(userRaw);
+          dispatch(loginSuccess(cached));
+          try {
+            const { default: api } = await import('../src/services/api');
+            const fresh = await api.get('/users/me');
+            const freshUser = fresh.data;
+            dispatch(loginSuccess({ ...cached, ...freshUser }));
+            await AsyncStorage.setItem('user', JSON.stringify({ ...cached, ...freshUser }));
+          } catch {
+          }
         }
       } catch (e) {
         console.warn('Session restore failed', e);
@@ -59,12 +73,14 @@ useEffect(() => {
   useEffect(() => {
     if (!user) return;
 
+ const messaging = getMessaging();
+
     registerFcmToken();
     tokenRefreshUnsub.current = setupTokenRefreshListener();
 
-    messaging().setBackgroundMessageHandler(async () => {});
+    setBackgroundMessageHandler(messaging, async () => {});
 
-    const unsubForeground = messaging().onMessage(async (remoteMessage) => {
+    const unsubForeground = onMessage(messaging, async (remoteMessage) => {
       const { title, body } = remoteMessage.notification || {};
       if (!title || !body) return;
       await Notifications.scheduleNotificationAsync({
@@ -87,18 +103,16 @@ useEffect(() => {
       }
     });
 
-    messaging()
-      .getInitialNotification()
-      .then((remoteMessage) => {
-        if (remoteMessage?.data) {
-          const route = getDeepLinkRoute(remoteMessage.data as Record<string, string>);
-          if (route) {
-            setTimeout(() => router.push(route as any), 1000);
-          }
+    getInitialNotification(messaging).then((remoteMessage) => {
+      if (remoteMessage?.data) {
+        const route = getDeepLinkRoute(remoteMessage.data as Record<string, string>);
+        if (route) {
+          setTimeout(() => router.push(route as any), 1000);
         }
-      });
+      }
+    });
 
-    messaging().onNotificationOpenedApp((remoteMessage) => {
+    onNotificationOpenedApp(messaging, (remoteMessage) => {
       if (remoteMessage?.data) {
         const route = getDeepLinkRoute(remoteMessage.data as Record<string, string>);
         if (route) router.push(route as any);

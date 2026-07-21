@@ -128,6 +128,18 @@ registerFcmToken: (token: string, platform: string) => api.post('/notifications/
   getNotificationLogs: (page = 1, status?: string) => api.get(`/notifications/logs?page=${page}${status ? `&status=${status}` : ''}`).then(res => res.data),
   retryFailedNotifications: () => api.post('/notifications/retry-failed').then(res => res.data),
 
+uploadAvatar: (imageUri: string, mimeType: string, fileName: string) => {
+    const formData = new FormData();
+    formData.append('avatar', {
+      uri: imageUri,
+      type: mimeType,
+      name: fileName,
+    } as any);
+    return api.post('/users/me/avatar', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }).then(res => res.data);
+  },
+
   getOrCreateConversation: () => api.get('/chat/conversation').then(res => res.data),
   getChatMessages: (conversationId: string, cursor?: string) =>
     api.get(`/chat/conversation/${conversationId}/messages`, { params: cursor ? { cursor } : {} }).then(res => res.data),

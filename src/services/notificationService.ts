@@ -1,5 +1,12 @@
 import * as Notifications from 'expo-notifications';
-import messaging from '@react-native-firebase/messaging';
+import {
+  getMessaging,
+  requestPermission,
+  AuthorizationStatus,
+  getToken,
+  onTokenRefresh,
+  setBackgroundMessageHandler,
+} from '@react-native-firebase/messaging';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import api from './api';
@@ -16,14 +23,15 @@ Notifications.setNotificationHandler({
 
 export const registerFcmToken = async (): Promise<void> => {
   try {
-    const authStatus = await messaging().requestPermission();
+    const messaging = getMessaging();
+    const authStatus = await requestPermission(messaging);
     const enabled =
-      authStatus === messaging.AuthorizationStatus.AUTHORIZED ||
-      authStatus === messaging.AuthorizationStatus.PROVISIONAL;
+      authStatus === AuthorizationStatus.AUTHORIZED ||
+      authStatus === AuthorizationStatus.PROVISIONAL;
 
     if (!enabled) return;
 
-    const token = await messaging().getToken();
+    const token = await getToken(messaging);
     if (!token) return;
 
     const saved = await AsyncStorage.getItem('fcm_token');
@@ -53,7 +61,8 @@ export const unregisterFcmToken = async (): Promise<void> => {
 };
 
 export const setupTokenRefreshListener = (): (() => void) => {
-  const unsubscribe = messaging().onTokenRefresh(async (token) => {
+  const messaging = getMessaging();
+  const unsubscribe = onTokenRefresh(messaging, async (token) => {
     try {
       await api.post('/notifications/token/register', {
         token,
@@ -68,7 +77,7 @@ export const setupTokenRefreshListener = (): (() => void) => {
 };
 
 export const getDeepLinkRoute = (data: Record<string, string>): string | null => {
-  const { type, deepLink } = data || {};
+  const { type } = data || {};
   if (!type) return null;
 
   switch (type) {
@@ -82,19 +91,16 @@ export const getDeepLinkRoute = (data: Record<string, string>): string | null =>
     case 'BOOKING_RESCHEDULED':
     case 'APPOINTMENT_REMINDER':
     case 'MISSED_APPOINTMENT':
-      return data.bookingId ? `/(tabs)/bookings` : '/(tabs)/bookings';
+    case 'SAMPLE_RECEIVED_IN_LAB':
+    case 'PAYMENT_FAILED':
+      return '/(tabs)/bookings';
     case 'PARTNER_ON_THE_WAY':
       return '/(tabs)/track';
-    case 'SAMPLE_RECEIVED_IN_LAB':
-      return '/(tabs)/bookings';
     case 'REPORT_READY':
     case 'REPORT_SENT':
     case 'REPORT_APPROVED':
       return '/(tabs)/reports';
-    case 'PAYMENT_FAILED':
-      return '/(tabs)/bookings';
     case 'NEW_BOOKING_ASSIGNED':
-      return '/(partner)/home';
     case 'BOOKING_CANCELLED_BY_USER':
       return '/(partner)/home';
     case 'NEW_CHAT_MESSAGE':
@@ -108,3 +114,5 @@ export const getDeepLinkRoute = (data: Record<string, string>): string | null =>
       return null;
   }
 };
+
+export { setBackgroundMessageHandler, getMessaging };

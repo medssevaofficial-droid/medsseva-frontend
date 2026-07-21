@@ -15,7 +15,7 @@ interface User {
   mobile: string;
   role?: string;
   uhid?: string;
-  avatar?: string;
+  avatarUrl?: string | null;
   healthScore?: number;
   dob?: string;
   altMobile?: string;

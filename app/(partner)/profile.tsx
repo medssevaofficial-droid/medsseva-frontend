@@ -1,16 +1,27 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
-View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  StatusBar, ActivityIndicator
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TouchableOpacity,
+  StatusBar,
+  ActivityIndicator,
+  Alert,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { useRouter } from 'expo-router';
-import { RootState } from '../../src/store';
+import * as ImagePicker from 'expo-image-picker';
+import Toast from 'react-native-toast-message';
+
+import { RootState, AppDispatch } from '../../src/store';
 import { apiService } from '../../src/services/api';
 import { confirmAndLogout } from '../../src/utils/logout';
+import { updateProfile } from '../../src/store/slices/authSlice';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface PartnerProfile {
   labName: string;
@@ -23,10 +34,13 @@ interface PartnerProfile {
 }
 
 export default function PartnerProfileScreen() {
- const router = useRouter();
+  const router = useRouter();
+  const dispatch = useDispatch<AppDispatch>();
   const user = useSelector((s: RootState) => s.auth.user);
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const uploadLockRef = useRef(false);
 
   useEffect(() => {
     apiService.getPartnerProfile()
@@ -35,9 +49,101 @@ export default function PartnerProfileScreen() {
       .finally(() => setIsLoading(false));
   }, []);
 
-const handleLogout = () => {
+  const handleLogout = () => {
     confirmAndLogout();
   };
+
+  const handleAvatarPress = async () => {
+    if (uploadLockRef.current || isUploadingAvatar) return;
+
+    const { status: cameraStatus } = await ImagePicker.requestCameraPermissionsAsync();
+    const { status: libraryStatus } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (libraryStatus !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow access to your photo library to upload a profile image.');
+      return;
+    }
+
+    Alert.alert(
+      'Update Profile Photo',
+      'Choose how you would like to update your photo.',
+      [
+        { text: 'Take Photo', onPress: () => openCamera(cameraStatus) },
+        { text: 'Choose from Gallery', onPress: () => openGallery() },
+        { text: 'Cancel', style: 'cancel' },
+      ]
+    );
+  };
+
+  const openCamera = async (cameraStatus: string) => {
+    if (cameraStatus !== 'granted') {
+      Alert.alert('Permission Required', 'Please allow camera access to take a photo.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      await processAndUpload(result.assets[0]);
+    }
+  };
+
+  const openGallery = async () => {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0]) {
+      await processAndUpload(result.assets[0]);
+    }
+  };
+
+  const processAndUpload = async (asset: ImagePicker.ImagePickerAsset) => {
+    if (uploadLockRef.current) return;
+
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    const mimeType = asset.mimeType ?? 'image/jpeg';
+    const fileSize = asset.fileSize ?? 0;
+
+    if (!allowedTypes.includes(mimeType)) {
+      Toast.show({ type: 'error', text1: 'Invalid file type', text2: 'Only JPG, PNG, and WEBP images are supported.' });
+      return;
+    }
+
+    if (fileSize > 5 * 1024 * 1024) {
+      Toast.show({ type: 'error', text1: 'File too large', text2: 'Please choose an image smaller than 5MB.' });
+      return;
+    }
+
+    const ext = mimeType.split('/')[1] ?? 'jpg';
+    const fileName = `avatar_${Date.now()}.${ext}`;
+
+    uploadLockRef.current = true;
+    setIsUploadingAvatar(true);
+
+  try {
+      const response = await apiService.uploadAvatar(asset.uri, mimeType, fileName);
+      dispatch(updateProfile({ avatarUrl: response.avatarUrl }));
+      const userRaw = await AsyncStorage.getItem('user');
+      if (userRaw) {
+        const stored = JSON.parse(userRaw);
+        await AsyncStorage.setItem('user', JSON.stringify({ ...stored, avatarUrl: response.avatarUrl }));
+      }
+      Toast.show({ type: 'success', text1: 'Profile image updated successfully.' });
+    } catch (error: any) {
+      const message = error?.response?.data?.error ?? 'Failed to upload profile image. Please try again.';
+      Toast.show({ type: 'error', text1: 'Upload failed', text2: message });
+    } finally {
+      setIsUploadingAvatar(false);
+      uploadLockRef.current = false;
+    }
+  };
+
   const menuItems = [
     { icon: 'calendar-clock', label: 'Availability', subtitle: 'Manage your work hours', onPress: () => {} },
     { icon: 'file-document-outline', label: 'Documents', subtitle: 'Licenses and certificates', onPress: () => {} },
@@ -54,7 +160,7 @@ const handleLogout = () => {
     );
   }
 
-return (
+  return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
       <View style={styles.header}>
@@ -68,16 +174,36 @@ return (
       </View>
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
-        {/* Profile Card */}
         <View style={styles.profileCard}>
-          <View style={styles.avatarWrap}>
+          <TouchableOpacity
+            style={styles.avatarWrap}
+            onPress={handleAvatarPress}
+            disabled={isUploadingAvatar}
+            activeOpacity={0.8}
+          >
             <View style={styles.avatar}>
-              <MaterialCommunityIcons name="account" size={40} color={COLORS.primary} />
+              {user?.avatarUrl ? (
+                <Image
+                  source={{ uri: user.avatarUrl }}
+                  style={styles.avatarImage}
+                  contentFit="cover"
+                  transition={200}
+                />
+              ) : (
+                <MaterialCommunityIcons name="account" size={40} color={COLORS.primary} />
+              )}
             </View>
-            <View style={styles.editDot}>
-              <MaterialCommunityIcons name="camera" size={12} color="#fff" />
-            </View>
-          </View>
+            {isUploadingAvatar ? (
+              <View style={styles.avatarOverlay}>
+                <ActivityIndicator size="small" color="#fff" />
+              </View>
+            ) : (
+              <View style={styles.editDot}>
+                <MaterialCommunityIcons name="camera" size={12} color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+
           <Text style={styles.partnerName}>{user?.name || 'Partner'}</Text>
           <View style={styles.idStatusRow}>
             <Text style={styles.partnerId}>ID: {user?.id?.slice(-5) || '00000'}</Text>
@@ -109,7 +235,6 @@ return (
           </View>
         </View>
 
-        {/* Menu Items */}
         <View style={styles.menuCard}>
           {menuItems.map((item, idx) => (
             <TouchableOpacity
@@ -133,7 +258,6 @@ return (
           ))}
         </View>
 
-        {/* Logout */}
         <TouchableOpacity style={styles.logoutCard} onPress={handleLogout} activeOpacity={0.8}>
           <View style={[styles.menuIconCircle, { backgroundColor: '#FEF2F2' }]}>
             <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
@@ -174,6 +298,20 @@ const styles = StyleSheet.create({
     width: 88, height: 88, borderRadius: 44, backgroundColor: '#F0FDFA',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 2, borderColor: '#CCFBF1',
+    overflow: 'hidden',
+  },
+  avatarImage: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+  },
+  avatarOverlay: {
+    position: 'absolute',
+    top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   editDot: {
     position: 'absolute', bottom: 2, right: 2,
