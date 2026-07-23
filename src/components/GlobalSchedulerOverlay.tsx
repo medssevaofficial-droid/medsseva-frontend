@@ -9,7 +9,7 @@ import { useAppDispatch, useAppSelector } from '../store';
 import { addToCart } from '../store/slices/cartSlice';
 import { useRouter } from 'expo-router';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../theme/theme';
-import { mockTests, mockPackages } from '../mock/mockData';
+
 import { MaterialDatePickerModal } from './MaterialDatePickerModal';
 import { MaterialTimeSlotModal } from './MaterialTimeSlotModal';
 import { apiService } from '../services/api';
@@ -63,9 +63,11 @@ const user = useAppSelector((state) => state.auth.user);
   const [notes, setNotes] = useState('');
 
   // Mode states
-  const [collectionMode, setCollectionMode] = useState<'home' | 'lab'>('home');
+const [collectionMode, setCollectionMode] = useState<'home' | 'lab'>('home');
   const [address, setAddress] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
+  const [allTests, setAllTests] = useState<any[]>([]);
+  const [allPackages, setAllPackages] = useState<any[]>([]);
 // Global Event Listener
 useEffect(() => {
     const sub = DeviceEventEmitter.addListener('openGlobalScheduler', (payload?: { testName?: string }) => {
@@ -120,7 +122,17 @@ useEffect(() => {
     });
   }, [isOpen]);
 
-const resetForm = () => {
+useEffect(() => {
+    Promise.all([
+      apiService.getAllTests().catch(() => []),
+      apiService.getAllPackages().catch(() => []),
+    ]).then(([tests, packages]) => {
+      setAllTests(Array.isArray(tests) ? tests : []);
+      setAllPackages(Array.isArray(packages) ? packages : []);
+    });
+  }, []);
+
+  const resetForm = () => {
     setFullName(''); setPhone(''); setEmail(''); setCity(''); setAddrState('');
     setTargetTest(''); setPrefDate(''); setSelectedDateObj(null);
     setPrefSlot(''); setPincode(''); setAddress(''); setNotes('');
@@ -249,16 +261,15 @@ const handleBook = () => {
 
 
 
-  const filteredPackages = testSearchQuery.trim() === '' ? [] : mockPackages.filter(pkg => 
+const filteredPackages = testSearchQuery.trim() === '' ? [] : allPackages.filter(pkg =>
     pkg.name.toLowerCase().includes(testSearchQuery.toLowerCase()) ||
     (pkg.subtitle && pkg.subtitle.toLowerCase().includes(testSearchQuery.toLowerCase()))
   ).slice(0, 3);
 
-  const filteredTests = testSearchQuery.trim() === '' ? [] : mockTests.filter(t => 
+  const filteredTests = testSearchQuery.trim() === '' ? [] : allTests.filter(t =>
     t.name.toLowerCase().includes(testSearchQuery.toLowerCase()) ||
-    t.category.toLowerCase().includes(testSearchQuery.toLowerCase())
+    (t.category?.toLowerCase() || '').includes(testSearchQuery.toLowerCase())
   ).slice(0, 5);
-
   return (
     <>
       <Modal visible={isOpen} transparent animationType="slide" onRequestClose={() => setIsOpen(false)}>
@@ -644,16 +655,16 @@ const handleBook = () => {
         </ScrollView>
       ))}
 
-      {/* ----------------- TEST / PACKAGE DRAWER ----------------- */}
+    
       {renderDrawer('Select Test or Package', 'test', (() => {
-        const filteredPackages = mockPackages.filter(pkg => 
+const filteredPackages = allPackages.filter(pkg =>
           pkg.name.toLowerCase().includes(testSearchQuery.toLowerCase()) ||
           (pkg.subtitle && pkg.subtitle.toLowerCase().includes(testSearchQuery.toLowerCase()))
         );
 
-        const filteredTests = mockTests.filter(t => 
+        const filteredTests = allTests.filter(t =>
           t.name.toLowerCase().includes(testSearchQuery.toLowerCase()) ||
-          t.category.toLowerCase().includes(testSearchQuery.toLowerCase())
+          (t.category?.toLowerCase() || '').includes(testSearchQuery.toLowerCase())
         );
 
         const uniqueCategories = Array.from(new Set(filteredTests.map(t => t.category)));

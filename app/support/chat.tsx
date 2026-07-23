@@ -12,7 +12,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
 import { apiService } from '../../src/services/api';
 
-const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL?.replace('/api', '') || 'http://localhost:5000';
+const SOCKET_URL = process.env.EXPO_PUBLIC_API_URL!.replace('/api', '');
 
 interface ChatMessage {
   id: string;

@@ -59,6 +59,4 @@ Thumbs.db
 # Generated Files
 *.orig.*
 
-# Example App
-app-example/
-google-services.json
+

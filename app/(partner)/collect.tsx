@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
 View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, ScrollView, Linking, useWindowDimensions
+  ActivityIndicator, ScrollView, useWindowDimensions
 } from 'react-native';
 import QRCode from 'react-native-qrcode-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -32,21 +32,19 @@ const [otp, setOtp] = useState<string[]>(['', '', '', '']);
   const otpRefs = useRef<(TextInput | null)[]>([null, null, null, null]);
 const [isCollectingCash, setIsCollectingCash] = useState(false);
   const [showCashConfirm, setShowCashConfirm] = useState(false);
-  const [isInitiatingUpi, setIsInitiatingUpi] = useState(false);
-  const [upiUrl, setUpiUrl] = useState('');
+const [isInitiatingUpi, setIsInitiatingUpi] = useState(false);
+  const [qrData, setQrData] = useState<{ upiString: string; amount: number; bookingCode: string; patientName: string } | null>(null);
   const [upiPollCount, setUpiPollCount] = useState(0);
   const [upiMessage, setUpiMessage] = useState('Waiting for patient to scan and pay...');
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { width } = useWindowDimensions();
-  const qrSize = Math.min(width - 80, 240);
-
+  const qrSize = Math.min(width - 80, 260);
   // If already paid online, skip straight to collect sample
   useEffect(() => {
     if (isAlreadyPaid) setStep('done');
   }, [isAlreadyPaid]);
 
-  // Poll UPI status every 4 seconds while on upi_waiting step
-  useEffect(() => {
+useEffect(() => {
     if (step === 'upi_waiting') {
       pollRef.current = setInterval(async () => {
         try {
@@ -55,20 +53,15 @@ const [isCollectingCash, setIsCollectingCash] = useState(false);
           if (result.paymentStatus === 'SUCCESS') {
             clearInterval(pollRef.current!);
             setStep('done');
-          } else if (result.razorpayStatus === 'expired') {
-            clearInterval(pollRef.current!);
-            setUpiMessage('Payment link expired. Go back and try again.');
           } else if (result.message) {
             setUpiMessage(result.message);
           }
         } catch {
-       
         }
       }, 4000);
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [step, bookingId]);
-
 const otpValue = otp.join('');
 
   const handleOtpChange = (text: string, index: number) => {
@@ -140,19 +133,25 @@ const handleCashCollected = () => {
     }
   };
 
-  const handleInitiateUpi = async () => {
+const handleInitiateUpi = async () => {
     setIsInitiatingUpi(true);
+    console.log('[UPI] bookingId:', bookingId);
     try {
-      const result = await apiService.initiateUpiCollection(bookingId);
-      setUpiUrl(result.paymentLinkUrl);
+   const result = await apiService.initiateUpiCollection(bookingId);
+      setQrData({
+        upiString: result.upiString,
+        amount: result.amount,
+        bookingCode: result.bookingCode,
+        patientName: result.patientName,
+      });
       setStep('upi_waiting');
    } catch (e: any) {
-      showError(e?.response?.data?.error || 'Could not create UPI payment link.');
+      console.log('[UPI] error:', JSON.stringify(e?.response?.data), e?.message);
+      showError(e?.response?.data?.error || 'Could not generate QR code.');
     } finally {
       setIsInitiatingUpi(false);
     }
   };
-
 const handleCollectSample = async () => {
     try {
       await apiService.updateBookingStatus(bookingId, 'SAMPLE_COLLECTED');
@@ -248,6 +247,71 @@ if (step === 'otp') {
   }
 
 
+if (step === 'upi_waiting') {
+    return (
+      <View style={styles.container}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => { clearInterval(pollRef.current!); setStep('payment'); }} style={styles.backBtn}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Collect Payment</Text>
+          <View style={{ width: 36 }} />
+        </View>
+        <ScrollView contentContainerStyle={styles.scrollContent}>
+          <View style={styles.qrAmountRow}>
+            <Text style={styles.qrAmountLabel}>Amount Payable</Text>
+            <Text style={styles.qrAmountValue}>₹{qrData?.amount?.toFixed(2)}</Text>
+          </View>
+          <Text style={styles.qrPatientName}>{qrData?.patientName}</Text>
+          <Text style={styles.qrBookingCode}>Booking #{qrData?.bookingCode}</Text>
+  {qrData?.upiString ? (
+            <View style={styles.qrImageCard}>
+              <QRCode
+                value={qrData.upiString}
+                size={qrSize}
+                color="#0F172A"
+                backgroundColor="#FFFFFF"
+              />
+            </View>
+          ) : (
+            <View style={[styles.qrImageCard, { height: 260, justifyContent: 'center', alignItems: 'center' }]}>
+              <ActivityIndicator color={COLORS.primary} size="large" />
+            </View>
+          )}
+          <Text style={styles.qrScanLabel}>Scan using any UPI App</Text>
+          <View style={styles.upiAppRow}>
+            {['PhonePe', 'Google Pay', 'Paytm', 'BHIM'].map(app => (
+              <View key={app} style={styles.upiAppChip}>
+                <Text style={styles.upiAppText}>{app}</Text>
+              </View>
+            ))}
+          </View>
+       <View style={styles.pollingCard}>
+            <ActivityIndicator color={COLORS.primary} size="small" />
+            <Text style={styles.pollingText}>{upiMessage}</Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.primaryBtn, { marginTop: 8 }]}
+            onPress={async () => {
+              try {
+                await apiService.collectCash(bookingId);
+                setStep('done');
+              } catch (e: any) {
+                showError(e?.response?.data?.error || 'Could not confirm payment.');
+              }
+            }}
+          >
+            <MaterialCommunityIcons name="check-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.primaryBtnText}>Patient Paid — Confirm</Text>
+          </TouchableOpacity>
+          <Text style={styles.upiNote}>
+            Tap above only after patient shows payment confirmation on their UPI app.
+          </Text>
+        </ScrollView>
+      </View>
+    );
+  }
+
   if (step === 'payment') {
     return (
       <View style={styles.container}>
@@ -301,61 +365,6 @@ if (step === 'otp') {
   }
 
 
-
-  if (step === 'upi_waiting') {
-    return (
-      <View style={styles.container}>
-        <View style={styles.header}>
-          <TouchableOpacity onPress={() => { clearInterval(pollRef.current!); setStep('payment'); }} style={styles.backBtn}>
-            <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
-          </TouchableOpacity>
-          <Text style={styles.headerTitle}>UPI Payment</Text>
-          <View style={{ width: 36 }} />
-        </View>
-
-        <ScrollView contentContainerStyle={styles.scrollContent}>
-          {/* QR Code Card */}
-          {upiUrl ? (
-            <View style={styles.qrCard}>
-              <Text style={styles.qrLabel}>Scan to Pay</Text>
-              <Text style={styles.qrSubLabel}>Works with PhonePe, GPay, Paytm & all UPI apps</Text>
-              <View style={styles.qrWrapper}>
-                <QRCode
-                  value={upiUrl}
-                  size={qrSize}
-                  color="#0F172A"
-                  backgroundColor="#FFFFFF"
-                  logo={undefined}
-                />
-              </View>
-              <TouchableOpacity style={styles.upiLinkBtn} onPress={() => Linking.openURL(upiUrl)}>
-                <MaterialCommunityIcons name="open-in-new" size={16} color="#7C3AED" />
-                <Text style={styles.upiLinkText}>Open Payment Link Instead</Text>
-              </TouchableOpacity>
-            </View>
-          ) : (
-            <View style={[styles.qrCard, { paddingVertical: 40 }]}>
-              <ActivityIndicator color={COLORS.primary} size="large" />
-              <Text style={[styles.qrSubLabel, { marginTop: 16 }]}>Generating QR code...</Text>
-            </View>
-          )}
-
-          {/* Polling Status */}
-          <View style={styles.pollingCard}>
-            <View style={styles.pollingRow}>
-              <ActivityIndicator color={COLORS.primary} size="small" />
-              <Text style={styles.pollingText}>{upiMessage}</Text>
-            </View>
-            <Text style={styles.pollingCount}>Auto-checking every 4s · {upiPollCount} check{upiPollCount !== 1 ? 's' : ''} done</Text>
-          </View>
-
-          <Text style={styles.upiNote}>
-            Do NOT manually mark as paid. Status updates automatically once Razorpay confirms the payment.
-          </Text>
-        </ScrollView>
-      </View>
-    );
-  }
 
   if (step === 'sample_collected') {
     return (
@@ -496,31 +505,31 @@ const styles = StyleSheet.create({
   paymentOptionText: { flex: 1 },
   paymentOptionTitle: { fontSize: 16, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
   paymentOptionDesc: { fontSize: 12, color: '#64748B', lineHeight: 18 },
- qrCard: {
-    width: '100%', backgroundColor: '#fff', borderRadius: 20,
-    padding: 24, alignItems: 'center', marginBottom: 16,
-    borderWidth: 1, borderColor: '#E2E8F0', ...SHADOWS.soft,
+
+qrAmountRow: { alignItems: 'center', marginBottom: 4, marginTop: 8 },
+  qrAmountLabel: { fontSize: 13, color: '#64748B', fontWeight: '600', marginBottom: 2 },
+  qrAmountValue: { fontSize: 38, fontWeight: '900', color: '#0F172A' },
+  qrPatientName: { fontSize: 16, fontWeight: '700', color: '#0F172A', textAlign: 'center', marginBottom: 2 },
+  qrBookingCode: { fontSize: 12, color: '#94A3B8', textAlign: 'center', marginBottom: 20 },
+  qrImageCard: {
+    backgroundColor: '#fff', borderRadius: 20, padding: 16,
+    borderWidth: 2, borderColor: '#E2E8F0', marginBottom: 16,
+    alignItems: 'center', justifyContent: 'center',
   },
-  qrLabel: { fontSize: 18, fontWeight: '900', color: '#0F172A', marginBottom: 4 },
-  qrSubLabel: { fontSize: 12, color: '#64748B', textAlign: 'center', marginBottom: 20 },
-  qrWrapper: {
-    padding: 16, backgroundColor: '#fff', borderRadius: 16,
-    borderWidth: 2, borderColor: '#EDE9FE',
+  qrScanLabel: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 12, textAlign: 'center' },
+  upiAppRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center', marginBottom: 20 },
+  upiAppChip: {
+    paddingHorizontal: 12, paddingVertical: 6, backgroundColor: '#F1F5F9',
+    borderRadius: 20, borderWidth: 1, borderColor: '#E2E8F0',
   },
-  upiLinkBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 6,
-    marginTop: 20, paddingVertical: 8, paddingHorizontal: 16,
-    backgroundColor: '#F5F3FF', borderRadius: 10,
-  },
-  upiLinkText: { fontSize: 13, fontWeight: '600', color: '#7C3AED' },
+  upiAppText: { fontSize: 12, fontWeight: '600', color: '#475569' },
   pollingCard: {
-    backgroundColor: '#fff', borderRadius: 16, padding: 16, width: '100%',
-    borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, ...SHADOWS.soft,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    backgroundColor: '#F0FDFA', borderRadius: 14, padding: 14,
+    borderWidth: 1, borderColor: '#CCFBF1', marginBottom: 12, width: '100%',
   },
-  pollingRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  pollingText: { fontSize: 14, color: '#475569', fontWeight: '600', flex: 1 },
-  pollingCount: { fontSize: 12, color: '#94A3B8' },
-  upiNote: { fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18, paddingHorizontal: 8 },
+  pollingText: { fontSize: 13, color: '#0F172A', fontWeight: '600', flex: 1 },
+  upiNote: { fontSize: 12, color: '#94A3B8', textAlign: 'center', lineHeight: 18, paddingHorizontal: 16 },
   doneCard: {
     flexDirection: 'row', alignItems: 'flex-start', backgroundColor: '#F0FDFA',
     borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#CCFBF1',

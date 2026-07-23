@@ -16,23 +16,21 @@ export default function PatientScreen() {
   const dispatch = useDispatch();
 
   // Form fields
-  const [name, setName] = useState('');
+const [name, setName] = useState('');
   const [age, setAge] = useState('');
   const [gender, setGender] = useState('Male');
   const [mobile, setMobile] = useState('');
   const [email, setEmail] = useState('');
   const [symptoms, setSymptoms] = useState('');
+  const [dobExists, setDobExists] = useState(false);
 
-  // Profile load state
   const [profileLoading, setProfileLoading] = useState(true);
   const [profileLoaded, setProfileLoaded] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
-  // Track original profile values to detect changes
   const originalProfile = useRef<{ name: string; email: string; mobile: string }>({
     name: '', email: '', mobile: ''
   });
-
   // Update profile modal
   const [showUpdateModal, setShowUpdateModal] = useState(false);
   const [updateLoading, setUpdateLoading] = useState(false);
@@ -58,6 +56,23 @@ export default function PatientScreen() {
     }
   }, [profileLoaded]);
 
+const calculateAgeFromDob = (dob: string): string => {
+    const parts = dob.split('/');
+    if (parts.length !== 3) return '';
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10) - 1;
+    const year = parseInt(parts[2], 10);
+    if (isNaN(day) || isNaN(month) || isNaN(year)) return '';
+    const birthDate = new Date(year, month, day);
+    const today = new Date();
+    let years = today.getFullYear() - birthDate.getFullYear();
+    const m = today.getMonth() - birthDate.getMonth();
+    if (m < 0 || (m === 0 && today.getDate() < birthDate.getDate())) {
+      years--;
+    }
+    return years > 0 ? String(years) : '';
+  };
+
   const fetchProfile = async () => {
     setProfileLoading(true);
     setProfileError(null);
@@ -67,12 +82,23 @@ export default function PatientScreen() {
       const fetchedName = user.name || '';
       const fetchedMobile = user.mobile || '';
       const fetchedEmail = user.email || '';
+      const fetchedDob = (user.dob || '').trim();
+      const fetchedGender = user.gender || 'Male';
 
       setName(fetchedName);
       setMobile(fetchedMobile.replace('+91', '').replace(/\s/g, '').slice(-10));
       setEmail(fetchedEmail);
+      setGender(fetchedGender);
 
-      // Store originals for change detection
+      if (fetchedDob) {
+        setDobExists(true);
+        const calculatedAge = calculateAgeFromDob(fetchedDob);
+        setAge(calculatedAge);
+      } else {
+        setDobExists(false);
+        setAge('');
+      }
+
       originalProfile.current = {
         name: fetchedName,
         email: fetchedEmail,
@@ -86,7 +112,6 @@ export default function PatientScreen() {
       setProfileLoading(false);
     }
   };
-
   // Detect if user changed any profile-syncable fields
   const hasProfileChanges = () => {
     return (
@@ -191,19 +216,25 @@ return (
             />
 
             <View style={styles.row}>
-              <View style={styles.halfWidth}>
+<View style={styles.halfWidth}>
                 <Text style={styles.label}>Age *</Text>
-                <TextInput
-                  style={[styles.input, { borderColor: getBorderColor('age') }]}
-                  placeholder="Years"
-                  placeholderTextColor={COLORS.textSecondary}
-                  keyboardType="numeric"
-                  maxLength={3}
-                  value={age}
-                  onChangeText={setAge}
-                  onFocus={() => setFocusedInput('age')}
-                  onBlur={() => setFocusedInput(null)}
-                />
+                <View style={{ position: 'relative' }}>
+            <TextInput
+                    style={[
+                      styles.input,
+                      { borderColor: dobExists ? getBorderColor('age') : getBorderColor('age') },
+                    ]}
+                    placeholder="Years"
+                    placeholderTextColor={COLORS.textSecondary}
+                    keyboardType="numeric"
+                    maxLength={3}
+                    value={age}
+                    onChangeText={dobExists ? undefined : setAge}
+                    editable={!dobExists}
+                    onFocus={() => !dobExists && setFocusedInput('age')}
+                    onBlur={() => setFocusedInput(null)}
+                  />
+                </View>
               </View>
               <View style={styles.halfWidth}>
                 <Text style={styles.label}>Gender *</Text>
@@ -376,8 +407,26 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '700',
   },
-  lockedBadge: {
+lockedBadge: {
     paddingRight: 14,
+  },
+  ageAutobadge: {
+    position: 'absolute',
+    right: 10,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  ageAutobadgeText: {
+    fontSize: 9,
+    fontWeight: '800',
+    color: COLORS.primary,
+    letterSpacing: 0.5,
+    backgroundColor: '#DCFCE7',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 6,
+    overflow: 'hidden',
   },
   // Modal
   modalOverlay: {

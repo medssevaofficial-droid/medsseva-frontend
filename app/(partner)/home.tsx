@@ -11,6 +11,7 @@ import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
 import { showError } from '../../src/store/toastStore';
 import { ConfirmSheet } from '../../src/components/ConfirmSheet';
+import { useNotificationPermission } from '../../src/hooks/useNotificationPermission';
 import { NotificationCenter } from '../../src/components/NotificationCenter';
 import { Modal } from 'react-native';
 
@@ -46,6 +47,7 @@ export default function PartnerHomeScreen() {
   const [refreshing, setRefreshing] = useState(false);
 const [acceptingId, setAcceptingId] = useState<string | null>(null);
 const [declineTarget, setDeclineTarget] = useState<string | null>(null);
+ useNotificationPermission();
   const [showNotifCenter, setShowNotifCenter] = useState(false);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 

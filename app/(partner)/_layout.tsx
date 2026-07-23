@@ -65,11 +65,13 @@ export default function PartnerLayout() {
           ),
         }}
       />
-      <Tabs.Screen
+   <Tabs.Screen
         name="collect"
-        options={{
-          href: null,
-        }}
+        options={{ href: null }}
+      />
+    <Tabs.Screen
+        name="(profile-stack)"
+        options={{ href: null }}
       />
     </Tabs>
   );

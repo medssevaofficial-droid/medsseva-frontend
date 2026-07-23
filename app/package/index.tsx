@@ -4,7 +4,7 @@ import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
 import { COLORS, TYPOGRAPHY } from '../../src/theme/theme';
-import { mockPackageCategories } from '../../src/mock/mockData';
+
 import { PremiumPackageCard } from '../../src/components/PremiumPackageCard';
 import { PremiumBottomSheet } from '../../src/components/PremiumBottomSheet';
 
@@ -17,10 +17,22 @@ export default function PackagesScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isFilterSheetOpen, setFilterSheetOpen] = useState(false);
 
-  const { data: packages = [] } = useQuery({
+const { data: packages = [] } = useQuery({
     queryKey: ['packages'],
     queryFn: apiService.getAllPackages,
   });
+
+  const categories = React.useMemo(() => {
+    const seen = new Set<string>();
+    const cats: { id: string; name: string }[] = [{ id: 'all', name: 'All' }];
+    for (const pkg of packages as any[]) {
+      if (pkg.categoryId && pkg.categoryName && !seen.has(pkg.categoryId)) {
+        seen.add(pkg.categoryId);
+        cats.push({ id: pkg.categoryId, name: pkg.categoryName });
+      }
+    }
+    return cats;
+  }, [packages]);
 
   const filteredPackages = packages.filter((pkg: any) => {
     const matchesQuery = pkg.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
@@ -32,7 +44,7 @@ export default function PackagesScreen() {
 
   const renderCategoryChips = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-      {mockPackageCategories.map((cat) => {
+      {categories.map((cat) => {
         const isSelected = selectedCategory === cat.id;
         return (
           <TouchableOpacity 

@@ -35,8 +35,9 @@ const isLabVisit = booking.collectionMode === 'lab';
   // For lab visit: auto-select the only option
   const [selectedMethod, setSelectedMethod] = useState<string | null>(isLabVisit ? 'lab_walkin' : null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [isRazorpayVisible, setIsRazorpayVisible] = useState(false);
+const [isRazorpayVisible, setIsRazorpayVisible] = useState(false);
   const [razorpayOrderId, setRazorpayOrderId] = useState<string>('');
+  const [razorpayKeyId, setRazorpayKeyId] = useState<string>('');
 
 const processBackendBooking = async (paymentData?: any) => {
     setIsProcessing(true);
@@ -97,14 +98,22 @@ const handlePayNow = async () => {
     } else {
       // UPI / online: go through Razorpay
       setIsProcessing(true);
-      try {
-        const order = await apiService.createRazorpayOrder(cart.finalAmount);
+try {
+        console.log('[PAY] calling createRazorpayOrder with amount:', cart.finalAmount);
+        const [order, config] = await Promise.all([
+          apiService.createRazorpayOrder(cart.finalAmount),
+          apiService.getRazorpayConfig(),
+        ]);
+        console.log('[PAY] order response:', JSON.stringify(order));
+        console.log('[PAY] config response:', JSON.stringify(config));
         setRazorpayOrderId(order.id);
+        setRazorpayKeyId(config.keyId);
         setIsProcessing(false);
         setIsRazorpayVisible(true);
-      } catch (error) {
+} catch (error: any) {
         setIsProcessing(false);
-       showError("Could not initialize payment with server.");
+        console.log('[PAY ERROR]', JSON.stringify(error?.response?.data), error?.message, error?.code);
+        showError('Could not connect to payment server. Please try again.');
       }
     }
   };
@@ -221,11 +230,11 @@ const handlePayNow = async () => {
         </View>
       )}
 
-      {/* Razorpay WebView Component */}
-      <RazorpayWebView
+     
+    <RazorpayWebView
         isVisible={isRazorpayVisible}
         options={{
-          key: 'rzp_test_Stydll6RAngUmj',
+          key: razorpayKeyId,
           order_id: razorpayOrderId,
           amount: cart.finalAmount * 100,
           currency: 'INR',
@@ -241,9 +250,9 @@ const handlePayNow = async () => {
           setIsRazorpayVisible(false);
           processBackendBooking(data);
         }}
-        onFailed={(error) => {
+      onFailed={(error) => {
           setIsRazorpayVisible(false);
-     showError(error.error?.description || "Something went wrong.");
+          showError('Payment was not completed. Please retry or choose a different method.');
         }}
         onClose={() => setIsRazorpayVisible(false)}
       />
@@ -415,7 +424,11 @@ methodName: {
     fontWeight: 'bold',
   },
   processingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+  position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',

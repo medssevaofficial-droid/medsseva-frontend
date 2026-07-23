@@ -116,7 +116,7 @@ const liveBooking = bookings;
             s === 'ASSIGNED'            ? { icon: 'account-search',          text: 'Partner found — Confirming assignment...' } :
             s === 'ACCEPTED'            ? { icon: 'account-check',           text: 'Partner Assigned — Preparing to visit' } :
             s === 'ON_THE_WAY'          ? { icon: 'motorbike',               text: `On The Way — ${partnerName || 'Partner'} is heading to you` } :
-            s === 'REACHED_LOCATION'    ? { icon: 'map-marker-check',        text: `Arrived — ${partnerName || 'Partner'} is at your location` } :
+            s === 'REACHED_LOCATION'    ? { icon: 'map-marker-check',        text: `Arrived: ${partnerName || 'Partner'} is at your location` } :
             s === 'SAMPLE_COLLECTED'    ? { icon: 'test-tube',               text: 'Sample Collected — Heading to lab' } :
             s === 'DELIVERED_TO_LAB'    ? { icon: 'hospital-building',       text: 'Reached Lab — Sample handed over' } :
             s === 'PROCESSING'          ? { icon: 'flask-outline',           text: 'Processing — Tests underway at lab' } :
@@ -220,7 +220,7 @@ const liveBooking = bookings;
             ) : liveBooking?.paymentStatus === 'PENDING' && ['ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'REACHED_LOCATION'].includes(liveBooking?.status) ? (
               <View style={styles.pendingPayCard}>
                 <MaterialCommunityIcons name="cash-clock" size={18} color="#D97706" />
-                <Text style={styles.pendingPayText}>Payment pending — Partner will collect at your doorstep</Text>
+                <Text style={styles.pendingPayText}>Payment pending, Partner will collect at your doorstep</Text>
               </View>
             ) : null}
 

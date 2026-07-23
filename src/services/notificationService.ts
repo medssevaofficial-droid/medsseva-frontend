@@ -1,8 +1,6 @@
 import * as Notifications from 'expo-notifications';
 import {
   getMessaging,
-  requestPermission,
-  AuthorizationStatus,
   getToken,
   onTokenRefresh,
   setBackgroundMessageHandler,
@@ -23,14 +21,26 @@ Notifications.setNotificationHandler({
 
 export const registerFcmToken = async (): Promise<void> => {
   try {
+    const { status: existingStatus } = await Notifications.getPermissionsAsync();
+
+    let finalStatus = existingStatus;
+
+    if (existingStatus !== 'granted') {
+ const { status } = await Notifications.requestPermissionsAsync({
+        ios: {
+          allowAlert: true,
+          allowBadge: true,
+          allowSound: true,
+        },
+      });
+      finalStatus = status;
+    }
+
+    if (finalStatus !== 'granted') {
+      return;
+    }
+
     const messaging = getMessaging();
-    const authStatus = await requestPermission(messaging);
-    const enabled =
-      authStatus === AuthorizationStatus.AUTHORIZED ||
-      authStatus === AuthorizationStatus.PROVISIONAL;
-
-    if (!enabled) return;
-
     const token = await getToken(messaging);
     if (!token) return;
 

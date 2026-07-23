@@ -5,8 +5,6 @@ import {
   StyleSheet,
   ScrollView,
   TouchableOpacity,
-  Switch,
-  Linking,
   ActivityIndicator,
   Alert,
 } from 'react-native';
@@ -33,7 +31,7 @@ export default function ProfileScreen() {
   const user = useSelector((state: RootState) => state.auth.user);
   const members = useSelector((state: RootState) => state.family.members);
 
-  const [isNotificationsEnabled, setIsNotificationsEnabled] = React.useState(true);
+
   const [showLogoutSheet, setShowLogoutSheet] = React.useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = React.useState(false);
   const uploadLockRef = useRef(false);
@@ -147,28 +145,7 @@ export default function ProfileScreen() {
     }
   };
 
-  const renderSettingItem = (
-    icon: string,
-    title: string,
-    subtitle?: string,
-    rightComponent?: React.ReactNode,
-    onPress?: () => void
-  ) => (
-    <TouchableOpacity
-      style={styles.settingItem}
-      onPress={onPress}
-      disabled={!onPress}
-    >
-      <View style={styles.settingIconContainer}>
-        <MaterialCommunityIcons name={icon as any} size={24} color={COLORS.textSecondary} />
-      </View>
-      <View style={styles.settingTextContainer}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
-      </View>
-      {rightComponent || <MaterialCommunityIcons name="chevron-right" size={24} color="#CBD5E1" />}
-    </TouchableOpacity>
-  );
+
 
   return (
     <View style={styles.container}>
@@ -216,78 +193,120 @@ export default function ProfileScreen() {
         </TouchableOpacity>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+     <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
 
-        <View style={styles.sectionContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Family Members</Text>
-            <TouchableOpacity onPress={() => router.push('/profile/family')}>
-              <Text style={styles.addText}>+ Add New</Text>
-            </TouchableOpacity>
+  <View style={styles.familyCard}>
+    <View style={styles.familyCardHeader}>
+      <Text style={styles.familyCardTitle}>Family Members</Text>
+      <TouchableOpacity onPress={() => router.push('/profile/family')} activeOpacity={0.7}>
+        <Text style={styles.familyAddLink}>+ Add New</Text>
+      </TouchableOpacity>
+    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.familyScroll}>
+      <TouchableOpacity style={styles.familyAddChip} onPress={() => router.push('/profile/family')} activeOpacity={0.7}>
+        <View style={styles.familyAddIcon}>
+          <MaterialCommunityIcons name="plus" size={22} color="#94A3B8" />
+        </View>
+        <Text style={styles.familyChipName}>Add</Text>
+      </TouchableOpacity>
+      {members.map((member) => (
+        <View key={member.id} style={styles.familyChip}>
+          <View style={styles.familyChipAvatar}>
+            <MaterialCommunityIcons
+              name={
+                member.relation === 'Wife' || member.relation === 'Daughter' || member.relation === 'Mother'
+                  ? 'face-woman'
+                  : member.relation === 'Son'
+                  ? 'human-child'
+                  : 'account'
+              }
+              size={24}
+              color={COLORS.primary}
+            />
           </View>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.horizontalScroll}>
-            {members.map((member) => (
-              <View key={member.id} style={styles.familyCard}>
-                <MaterialCommunityIcons
-                  name={
-                    member.relation === 'Wife' || member.relation === 'Daughter' || member.relation === 'Mother'
-                      ? 'face-woman'
-                      : member.relation === 'Son'
-                      ? 'human-child'
-                      : 'account'
-                  }
-                  size={30}
-                  color={COLORS.primary}
-                />
-                <Text style={styles.familyName} numberOfLines={1}>{member.name}</Text>
-                <Text style={styles.familyRelation}>{member.relation}</Text>
-              </View>
-            ))}
-            <TouchableOpacity style={styles.addFamilyCard} onPress={() => router.push('/profile/family')}>
-              <MaterialCommunityIcons name="plus" size={30} color="#94A3B8" />
-              <Text style={styles.addFamilyText}>Add</Text>
-            </TouchableOpacity>
-          </ScrollView>
+          <Text style={styles.familyChipName} numberOfLines={1}>{member.name}</Text>
+          <Text style={styles.familyChipRelation}>{member.relation}</Text>
         </View>
+      ))}
+    </ScrollView>
+  </View>
 
-        <Text style={styles.sectionLabel}>Account Settings</Text>
-        <View style={styles.settingsGroup}>
-          {renderSettingItem('map-marker-outline', 'Saved Addresses', 'Manage home and office locations', undefined, () => router.push('/profile/addresses'))}
-          {renderSettingItem('history', 'Booking History', 'View past and upcoming tests', undefined, () => router.push('/(tabs)/bookings'))}
-          {renderSettingItem('credit-card-outline', 'Payment Methods', 'Manage saved cards and UPI', undefined, () => router.push('/profile/payment'))}
-        </View>
+  <Text style={styles.sectionLabel}>ACCOUNT</Text>
+  <View style={styles.menuGroup}>
+    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/addresses')} activeOpacity={0.7}>
+      <View style={styles.menuIconWrap}>
+        <MaterialCommunityIcons name="map-marker-outline" size={20} color={COLORS.primary} />
+      </View>
+      <View style={styles.menuTextWrap}>
+        <Text style={styles.menuLabel}>Saved Addresses</Text>
+        <Text style={styles.menuSubtitle}>Manage home and office locations</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={20} color="#CBD5E1" />
+    </TouchableOpacity>
+    <View style={styles.divider} />
+    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/(tabs)/bookings')} activeOpacity={0.7}>
+      <View style={styles.menuIconWrap}>
+        <MaterialCommunityIcons name="calendar-check-outline" size={20} color={COLORS.primary} />
+      </View>
+      <View style={styles.menuTextWrap}>
+        <Text style={styles.menuLabel}>Booking History</Text>
+        <Text style={styles.menuSubtitle}>View past and upcoming tests</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={20} color="#CBD5E1" />
+    </TouchableOpacity>
+    <View style={styles.divider} />
+    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/profile/payment')} activeOpacity={0.7}>
+      <View style={styles.menuIconWrap}>
+        <MaterialCommunityIcons name="credit-card-outline" size={20} color={COLORS.primary} />
+      </View>
+      <View style={styles.menuTextWrap}>
+        <Text style={styles.menuLabel}>Payment Methods</Text>
+        <Text style={styles.menuSubtitle}>Manage saved cards and UPI</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={20} color="#CBD5E1" />
+    </TouchableOpacity>
+  </View>
 
-        <Text style={styles.sectionLabel}>Preferences</Text>
-        <View style={styles.settingsGroup}>
-          {renderSettingItem(
-            'bell-outline',
-            'Push Notifications',
-            'Get test updates and offers',
-            <Switch
-              value={isNotificationsEnabled}
-              onValueChange={setIsNotificationsEnabled}
-              trackColor={{ false: '#E2E8F0', true: COLORS.success }}
-              thumbColor="#fff"
-            />,
-            () => setIsNotificationsEnabled(!isNotificationsEnabled)
-          )}
-        </View>
+  <Text style={styles.sectionLabel}>MORE</Text>
+  <View style={styles.menuGroup}>
+    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('../profile/settings')} activeOpacity={0.7}>
+      <View style={styles.menuIconWrap}>
+        <MaterialCommunityIcons name="cog-outline" size={20} color={COLORS.primary} />
+      </View>
+      <View style={styles.menuTextWrap}>
+        <Text style={styles.menuLabel}>Settings</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={20} color="#CBD5E1" />
+    </TouchableOpacity>
+    <View style={styles.divider} />
+    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('/support/chat')} activeOpacity={0.7}>
+      <View style={styles.menuIconWrap}>
+        <MaterialCommunityIcons name="help-circle-outline" size={20} color={COLORS.primary} />
+      </View>
+      <View style={styles.menuTextWrap}>
+        <Text style={styles.menuLabel}>Support Center</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={20} color="#CBD5E1" />
+    </TouchableOpacity>
+    <View style={styles.divider} />
+    <TouchableOpacity style={styles.menuItem} onPress={() => router.push('../profile/legal')} activeOpacity={0.7}>
+      <View style={styles.menuIconWrap}>
+        <MaterialCommunityIcons name="shield-check-outline" size={20} color={COLORS.primary} />
+      </View>
+      <View style={styles.menuTextWrap}>
+        <Text style={styles.menuLabel}>Legal</Text>
+      </View>
+      <MaterialCommunityIcons name="chevron-right" size={20} color="#CBD5E1" />
+    </TouchableOpacity>
+  </View>
 
-        <Text style={styles.sectionLabel}>Support & Legal</Text>
-        <View style={styles.settingsGroup}>
-          {renderSettingItem('help-circle-outline', 'Help Center', 'FAQs and Contact Support', undefined, () => router.push('/support/chat'))}
-          {renderSettingItem('phone-outline', 'Contact Us', 'Noida diagnostics center coordinates', undefined, () => router.push('/profile/contact'))}
-          {renderSettingItem('shield-check-outline', 'Privacy Policy', undefined, undefined, () => Linking.openURL('https://medsseva-app.onrender.com/privacy'))}
-          {renderSettingItem('file-document-outline', 'Terms of Service', undefined, undefined, () => Linking.openURL('https://medsseva-app.onrender.com/terms'))}
-        </View>
+  <TouchableOpacity style={styles.logoutButton} onPress={handleLogout} activeOpacity={0.8}>
+    <MaterialCommunityIcons name="logout" size={20} color={COLORS.danger} />
+    <Text style={styles.logoutText}>Log Out</Text>
+  </TouchableOpacity>
 
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <MaterialCommunityIcons name="logout" size={24} color={COLORS.danger} />
-          <Text style={styles.logoutText}>Log Out</Text>
-        </TouchableOpacity>
-
-        <Text style={styles.versionText}>App Version 1.0.0 (Build 42)</Text>
-      </ScrollView>
+  <Text style={styles.versionText}>App Version 1.0.0 (Build 42)</Text>
+</ScrollView>
 
       <ConfirmSheet
         visible={showLogoutSheet}
@@ -339,7 +358,7 @@ const styles = StyleSheet.create({
   },
   avatarOverlay: {
     position: 'absolute',
-    inset: 0,
+    top: 0, left: 0, right: 0, bottom: 0,
     backgroundColor: 'rgba(0,0,0,0.45)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -387,142 +406,159 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingBottom: 40,
   },
-  sectionContainer: {
+  familyCard: {
     backgroundColor: '#fff',
     borderRadius: 20,
-    padding: 20,
+    padding: 18,
     marginBottom: 24,
-    marginTop: -10,
-    elevation: 4,
+    elevation: 2,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 5,
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  sectionHeader: {
+  familyCardHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     marginBottom: 16,
   },
-  sectionTitle: {
-    ...TYPOGRAPHY.h3,
+  familyCardTitle: {
+    fontSize: 15,
+    fontWeight: '700',
     color: COLORS.textDark,
   },
-  addText: {
-    ...TYPOGRAPHY.caption,
+  familyAddLink: {
+    fontSize: 12,
+    fontWeight: '700',
     color: COLORS.primary,
-    fontWeight: 'bold',
   },
-  horizontalScroll: {
-    marginHorizontal: -5,
+  familyScroll: {
+    marginHorizontal: -4,
   },
-  familyCard: {
-    backgroundColor: '#F0F9FF',
-    width: 90,
-    paddingVertical: 16,
-    borderRadius: 16,
+  familyChip: {
     alignItems: 'center',
-    marginHorizontal: 5,
+    marginHorizontal: 6,
+    width: 72,
+  },
+  familyChipAvatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(0,109,111,0.08)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
     borderWidth: 1,
-    borderColor: '#BAE6FD',
+    borderColor: 'rgba(0,109,111,0.12)',
   },
-  addFamilyCard: {
-    backgroundColor: '#F1F5F9',
-    width: 90,
-    paddingVertical: 16,
-    borderRadius: 16,
+  familyAddChip: {
     alignItems: 'center',
-    marginHorizontal: 5,
+    marginHorizontal: 6,
+    width: 72,
+  },
+  familyAddIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 6,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     borderStyle: 'dashed',
   },
-  familyName: {
-    ...TYPOGRAPHY.subtitle,
+  familyChipName: {
+    fontSize: 11,
+    fontWeight: '700',
     color: COLORS.textDark,
-    marginTop: 8,
-    marginBottom: 2,
-    fontWeight: 'bold',
+    textAlign: 'center',
   },
-  familyRelation: {
-    ...TYPOGRAPHY.caption,
-    color: '#64748B',
+  familyChipRelation: {
     fontSize: 10,
-  },
-  addFamilyText: {
-    ...TYPOGRAPHY.caption,
     color: '#94A3B8',
-    marginTop: 8,
-    fontWeight: 'bold',
+    textAlign: 'center',
+    marginTop: 1,
   },
   sectionLabel: {
-    ...TYPOGRAPHY.caption,
+    fontSize: 11,
+    fontWeight: '700',
     color: '#94A3B8',
+    letterSpacing: 1.2,
     textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: 12,
-    marginLeft: 8,
-    fontWeight: 'bold',
+    marginBottom: 10,
+    marginLeft: 4,
   },
-  settingsGroup: {
+  menuGroup: {
     backgroundColor: '#fff',
-    borderRadius: 20,
+    borderRadius: 16,
     marginBottom: 24,
-    overflow: 'hidden',
     borderWidth: 1,
     borderColor: '#E2E8F0',
+    overflow: 'hidden',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
   },
-  settingItem: {
+  menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
-  settingIconContainer: {
-    width: 40,
-    height: 40,
+  menuIconWrap: {
+    width: 38,
+    height: 38,
     borderRadius: 10,
-    backgroundColor: '#F1F5F9',
+    backgroundColor: 'rgba(0,109,111,0.08)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 16,
+    marginRight: 14,
   },
-  settingTextContainer: {
+  menuTextWrap: {
     flex: 1,
-    justifyContent: 'center',
   },
-  settingTitle: {
-    ...TYPOGRAPHY.subtitle,
+  menuLabel: {
+    fontSize: 15,
+    fontWeight: '600',
     color: COLORS.textDark,
   },
-  settingSubtitle: {
-    ...TYPOGRAPHY.caption,
-    color: '#64748B',
-    marginTop: 2,
+  menuSubtitle: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 1,
+  },
+  divider: {
+    height: 1,
+    backgroundColor: '#F1F5F9',
+    marginLeft: 68,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: '#FEF2F2',
-    paddingVertical: 16,
-    borderRadius: 16,
-    marginTop: 10,
+    paddingVertical: 15,
+    borderRadius: 14,
+    marginTop: 4,
     borderWidth: 1,
     borderColor: '#FECACA',
   },
   logoutText: {
-    ...TYPOGRAPHY.subtitle,
+    fontSize: 15,
+    fontWeight: '700',
     color: COLORS.danger,
-    fontWeight: 'bold',
     marginLeft: 8,
   },
   versionText: {
-    ...TYPOGRAPHY.caption,
-    color: '#94A3B8',
+    fontSize: 12,
+    color: '#CBD5E1',
     textAlign: 'center',
-    marginTop: 24,
+    marginTop: 20,
   },
 });

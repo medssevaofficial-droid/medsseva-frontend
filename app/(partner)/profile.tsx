@@ -18,10 +18,11 @@ import Toast from 'react-native-toast-message';
 
 import { RootState, AppDispatch } from '../../src/store';
 import { apiService } from '../../src/services/api';
-import { confirmAndLogout } from '../../src/utils/logout';
-import { updateProfile } from '../../src/store/slices/authSlice';
+import { performLogout } from '../../src/utils/logout';
+import { updateProfileAndPersist } from '../../src/store/slices/authSlice';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 interface PartnerProfile {
   labName: string;
@@ -40,6 +41,7 @@ export default function PartnerProfileScreen() {
   const [profile, setProfile] = useState<PartnerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
+  const [showLogoutSheet, setShowLogoutSheet] = useState(false);
   const uploadLockRef = useRef(false);
 
   useEffect(() => {
@@ -48,10 +50,6 @@ export default function PartnerProfileScreen() {
       .catch(() => {})
       .finally(() => setIsLoading(false));
   }, []);
-
-  const handleLogout = () => {
-    confirmAndLogout();
-  };
 
   const handleAvatarPress = async () => {
     if (uploadLockRef.current || isUploadingAvatar) return;
@@ -126,14 +124,9 @@ export default function PartnerProfileScreen() {
     uploadLockRef.current = true;
     setIsUploadingAvatar(true);
 
-  try {
-      const response = await apiService.uploadAvatar(asset.uri, mimeType, fileName);
-      dispatch(updateProfile({ avatarUrl: response.avatarUrl }));
-      const userRaw = await AsyncStorage.getItem('user');
-      if (userRaw) {
-        const stored = JSON.parse(userRaw);
-        await AsyncStorage.setItem('user', JSON.stringify({ ...stored, avatarUrl: response.avatarUrl }));
-      }
+    try {
+    const response = await apiService.uploadAvatar(asset.uri, mimeType, fileName);
+      await dispatch(updateProfileAndPersist({ avatarUrl: response.avatarUrl }));
       Toast.show({ type: 'success', text1: 'Profile image updated successfully.' });
     } catch (error: any) {
       const message = error?.response?.data?.error ?? 'Failed to upload profile image. Please try again.';
@@ -145,11 +138,49 @@ export default function PartnerProfileScreen() {
   };
 
   const menuItems = [
-    { icon: 'calendar-clock', label: 'Availability', subtitle: 'Manage your work hours', onPress: () => {} },
-    { icon: 'file-document-outline', label: 'Documents', subtitle: 'Licenses and certificates', onPress: () => {} },
-    { icon: 'map-marker-outline', label: 'My Branch', subtitle: profile?.branchName || 'Not assigned', onPress: () => {} },
-    { icon: 'star-outline', label: 'Ratings', subtitle: 'View feedback and performance', value: profile?.rating?.toFixed(1), onPress: () => {} },
-    { icon: 'headset', label: 'Support', subtitle: '24/7 Partner helpline', onPress: () => {} },
+    {
+      icon: 'account-edit-outline',
+      label: 'Edit Profile',
+      subtitle: 'Update your personal information',
+     onPress: () => router.push('/(partner)/(profile-stack)/edit-profile' as any),
+    },
+{
+      icon: 'cog-outline',
+      label: 'Settings',
+      subtitle: 'Change password and preferences',
+      onPress: () => router.push('/(partner)/(profile-stack)/settings' as any),
+    },
+    {
+      icon: 'calendar-clock',
+      label: 'Availability',
+      subtitle: 'Manage your working hours',
+      onPress: () => router.push('/(partner)/(profile-stack)/availability' as any),
+    },
+    {
+      icon: 'hospital-building',
+      label: 'My Branch',
+      subtitle: profile?.branchName || 'View branch information',
+      onPress: () => router.push('/(partner)/(profile-stack)/my-branch' as any),
+    },
+    {
+      icon: 'star-outline',
+      label: 'Ratings',
+      subtitle: 'View feedback and performance',
+      value: profile?.rating ? profile.rating.toFixed(1) : undefined,
+      onPress: () => router.push('/(partner)/(profile-stack)/ratings' as any),
+    },
+    {
+      icon: 'robot-outline',
+      label: 'SevaBot Support',
+      subtitle: 'AI chat and customer support',
+      onPress: () => router.push('/support/chat' as any),
+    },
+    {
+      icon: 'file-document-outline',
+      label: 'Legal',
+      subtitle: 'Terms, privacy policy and about',
+      onPress: () => router.push('/(partner)/(profile-stack)/legal' as any),
+    },
   ];
 
   if (isLoading) {
@@ -258,7 +289,7 @@ export default function PartnerProfileScreen() {
           ))}
         </View>
 
-        <TouchableOpacity style={styles.logoutCard} onPress={handleLogout} activeOpacity={0.8}>
+        <TouchableOpacity style={styles.logoutCard} onPress={() => setShowLogoutSheet(true)} activeOpacity={0.8}>
           <View style={[styles.menuIconCircle, { backgroundColor: '#FEF2F2' }]}>
             <MaterialCommunityIcons name="logout" size={20} color="#EF4444" />
           </View>
@@ -270,6 +301,17 @@ export default function PartnerProfileScreen() {
 
         <Text style={styles.versionText}>App Version 2.4.1 Build 8801</Text>
       </ScrollView>
+
+      <ConfirmSheet
+        visible={showLogoutSheet}
+        title="Log Out"
+        message="Are you sure you want to log out of your account?"
+        confirmLabel="Log Out"
+        cancelLabel="Cancel"
+        confirmDestructive
+        onConfirm={() => { setShowLogoutSheet(false); performLogout(); }}
+        onCancel={() => setShowLogoutSheet(false)}
+      />
     </View>
   );
 }
@@ -297,27 +339,18 @@ const styles = StyleSheet.create({
   avatar: {
     width: 88, height: 88, borderRadius: 44, backgroundColor: '#F0FDFA',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: '#CCFBF1',
-    overflow: 'hidden',
+    borderWidth: 2, borderColor: '#CCFBF1', overflow: 'hidden',
   },
-  avatarImage: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-  },
+  avatarImage: { width: 88, height: 88, borderRadius: 44 },
   avatarOverlay: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.45)',
-    borderRadius: 44,
-    justifyContent: 'center',
-    alignItems: 'center',
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 44,
+    justifyContent: 'center', alignItems: 'center',
   },
   editDot: {
     position: 'absolute', bottom: 2, right: 2,
     width: 26, height: 26, borderRadius: 13, backgroundColor: COLORS.primary,
-    justifyContent: 'center', alignItems: 'center',
-    borderWidth: 2, borderColor: '#fff',
+    justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff',
   },
   partnerName: { fontSize: 20, fontWeight: '900', color: '#0F172A', marginBottom: 8 },
   idStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 20 },
@@ -325,9 +358,8 @@ const styles = StyleSheet.create({
   statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 10 },
   statusBadgeText: { fontSize: 12, fontWeight: '700' },
   statsRow: {
-    flexDirection: 'row', width: '100%',
-    backgroundColor: '#F8FAFC', borderRadius: 14, padding: 16,
-    borderWidth: 1, borderColor: '#F1F5F9',
+    flexDirection: 'row', width: '100%', backgroundColor: '#F8FAFC',
+    borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#F1F5F9',
   },
   statItem: { flex: 1, alignItems: 'center', gap: 4 },
   statDivider: { width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 8 },

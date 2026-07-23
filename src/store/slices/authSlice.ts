@@ -1,4 +1,5 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 interface PartnerInfo {
   id: string;
@@ -19,10 +20,8 @@ interface User {
   healthScore?: number;
   dob?: string;
   altMobile?: string;
-  fullAddress?: string;
-  pincode?: string;
-  city?: string;
   gender?: string;
+  bloodGroup?: string;
   partner?: PartnerInfo;
 }
 
@@ -42,6 +41,18 @@ const initialState: AuthState = {
   error: null,
 };
 
+export const updateProfileAndPersist = createAsyncThunk(
+  'auth/updateProfileAndPersist',
+  async (updates: Partial<User>, { getState }) => {
+    const state = getState() as { auth: AuthState };
+    const merged = { ...state.auth.user, ...updates } as User;
+    const stored = await AsyncStorage.getItem('user');
+    const base = stored ? JSON.parse(stored) : {};
+    await AsyncStorage.setItem('user', JSON.stringify({ ...base, ...updates }));
+    return merged;
+  }
+);
+
 const authSlice = createSlice({
   name: 'auth',
   initialState,
@@ -59,7 +70,7 @@ const authSlice = createSlice({
       state.isLoading = false;
       state.error = action.payload;
     },
- setLoggingOut: (state, action: PayloadAction<boolean>) => {
+    setLoggingOut: (state, action: PayloadAction<boolean>) => {
       state.isLoggingOut = action.payload;
     },
     logout: (state) => {
@@ -72,6 +83,11 @@ const authSlice = createSlice({
         state.user = { ...state.user, ...action.payload };
       }
     },
+  },
+  extraReducers: (builder) => {
+    builder.addCase(updateProfileAndPersist.fulfilled, (state, action) => {
+      state.user = action.payload;
+    });
   },
 });
 

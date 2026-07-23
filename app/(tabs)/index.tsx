@@ -1,6 +1,7 @@
 /*eslint-disabled*/
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, memo } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, Modal, Pressable, StatusBar, Platform, Image, DeviceEventEmitter, FlatList } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -10,7 +11,7 @@ import * as Location from 'expo-location';
 import { RootState } from '../../src/store';
 import { confirmAndLogout } from '../../src/utils/logout';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
-
+import { useNotificationPermission } from '../../src/hooks/useNotificationPermission';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../src/services/api';
 import { PremiumTestCard } from '../../src/components/PremiumTestCard';
@@ -20,44 +21,7 @@ import { LocationPickerModal } from '../../src/components/LocationPickerModal';
 
 const { width, height } = Dimensions.get('window');
 
-const HERO_OFFERS = [
-  {
-    id: '1',
-    title: 'Full Body Health',
-    subtitle: 'Get 80+ Essential Tests',
-    discount: 'FLAT 50% OFF',
-    code: 'HEALTH50',
-    colors: ['#006D6F', '#00B4B6'] as [string, string],
-    icon: 'heart-flash',
-  },
-  {
-    id: '2',
-    title: 'Diabetes Screening',
-    subtitle: 'HbA1c, Blood Sugar Fasting',
-    discount: 'Only at ₹399',
-    code: 'SUGARSCAN',
-    colors: ['#0369A1', '#0EA5E9'] as [string, string],
-    icon: 'water-outline',
-  },
-  {
-    id: '3',
-    title: 'Vitamin Special Pack',
-    subtitle: 'Vitamin D & B12 Checks',
-    discount: 'Save up to ₹600',
-    code: 'VITALFREE',
-    colors: ['#B45309', '#F59E0B'] as [string, string],
-    icon: 'pill',
-  },
-  {
-    id: '4',
-    title: 'Monsoon Health Care',
-    subtitle: 'Fever Profile & Immunity',
-    discount: 'Free Sample Pick',
-    code: 'MONSOON20',
-    colors: ['#4338CA', '#6366F1'] as [string, string],
-    icon: 'umbrella-outline',
-  },
-];
+
 
 export default function HomeScreen() {
   const router = useRouter();
@@ -67,38 +31,49 @@ export default function HomeScreen() {
 
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [activePkgCategory, setActivePkgCategory] = useState<string>('all');
-  const [isPrescriptionVisible, setPrescriptionVisible] = useState<boolean>(false);
+const [isPrescriptionVisible, setPrescriptionVisible] = useState<boolean>(false);
+  useNotificationPermission();
 
-  const [selectedLocation, setSelectedLocation] = useState<string>('New Delhi');
+const [selectedLocation, setSelectedLocation] = useState<string | null>(null);
   const [isLocationPickerOpen, setLocationPickerOpen] = useState<boolean>(false);
-  
-  // Fetch Current Location on Mount
+
   useEffect(() => {
-    (async () => {
+    const fetchLocation = async () => {
+      try {
+        const cached = await AsyncStorage.getItem('lastKnownLocation');
+        if (cached) {
+          setSelectedLocation(cached);
+        }
+      } catch {}
+
       try {
         const { status } = await Location.requestForegroundPermissionsAsync();
         if (status !== 'granted') {
+          setSelectedLocation(prev => prev ?? 'Location unavailable');
           return;
         }
-        
         const location = await Location.getCurrentPositionAsync({
           accuracy: Location.Accuracy.Balanced,
         });
-
         const geocodes = await Location.reverseGeocodeAsync({
           latitude: location.coords.latitude,
           longitude: location.coords.longitude,
         });
-
         if (geocodes && geocodes.length > 0) {
           const geo = geocodes[0];
-          const displayLocation = geo.city || geo.district || geo.subregion || geo.region || 'New Delhi';
-          setSelectedLocation(displayLocation);
+          const city = geo.city || geo.district || geo.subregion || geo.region || null;
+          if (city) {
+            setSelectedLocation(city);
+            AsyncStorage.setItem('lastKnownLocation', city).catch(() => {});
+          } else {
+            setSelectedLocation(prev => prev ?? 'Location unavailable');
+          }
         }
-      } catch (e) {
-        console.warn('Failed to fetch location automatically on home screen', e);
+      } catch {
+        setSelectedLocation(prev => prev ?? 'Location unavailable');
       }
-    })();
+    };
+    fetchLocation();
   }, []);
 
   // React Query Data Fetching
@@ -112,12 +87,15 @@ const { data: tests = [] } = useQuery({
     queryFn: apiService.getAllCategories,
   });
   
-  const { data: packages = [] } = useQuery({
+const { data: packages = [] } = useQuery({
     queryKey: ['packages'],
     queryFn: apiService.getAllPackages,
   });
 
-  
+const { data: cmsBanners = [] } = useQuery({
+    queryKey: ['cmsBanners'],
+    queryFn: () => apiService.getCmsBanners(),
+  });
   // Health Checkup Journey Dynamic S-Curve SVG Path Generator
   const [journeyWidth, setJourneyWidth] = useState(width - 32 - 40); 
   
@@ -152,15 +130,15 @@ const { data: tests = [] } = useQuery({
   };
   
   // Hero Auto-Scrolling Carousel Hooks
-  const [activeHeroIndex, setActiveHeroIndex] = useState(0);
+const [activeHeroIndex, setActiveHeroIndex] = useState(0);
   const heroFlatListRef = useRef<FlatList>(null);
- const heroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const heroTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const startHeroTimer = () => {
     stopHeroTimer();
     heroTimerRef.current = setInterval(() => {
       setActiveHeroIndex((prevIndex) => {
-        const nextIndex = prevIndex === HERO_OFFERS.length - 1 ? 0 : prevIndex + 1;
+        const nextIndex = prevIndex === (cmsBanners.length || 1) - 1 ? 0 : prevIndex + 1;
         heroFlatListRef.current?.scrollToIndex({
           index: nextIndex,
           animated: true,
@@ -319,14 +297,20 @@ const filteredTests = activeCategory === 'all'
           <View style={styles.bannerRow}>
             <View style={styles.greetingBox}>
               <Text style={styles.greetingText}>Hi, {user?.name || 'Guest'}</Text>
-              <TouchableOpacity 
-                style={styles.locationRow} 
+          <TouchableOpacity
+                style={styles.locationRow}
                 activeOpacity={0.8}
-                onPress={() => setLocationPickerOpen(true)}
+                onPress={() => selectedLocation && setLocationPickerOpen(true)}
               >
                 <MaterialCommunityIcons name="map-marker-outline" size={14} color={COLORS.textLight} />
-                <Text style={styles.locationText} numberOfLines={1}>{selectedLocation}</Text>
-                <MaterialCommunityIcons name="chevron-down" size={16} color={COLORS.textLight} />
+                {selectedLocation === null ? (
+                  <View style={styles.locationShimmer} />
+                ) : (
+                  <>
+                    <Text style={styles.locationText} numberOfLines={1}>{selectedLocation}</Text>
+                    <MaterialCommunityIcons name="chevron-down" size={16} color={COLORS.textLight} />
+                  </>
+                )}
               </TouchableOpacity>
             </View>
           </View>
@@ -370,64 +354,73 @@ const filteredTests = activeCategory === 'all'
 
         {/* Premium Auto-Scrolling Hero Carousel */}
         <View style={styles.heroCarouselSection}>
-          <FlatList
-            ref={heroFlatListRef}
-            data={HERO_OFFERS}
-            horizontal
-            pagingEnabled
-            showsHorizontalScrollIndicator={false}
-            keyExtractor={(item) => item.id}
-            onViewableItemsChanged={onHeroViewableItemsChanged}
-            viewabilityConfig={heroViewabilityConfig}
-            onScrollBeginDrag={stopHeroTimer}
-            onScrollEndDrag={startHeroTimer}
-            renderItem={({ item }) => (
-              <View style={styles.heroSlideWrapper}>
-                <TouchableOpacity 
-                  activeOpacity={0.95}
-                  onPress={() => router.push('/package')}
-                  style={styles.heroSlide}
-                >
-                  <LinearGradient 
-                    colors={item.colors} 
-                    start={{ x: 0, y: 0 }} 
-                    end={{ x: 1, y: 1 }}
-                    style={styles.heroGradient}
-                  >
-                    <View style={styles.heroLeft}>
-                      <View style={styles.heroCodeBadge}>
-                        <Text style={styles.heroCodeText}>USE CODE: {item.code}</Text>
-                      </View>
-                      <Text style={styles.heroTitle} numberOfLines={1}>{item.title}</Text>
-                      <Text style={styles.heroSubtitle} numberOfLines={1}>{item.subtitle}</Text>
-                      <View style={styles.heroActionRow}>
-                        <Text style={styles.heroDiscount}>{item.discount}</Text>
-                        <View style={styles.heroClaimBtn}>
-                          <Text style={styles.heroClaimBtnText}>Book Now</Text>
-                          <MaterialCommunityIcons name="chevron-right" size={14} color={COLORS.primary} />
-                        </View>
-                      </View>
-                    </View>
-                    <View style={styles.heroRight}>
-                      <MaterialCommunityIcons name={item.icon as any} size={90} color="rgba(255, 255, 255, 0.15)" />
-                    </View>
-                  </LinearGradient>
-                </TouchableOpacity>
-              </View>
-            )}
-          />
-          {/* Interactive Carousel Dots */}
-          <View style={styles.heroDotsRow}>
-            {HERO_OFFERS.map((_, idx) => (
-              <View 
-                key={idx} 
-                style={[
-                  styles.heroDot, 
-                  activeHeroIndex === idx && styles.heroDotActive
-                ]} 
+    {cmsBanners.length === 0 ? null : (
+            <>
+              <FlatList
+                ref={heroFlatListRef}
+                data={cmsBanners}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item: any) => item.id}
+                onViewableItemsChanged={onHeroViewableItemsChanged}
+                viewabilityConfig={heroViewabilityConfig}
+                onScrollBeginDrag={stopHeroTimer}
+                onScrollEndDrag={startHeroTimer}
+                renderItem={({ item }: { item: any }) => (
+                  <View style={styles.heroSlideWrapper}>
+                    <TouchableOpacity
+                      activeOpacity={0.95}
+                      onPress={() => {
+                        if (item.linkType === 'Package' && item.linkValue) {
+                          router.push(`/package/${item.linkValue}` as any);
+                        } else if (item.linkType === 'Test' && item.linkValue) {
+                          router.push(`/test/${item.linkValue}` as any);
+                        } else {
+                          router.push('/package' as any);
+                        }
+                      }}
+                      style={styles.heroSlide}
+                    >
+                      {item.imageUrl ? (
+                        <Image
+                          source={{ uri: item.imageUrl }}
+                          style={styles.heroBannerImage}
+                          resizeMode="cover"
+                        />
+                      ) : (
+                        <LinearGradient
+                          colors={['#006D6F', '#00B4B6']}
+                          start={{ x: 0, y: 0 }}
+                          end={{ x: 1, y: 1 }}
+                          style={styles.heroGradient}
+                        >
+                          <View style={styles.heroLeft}>
+                            <Text style={styles.heroTitle} numberOfLines={1}>{item.title}</Text>
+                            {item.subtitle && (
+                              <Text style={styles.heroSubtitle} numberOfLines={1}>{item.subtitle}</Text>
+                            )}
+                            <View style={styles.heroClaimBtn}>
+                              <Text style={styles.heroClaimBtnText}>Book Now</Text>
+                              <MaterialCommunityIcons name="chevron-right" size={14} color={COLORS.primary} />
+                            </View>
+                          </View>
+                        </LinearGradient>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
               />
-            ))}
-          </View>
+              <View style={styles.heroDotsRow}>
+                {cmsBanners.map((_: any, idx: number) => (
+                  <View
+                    key={idx}
+                    style={[styles.heroDot, activeHeroIndex === idx && styles.heroDotActive]}
+                  />
+                ))}
+              </View>
+            </>
+          )}
         </View>
 
         {/* Browse Tests Section */}
@@ -776,11 +769,14 @@ const filteredTests = activeCategory === 'all'
       />
 
       {/* Dynamic Highly Aesthetic Location Picker */}
-      <LocationPickerModal
+  <LocationPickerModal
         visible={isLocationPickerOpen}
         onClose={() => setLocationPickerOpen(false)}
-        onSelect={(loc) => setSelectedLocation(loc)}
-        currentLocation={selectedLocation}
+        onSelect={(loc) => {
+          setSelectedLocation(loc);
+          AsyncStorage.setItem('lastKnownLocation', loc).catch(() => {});
+        }}
+        currentLocation={selectedLocation ?? ''}
       />
     </View>
   );
@@ -860,9 +856,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginTop: 2,
   },
-  locationText: {
+locationText: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textLight,
+    marginHorizontal: 4,
+  },
+  locationShimmer: {
+    width: 80,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: 'rgba(255,255,255,0.25)',
     marginHorizontal: 4,
   },
   headerRight: {
@@ -1303,6 +1306,11 @@ pkgCategoriesScroll: {
     overflow: 'hidden',
     ...SHADOWS.soft,
     elevation: 4,
+  },
+heroBannerImage: {
+    width: '100%',
+    height: 145,
+    borderRadius: 16,
   },
   heroGradient: {
     flexDirection: 'row',

@@ -2,15 +2,11 @@ import axios from 'axios';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-// Use 10.0.2.2 for Android Emulators to reach the host machine's localhost
-// For iOS Simulator or Web, localhost works fine.
-// Replace with your computer's local IP address (e.g., 192.168.1.5) if testing on a real device via Expo Go.
 const getBaseUrl = () => {
-  if (process.env.EXPO_PUBLIC_API_URL) {
-    return process.env.EXPO_PUBLIC_API_URL;
+  if (!process.env.EXPO_PUBLIC_API_URL) {
+    throw new Error('EXPO_PUBLIC_API_URL is not set. Please configure it in your .env file.');
   }
-  // Fallback — set EXPO_PUBLIC_API_URL in your .env file
-  return 'http://10.164.196.32:5000/api';
+  return process.env.EXPO_PUBLIC_API_URL;
 };
 
 const api = axios.create({
@@ -58,7 +54,8 @@ export const apiService = {
   getAllPackages: () => api.get('/packages').then(res => res.data),
   getTestById: (id: string) => api.get(`/tests/${id}`).then(res => res.data),
   createBooking: (data: any) => api.post('/bookings', data).then(res => res.data),
-  createRazorpayOrder: (amount: number) => api.post('/bookings/razorpay/create-order', { amount }).then(res => res.data),
+createRazorpayOrder: (amount: number) => api.post('/bookings/razorpay/create-order', { amount }).then(res => res.data),
+  getRazorpayConfig: () => api.get('/finance/config').then(res => res.data),
   login: (data: any) => api.post('/auth/login', data).then(res => res.data),
   register: (data: any) => api.post('/auth/register', data).then(res => res.data),
 checkMobile: (mobile: string) => api.get(`/auth/check-mobile?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
@@ -75,16 +72,21 @@ checkMobile: (mobile: string) => api.get(`/auth/check-mobile?mobile=${encodeURIC
   getMe: () => api.get('/users/me').then(res => res.data),
   addFamilyMember: (data: any) => api.post('/users/family', data).then(res => res.data),
   removeFamilyMember: (id: string) => api.delete(`/users/family/${id}`).then(res => res.data),
-  getPaymentMethods: (mobile: string) => api.get(`/payment-methods?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
+getPaymentMethods: (mobile: string) => api.get(`/payment-methods?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
   addPaymentMethod: (data: any) => api.post('/payment-methods', data).then(res => res.data),
-  removePaymentMethod: (id: string) => api.delete(`/payment-methods/${id}`).then(res => res.data),
+  setDefaultPaymentMethod: (id: string, mobile: string) => api.patch(`/payment-methods/${id}/default`, { mobile }).then(res => res.data),
+  removePaymentMethod: (id: string, mobile: string) => api.delete(`/payment-methods/${id}?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
+  getUpiMethods: (mobile: string) => api.get(`/upi-methods?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
+  addUpiMethod: (data: { mobile: string; upiId: string; provider: string }) => api.post('/upi-methods', data).then(res => res.data),
+  setPrimaryUpi: (id: string, mobile: string) => api.patch(`/upi-methods/${id}/primary`, { mobile }).then(res => res.data),
+  removeUpiMethod: (id: string, mobile: string) => api.delete(`/upi-methods/${id}?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
 getMyReports: () => api.get('/reports/my-reports').then(res => res.data),
   getReportById: (id: string) => api.get(`/reports/${id}`).then(res => res.data),
  getAvailableSlots: (date: string) => api.get(`/bookings/available-slots?date=${encodeURIComponent(date)}`).then(res => res.data),
 getBranches: (params?: { isActive?: boolean; homeCollection?: boolean; labVisit?: boolean }) =>
     api.get('/branches', { params }).then(res => res.data),
   getBranchById: (id: string) => api.get(`/branches/${id}`).then(res => res.data),
-updateMe: (data: { name?: string; email?: string }) => api.patch('/users/me', data).then(res => res.data),
+updateMe: (data: { name?: string; email?: string; dob?: string; gender?: string; bloodGroup?: string; altMobile?: string }) => api.patch('/users/me', data).then(res => res.data),
   registerPartner: (data: any) => api.post('/auth/register/partner', data).then(res => res.data),
 getPartnerBookings: () => api.get('/partner/bookings').then(res => res.data),
   getPartnerHistory: () => api.get('/partner/history').then(res => res.data),
@@ -105,8 +107,10 @@ acceptLabBooking: (bookingId: string) => api.patch(`/bookings/${bookingId}/accep
   toggleAvailability: (isAvailable: boolean) => api.patch('/partner/availability', { isAvailable }).then(res => res.data),
   getPartnerProfile: () => api.get('/partner/profile').then(res => res.data),
 collectCash: (bookingId: string) => api.post(`/partner/bookings/${bookingId}/collect-cash`).then(res => res.data),
-  initiateUpiCollection: (bookingId: string) => api.post(`/partner/bookings/${bookingId}/collect-upi`).then(res => res.data),
+initiateUpiCollection: (bookingId: string) => api.post(`/partner/bookings/${bookingId}/collect-upi`).then(res => res.data),
   checkUpiPaymentStatus: (bookingId: string) => api.get(`/partner/bookings/${bookingId}/upi-status`).then(res => res.data),
+  verifyPartnerUpiPayment: (bookingId: string, data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string }) =>
+    api.post(`/partner/bookings/${bookingId}/verify-upi`, data).then(res => res.data),
 getPartnerStats: () => api.get('/partner/stats').then(res => res.data),
 
   uploadPrescription: (formData: FormData) =>
@@ -120,6 +124,7 @@ deletePrescription: (id: string) => api.delete(`/prescriptions/${id}`).then(res 
 
 registerFcmToken: (token: string, platform: string) => api.post('/notifications/token/register', { token, platform }).then(res => res.data),
   unregisterFcmToken: (token: string) => api.post('/notifications/token/unregister', { token }).then(res => res.data),
+getCmsBanners: () => api.get('/cms/banners').then(res => res.data),
   getMyNotifications: (page = 1, limit = 20) => api.get(`/notifications/my?page=${page}&limit=${limit}`).then(res => res.data),
   markNotificationRead: (id: string) => api.patch(`/notifications/my/${id}/read`).then(res => res.data),
   markAllNotificationsRead: () => api.patch('/notifications/my/read-all').then(res => res.data),
@@ -139,6 +144,15 @@ uploadAvatar: (imageUri: string, mimeType: string, fileName: string) => {
       headers: { 'Content-Type': 'multipart/form-data' },
     }).then(res => res.data);
   },
+
+ updatePartnerProfile: (data: { name?: string; address?: string; city?: string; state?: string; pincode?: string }) =>
+    api.patch('/partner/profile', data).then(res => res.data),
+  changePassword: (currentPassword: string, newPassword: string) =>
+    api.post('/partner/change-password', { currentPassword, newPassword }).then(res => res.data),
+  getPartnerAvailabilitySchedule: () => api.get('/partner/availability/schedule').then(res => res.data),
+  updatePartnerAvailabilitySchedule: (data: any) => api.patch('/partner/availability/schedule', data).then(res => res.data),
+  getPartnerBranch: () => api.get('/partner/branch').then(res => res.data),
+  getPartnerRatings: () => api.get('/partner/ratings').then(res => res.data),
 
   getOrCreateConversation: () => api.get('/chat/conversation').then(res => res.data),
   getChatMessages: (conversationId: string, cursor?: string) =>

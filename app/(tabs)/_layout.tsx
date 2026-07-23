@@ -15,7 +15,7 @@ function CustomTabButton() {
       activeOpacity={0.85}
      onPress={() => {
         router.push('/search');
-      }}
+      }}  
     >
       <View style={styles.dropWrapper}>
         <Svg width={64} height={64} viewBox="0 0 64 64">
