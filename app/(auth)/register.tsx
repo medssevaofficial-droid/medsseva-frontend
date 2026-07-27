@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar,
-  TextInput, Linking
+TextInput,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -263,11 +263,11 @@ return (
           <View style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}>
             {termsAccepted && <MaterialCommunityIcons name="check" size={14} color="#fff" />}
           </View>
-          <Text style={styles.checkboxText}>
+    <Text style={styles.checkboxText}>
             By clicking "Continue", you agree to MedsSeva's{' '}
-            <Text style={styles.checkboxLink} onPress={() => Linking.openURL('https://medsseva-app.onrender.com/terms')}>Terms & Conditions</Text>
+            <Text style={styles.checkboxLink} onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}>Terms & Conditions</Text>
             {' '}and{' '}
-            <Text style={styles.checkboxLink} onPress={() => Linking.openURL('https://medsseva-app.onrender.com/privacy')}>Privacy Policy</Text>
+            <Text style={styles.checkboxLink} onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'privacy' } })}>Privacy Policy</Text>
             .
           </Text>
         </TouchableOpacity>
@@ -294,12 +294,12 @@ return (
         </View>
 
         <Text style={styles.copyright}>© {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
-        <View style={styles.footerLinks}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://medsseva-app.onrender.com/terms')}>
+<View style={styles.footerLinks}>
+          <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}>
             <Text style={styles.footerLink}>Terms of Service</Text>
           </TouchableOpacity>
           <Text style={styles.footerSep}> · </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://medsseva-app.onrender.com/privacy')}>
+          <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'privacy' } })}>
             <Text style={styles.footerLink}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>

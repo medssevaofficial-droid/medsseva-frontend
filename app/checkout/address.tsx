@@ -19,9 +19,9 @@ export default function AddressScreen() {
   const router = useRouter();
   const dispatch = useDispatch<AppDispatch>();
   
-  // Load real address database from Redux
-  const addresses = useSelector((state: RootState) => state.address.addresses);
+ const addresses = useSelector((state: RootState) => state.address.addresses);
   const user = useSelector((state: RootState) => state.auth.user);
+  const [addressesLoading, setAddressesLoading] = useState(true);
   
 const [selectedId, setSelectedId] = useState<string | null>(addresses.length > 0 ? addresses[0].id : null);
   const [loadingLocation, setLoadingLocation] = useState(false);
@@ -45,14 +45,18 @@ const { data: branches = [], isLoading: branchesLoading } = useQuery({
     }
   }, [addresses]);
 
-  useFocusEffect(
+useFocusEffect(
     React.useCallback(() => {
       if (user?.mobile) {
-        dispatch(fetchAddressesThunk(user.mobile));
+        setAddressesLoading(true);
+        dispatch(fetchAddressesThunk(user.mobile)).finally(() => {
+          setAddressesLoading(false);
+        });
+      } else {
+        setAddressesLoading(false);
       }
     }, [dispatch, user?.mobile])
   );
-
 const handleContinue = () => {
     if (collectionMode === 'lab') {
       if (!selectedBranchId) {
@@ -280,9 +284,23 @@ const handleDelete = (id: string) => {
           </>
         ) : (
         <>
-        <Text style={styles.sectionTitle}>Saved Addresses</Text>
+    <Text style={styles.sectionTitle}>Saved Addresses</Text>
 
-        {addresses.length === 0 ? (
+        {addressesLoading ? (
+          <>
+            {[1, 2].map((i) => (
+              <View key={i} style={[styles.addressCard, styles.skeletonCard]}>
+                <View style={styles.skeletonRow}>
+                  <View style={[styles.skeletonBox, { width: 120, height: 14, borderRadius: 7 }]} />
+                  <View style={[styles.skeletonBox, { width: 40, height: 14, borderRadius: 7 }]} />
+                </View>
+                <View style={[styles.skeletonBox, { width: '100%', height: 12, borderRadius: 6, marginTop: 10 }]} />
+                <View style={[styles.skeletonBox, { width: '70%', height: 12, borderRadius: 6, marginTop: 8 }]} />
+                <View style={[styles.skeletonBox, { width: 100, height: 12, borderRadius: 6, marginTop: 12 }]} />
+              </View>
+            ))}
+          </>
+        ) : addresses.length === 0 ? (
           <View style={styles.emptyState}>
             <MaterialCommunityIcons name="map-marker-off-outline" size={48} color={COLORS.border} />
             <Text style={styles.emptyText}>No saved addresses yet.</Text>
@@ -521,10 +539,22 @@ const styles = StyleSheet.create({
     marginTop: 12,
     fontWeight: 'bold',
   },
-  emptySub: {
+emptySub: {
     ...TYPOGRAPHY.caption,
     color: COLORS.textSecondary,
     marginTop: 4,
+  },
+  skeletonCard: {
+    opacity: 1,
+  },
+  skeletonRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  skeletonBox: {
+    backgroundColor: '#E2E8F0',
   },
   footer: {
     position: 'absolute',

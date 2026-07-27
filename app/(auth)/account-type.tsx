@@ -67,15 +67,15 @@ export default function AccountTypeScreen() {
       </TouchableOpacity>
 
      
-      <View style={styles.footerLinks}>
-        <TouchableOpacity onPress={() => Linking.openURL('https://medsseva-app.onrender.com/terms')}>
-          <Text style={styles.footerLink}>Terms of Service</Text>
-        </TouchableOpacity>
-        <Text style={styles.footerSep}>    </Text>
-        <TouchableOpacity onPress={() => Linking.openURL('https://medsseva-app.onrender.com/privacy')}>
-          <Text style={styles.footerLink}>Privacy Policy</Text>
-        </TouchableOpacity>
-      </View>
+       <View style={styles.footerLinks}>
+               <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}>
+                 <Text style={styles.footerLink}>Terms of Service</Text>
+               </TouchableOpacity>
+               <Text style={styles.footerSep}> · </Text>
+               <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'privacy' } })}>
+                 <Text style={styles.footerLink}>Privacy Policy</Text>
+               </TouchableOpacity>
+             </View>
      <Text style={styles.copyright}>
   © {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.
 </Text>

@@ -71,10 +71,7 @@ export default function PartnerLoginScreen() {
           <MaterialCommunityIcons name="arrow-left" size={22} color="#334155" />
         </TouchableOpacity>
 
-        <View style={styles.logoRow}>
-          <MaterialCommunityIcons name="plus-box-outline" size={22} color={COLORS.primary} />
-        
-        </View>
+    
 
         <View style={styles.card}>
           <View style={styles.iconCircle}>
@@ -127,7 +124,16 @@ export default function PartnerLoginScreen() {
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.secureLabel}>SECURE PROFESSIONAL PORTAL</Text>
+        </View>
+        <Text style={styles.copyright}>© {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
+        <View style={styles.footerLinks}>
+          <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}>
+            <Text style={styles.footerLink}>Terms of Service</Text>
+          </TouchableOpacity>
+          <Text style={styles.footerSep}> · </Text>
+          <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'privacy' } })}>
+            <Text style={styles.footerLink}>Privacy Policy</Text>
+          </TouchableOpacity>
         </View>
 </ScrollView>
     </KeyboardAvoidingView>
@@ -141,7 +147,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 20, ...SHADOWS.soft,
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 28 },
+
  
   card: {
     backgroundColor: '#fff', borderRadius: 20, padding: 24,
@@ -172,5 +178,8 @@ const styles = StyleSheet.create({
   registerRow: { flexDirection: 'row', marginBottom: 20 },
   registerText: { fontSize: 13, color: '#64748B' },
   registerLink: { fontSize: 13, fontWeight: '800', color: COLORS.primary },
-  secureLabel: { fontSize: 10, color: '#94A3B8', letterSpacing: 1.5 },
+copyright: { fontSize: 12, color: '#7A9AAA', textAlign: 'center', marginTop: 24, marginBottom: 8 },
+  footerLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
+  footerLink: { fontSize: 13, color: '#5A7080' },
+  footerSep: { fontSize: 13, color: '#94A3B8', marginHorizontal: 4 },
 });

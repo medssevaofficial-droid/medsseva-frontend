@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar, TextInput, Linking
+  ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar, TextInput,
 } from 'react-native';
 import { showError } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
@@ -175,12 +175,12 @@ await AsyncStorage.setItem('user', JSON.stringify(fullUserObj));
 
        
       <Text style={[styles.copyright, { marginTop: 24 }]}>© {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
-        <View style={styles.footerLinks}>
-          <TouchableOpacity onPress={() => Linking.openURL('https://medsseva-app.onrender.com/terms')}>
+   <View style={styles.footerLinks}>
+          <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}>
             <Text style={styles.footerLink}>Terms of Service</Text>
           </TouchableOpacity>
           <Text style={styles.footerSep}> · </Text>
-          <TouchableOpacity onPress={() => Linking.openURL('https://medsseva-app.onrender.com/privacy')}>
+          <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'privacy' } })}>
             <Text style={styles.footerLink}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>

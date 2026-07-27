@@ -18,6 +18,7 @@ export default function PartnerRegisterScreen() {
   const [otp, setOtp] = useState(['', '', '', '']);
 const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   const handleAutoDetectLocation = async () => {
     setLocationLoading(true);
@@ -76,8 +77,12 @@ const otpRefs = React.useRef<(TextInput | null)[]>([]);
     showError('Enter a valid 10-digit mobile number.');
       return;
     }
-    if (form.password !== form.confirmPassword) {
+ if (form.password !== form.confirmPassword) {
       showError('Passwords do not match.');
+      return;
+    }
+    if (!agreedToTerms) {
+      showError('Please accept the Terms of Service and Privacy Policy to continue.');
       return;
     }
     setOtpStep(true);
@@ -162,10 +167,7 @@ const otpRefs = React.useRef<(TextInput | null)[]>([]);
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <MaterialCommunityIcons name="arrow-left" size={22} color="#334155" />
           </TouchableOpacity>
-          <View style={styles.logoRow}>
-            <MaterialCommunityIcons name="plus-box-outline" size={20} color={COLORS.primary} />
-         
-          </View>
+      
         </View>
 
         <Text style={styles.pageTitle}>Partner Registration</Text>
@@ -295,11 +297,33 @@ const otpRefs = React.useRef<(TextInput | null)[]>([]);
           </View>
         </View>
 
-        <Text style={styles.termsText}>
-          By clicking "Continue", you agree to MedsSeva's{' '}
-          <Text style={styles.termsLink}>Terms & Privacy Policy</Text>
-        </Text>
-
+<TouchableOpacity
+          style={styles.checkboxRow}
+          onPress={() => setAgreedToTerms(prev => !prev)}
+          activeOpacity={0.7}
+        >
+          <View style={[styles.checkbox, agreedToTerms && styles.checkboxChecked]}>
+            {agreedToTerms && (
+              <MaterialCommunityIcons name="check" size={14} color="#fff" />
+            )}
+          </View>
+          <Text style={styles.checkboxLabel}>
+            I have read and agree to the{' '}
+            <Text
+              style={styles.checkboxLink}
+              onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}
+            >
+              Terms of Service
+            </Text>
+            {' '}and{' '}
+            <Text
+              style={styles.checkboxLink}
+              onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'privacy' } })}
+            >
+              Privacy Policy
+            </Text>
+          </Text>
+        </TouchableOpacity>
       <TouchableOpacity style={styles.submitBtn} onPress={validateAndSendOtp}>
           <Text style={styles.submitBtnText}>Continue</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" style={{ marginLeft: 8 }} />
@@ -324,7 +348,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1, borderColor: '#E2E8F0', ...SHADOWS.soft,
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+
  
   pageTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginBottom: 4 },
   pageSubtitle: { fontSize: 13, color: '#64748B', marginBottom: 24 },
@@ -355,8 +379,20 @@ const styles = StyleSheet.create({
   },
   dropdownItem: { paddingVertical: 12, paddingHorizontal: 14, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   dropdownItemText: { fontSize: 14, color: '#334155' },
-  termsText: { fontSize: 12, color: '#64748B', textAlign: 'center', marginBottom: 20 },
-  termsLink: { color: COLORS.primary, fontWeight: '700' },
+checkboxRow: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    marginBottom: 20, paddingHorizontal: 2,
+  },
+  checkbox: {
+    width: 20, height: 20, borderRadius: 6, borderWidth: 2,
+    borderColor: '#CBD5E1', backgroundColor: '#F8FAFC',
+    alignItems: 'center', justifyContent: 'center', marginTop: 1,
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary, borderColor: COLORS.primary,
+  },
+  checkboxLabel: { flex: 1, fontSize: 13, color: '#475569', lineHeight: 20 },
+  checkboxLink: { fontSize: 13, color: COLORS.primary, fontWeight: '700' },
   submitBtn: {
     backgroundColor: COLORS.primary, height: 52, borderRadius: 14,
     justifyContent: 'center', alignItems: 'center', flexDirection: 'row', ...SHADOWS.soft,

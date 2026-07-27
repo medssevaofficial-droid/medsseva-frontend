@@ -1,23 +1,17 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { 
-View, 
-  Text, 
-  StyleSheet, 
-  TextInput, 
-  TouchableOpacity, 
-  ScrollView, 
-  KeyboardAvoidingView, 
-  Platform, 
-  ActivityIndicator
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TextInput,
+  TouchableOpacity,
+  ScrollView,
+  KeyboardAvoidingView,
+  Platform,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
-import { View as RNView } from 'react-native';
-
-let MapView: any, Marker: any, Region: any;
-MapView = ({ children, style }: any) => <RNView style={style}><Text>Map Placeholder</Text>{children}</RNView>;
-Marker = ({ children }: any) => <RNView>{children}</RNView>;
-Region = {};
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 
@@ -32,74 +26,41 @@ export default function AddAddressScreen() {
   const params = useLocalSearchParams();
   const dispatch = useDispatch();
   const user = useSelector((state: RootState) => state.auth.user);
-  const mapRef = useRef<MapView | null>(null);
 
-  // Parse coordinates passed from previous GPS trigger or default to New Delhi
-  const initialLat = params.lat ? parseFloat(params.lat as string) : 28.6139;
-  const initialLng = params.lng ? parseFloat(params.lng as string) : 77.2090;
-
-  // Coordinates State
-  const [region, setRegion] = useState<Region>({
-    latitude: initialLat,
-    longitude: initialLng,
-    latitudeDelta: 0.005,
-    longitudeDelta: 0.005,
-  });
-
-  // Form Fields State
   const [flatNo, setFlatNo] = useState('');
   const [area, setArea] = useState((params.area as string) || '');
   const [landmark, setLandmark] = useState('');
   const [pincode, setPincode] = useState((params.pincode as string) || '');
   const [city, setCity] = useState((params.city as string) || '');
   const [state, setState] = useState((params.state as string) || '');
-  
   const [name, setName] = useState(user?.name || 'John Doe');
   const [phone, setPhone] = useState(user?.mobile || '+91 9876543210');
   const [addressType, setAddressType] = useState<'Home' | 'Work' | 'Other'>('Home');
-
   const [isLocating, setIsLocating] = useState(false);
 
-  // Pre-fill and animate map when navigation parameters change (GPS source)
-  useEffect(() => {
-    if (params.lat && params.lng) {
-      const lat = parseFloat(params.lat as string);
-      const lng = parseFloat(params.lng as string);
-      
-      const newRegion = {
-        latitude: lat,
-        longitude: lng,
-        latitudeDelta: 0.004,
-        longitudeDelta: 0.004,
-      };
-      
-      setRegion(newRegion);
-      if (mapRef.current) {
-        mapRef.current.animateToRegion(newRegion, 1000);
-      }
-    }
-  }, [params.lat, params.lng]);
-
-  // Handle reverse-geocoding when map region drag finishes
-  const handleRegionChangeComplete = async (newRegion: Region) => {
-    setRegion(newRegion);
+  const handleDetectLocation = async () => {
     setIsLocating(true);
     try {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        showError('Location permission denied. Please enable it in settings.');
+        return;
+      }
+      const location = await Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.High });
       const geocodes = await Location.reverseGeocodeAsync({
-        latitude: newRegion.latitude,
-        longitude: newRegion.longitude,
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
       });
-
       if (geocodes && geocodes.length > 0) {
         const geo = geocodes[0];
-        // Update fields dynamically, but preserve user typed flat numbers!
         setArea(geo.district || geo.street || geo.subregion || '');
         setCity(geo.city || geo.subregion || '');
         setState(geo.region || '');
         setPincode(geo.postalCode || '');
+        showSuccess('Location detected successfully!');
       }
     } catch (e) {
-      console.log("Reverse geocoding skipped on drag", e);
+      showError('Failed to detect location. Please try manually.');
     } finally {
       setIsLocating(false);
     }
@@ -125,8 +86,8 @@ showInfo("Please fill in all mandatory address fields.");
       city: city.trim(),
       state: state.trim(),
       pincode: pincode.trim(),
-      latitude: region.latitude,
-      longitude: region.longitude,
+     latitude: 0,
+      longitude: 0,
     };
 
 try {
@@ -164,28 +125,32 @@ try {
         <View style={{ width: 24 }} />
       </View>
 
-      {/* Draggable Map View Container */}
-      <View style={styles.mapWrapper}>
-        <MapView
-          ref={mapRef}
-          style={styles.map}
-          initialRegion={region}
-          onRegionChangeComplete={handleRegionChangeComplete}
-          showsUserLocation={true}
-          showsMyLocationButton={false}
-        />
-        {/* Static Pin exactly in visual center representing GPS targeting */}
-        <View style={styles.markerFixed} pointerEvents="none">
-          <MaterialCommunityIcons name="map-marker" size={42} color={COLORS.primary} />
-          <View style={styles.markerShadow} />
+<View style={styles.locationButtonsRow}>
+        <TouchableOpacity
+          style={styles.locationBtn}
+          onPress={handleDetectLocation}
+          disabled={isLocating}
+        >
+          {isLocating ? (
+            <ActivityIndicator size="small" color={COLORS.primary} />
+          ) : (
+            <MaterialCommunityIcons name="crosshairs-gps" size={20} color={COLORS.primary} />
+          )}
+          <Text style={styles.locationBtnText}>
+            {isLocating ? 'Detecting...' : 'Detect Current Location'}
+          </Text>
+        </TouchableOpacity>
+
+        <View style={styles.locationDivider}>
+          <View style={styles.dividerLine} />
+          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerLine} />
         </View>
 
-        {isLocating && (
-          <View style={styles.locatingOverlay}>
-            <ActivityIndicator size="small" color={COLORS.primary} />
-            <Text style={styles.locatingText}>Pinning location...</Text>
-          </View>
-        )}
+        <TouchableOpacity style={[styles.locationBtn, styles.locationBtnSecondary]}>
+          <MaterialCommunityIcons name="pencil-outline" size={20} color="#64748B" />
+          <Text style={[styles.locationBtnText, styles.locationBtnTextSecondary]}>Enter Address Manually</Text>
+        </TouchableOpacity>
       </View>
 
       {/* Detail Forms Container */}
@@ -334,50 +299,51 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.h2,
     color: COLORS.textLight,
   },
-  mapWrapper: {
-    height: '30%',
-    width: '100%',
-    position: 'relative',
+locationButtonsRow: {
+    backgroundColor: COLORS.surface,
+    paddingHorizontal: 16,
+    paddingVertical: 16,
     borderBottomWidth: 1,
-    borderColor: COLORS.border,
+    borderBottomColor: COLORS.border,
   },
-  map: {
-    ...StyleSheet.absoluteFillObject,
-  },
-  markerFixed: {
-    position: 'absolute',
-    top: '50%',
-    left: '50%',
-    marginLeft: -21,
-    marginTop: -42,
+  locationBtn: {
+    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    backgroundColor: '#EFF6FF',
+    gap: 8,
   },
-  markerShadow: {
-    width: 10,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    marginTop: -2,
+  locationBtnSecondary: {
+    borderColor: '#CBD5E1',
+    backgroundColor: '#F8FAFC',
   },
-  locatingOverlay: {
-    position: 'absolute',
-    bottom: 12,
-    alignSelf: 'center',
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    alignItems: 'center',
-    ...SHADOWS.soft,
-    elevation: 4,
-  },
-  locatingText: {
-    ...TYPOGRAPHY.caption,
+  locationBtnText: {
+    ...TYPOGRAPHY.subtitle,
     color: COLORS.primary,
+    fontWeight: '600',
+  },
+  locationBtnTextSecondary: {
+    color: '#64748B',
+  },
+  locationDivider: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 12,
+    gap: 8,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#E2E8F0',
+  },
+  dividerText: {
+    ...TYPOGRAPHY.caption,
+    color: '#94A3B8',
     fontWeight: 'bold',
-    marginLeft: 8,
   },
   formScrollView: {
     flex: 1,
