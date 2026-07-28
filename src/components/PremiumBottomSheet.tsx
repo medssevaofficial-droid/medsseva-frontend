@@ -93,8 +93,8 @@ export const PremiumBottomSheet: React.FC<PremiumBottomSheetProps> = ({
 };
 
 const styles = StyleSheet.create({
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
+overlay: {
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheetContainer: {
