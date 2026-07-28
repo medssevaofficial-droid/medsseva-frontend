@@ -4,6 +4,7 @@ import {
   RefreshControl, StatusBar, TextInput, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
 import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
 
@@ -13,9 +14,15 @@ interface HistoryBooking {
   id: string;
   bookingCode: string;
   patientName: string;
+  patientAge?: number | null;
+  patientGender?: string | null;
+  patientMobile?: string | null;
   scheduledDate: string;
   scheduledSlot: string;
   totalPaid: number;
+  paymentStatus?: string;
+  paymentMode?: string | null;
+  collectionMode?: string;
   status: string;
   completedAt?: string;
   rejectedAt?: string;
@@ -24,8 +31,8 @@ interface HistoryBooking {
   tests?: { name: string }[];
   packages?: { name: string }[];
 }
-
 export default function PartnerHistoryScreen() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<TabType>('Completed');
   const [search, setSearch] = useState('');
   const [bookings, setBookings] = useState<HistoryBooking[]>([]);
@@ -134,7 +141,7 @@ export default function PartnerHistoryScreen() {
           </Text>
         </View>
       )}
-      <TouchableOpacity style={styles.detailsBtn}>
+<TouchableOpacity style={styles.detailsBtn} onPress={() => router.push({ pathname: '/(partner)/booking-detail', params: { bookingData: JSON.stringify(item) } })}>
         <Text style={styles.detailsBtnText}>Details</Text>
         <MaterialCommunityIcons name="chevron-right" size={16} color={COLORS.primary} />
       </TouchableOpacity>
@@ -144,15 +151,6 @@ export default function PartnerHistoryScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-      <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <MaterialCommunityIcons name="plus-box-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.logoText}>MedsSeva</Text>
-        </View>
-        <TouchableOpacity style={styles.notifBtn}>
-          <MaterialCommunityIcons name="bell-outline" size={22} color="#475569" />
-        </TouchableOpacity>
-      </View>
 
       <View style={styles.searchWrap}>
         <MaterialCommunityIcons name="magnify" size={18} color="#94A3B8" />
@@ -198,20 +196,10 @@ export default function PartnerHistoryScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
-  },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoText: { fontSize: 16, fontWeight: '800', color: COLORS.primary },
-  notifBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#F8FAFC',
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0',
-  },
-  searchWrap: {
+
+searchWrap: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff',
-    marginHorizontal: 16, marginTop: 16, borderRadius: 12,
+    marginHorizontal: 16, marginTop: 52, borderRadius: 12,
     borderWidth: 1, borderColor: '#E2E8F0', paddingHorizontal: 14, height: 46, gap: 10,
   },
   searchInput: { flex: 1, fontSize: 14, color: '#0F172A' },

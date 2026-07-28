@@ -94,7 +94,7 @@ if (s === 'CONFIRMED') {
       return { color: COLORS.primary, icon: 'check-decagram-outline', text: 'Accepted — Visit the lab at your scheduled slot' };
     }
  if (s === 'PATIENT_REACHED_LAB' && liveBooking?.paymentStatus !== 'SUCCESS') {
-      return { color: '#7C3AED', icon: 'map-marker-check', text: 'You have reached the lab — Please complete payment at the counter' };
+      return { color: '#7C3AED', icon: 'map-marker-check', text: 'You have reached the lab, Please complete payment at the counter' };
     }
     if (s === 'PATIENT_REACHED_LAB' && liveBooking?.paymentStatus === 'SUCCESS') {
       return { color: '#059669', icon: 'credit-card-check-outline', text: 'Payment received — Waiting for sample collection' };

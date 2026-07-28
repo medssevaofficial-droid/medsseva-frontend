@@ -18,6 +18,7 @@ interface BookingState {
   patientDetails: PatientDetails | null;
   paymentMethod: string | null;
   collectionMode: 'home' | 'lab';
+  appliedCouponCode: string | null;
   bookings: any[];
   pastBookings: any[];
   bookingsLastFetched: number | null;
@@ -33,6 +34,7 @@ const initialState: BookingState = {
   patientDetails: null,
   paymentMethod: null,
   collectionMode: 'home',
+  appliedCouponCode: null,
   bookings: [],
   pastBookings: [],
   bookingsLastFetched: null,
@@ -59,8 +61,11 @@ const bookingSlice = createSlice({
     setPatientDetails: (state, action: PayloadAction<PatientDetails>) => {
       state.patientDetails = action.payload;
     },
-    setPaymentMethod: (state, action: PayloadAction<string>) => {
+   setPaymentMethod: (state, action: PayloadAction<string>) => {
       state.paymentMethod = action.payload;
+    },
+    setAppliedCouponCode: (state, action: PayloadAction<string | null>) => {
+      state.appliedCouponCode = action.payload;
     },
 finalizeBooking: (state, action: PayloadAction<any>) => {
       state.pastBookings.unshift(action.payload);
@@ -72,11 +77,12 @@ finalizeBooking: (state, action: PayloadAction<any>) => {
       state.selectedTimeSlot = null;
       state.patientDetails = null;
       state.paymentMethod = null;
-      state.collectionMode = 'home';
+   state.collectionMode = 'home';
+      state.appliedCouponCode = null;
       state.selectedBranchId = null;
       state.selectedBranchName = null;
     },
-    setBookings: (state, action: PayloadAction<any[]>) => {
+    setBookings:(state, action: PayloadAction<any[]>) => {
       state.bookings = action.payload;
       state.bookingsLastFetched = Date.now();
     },
@@ -90,7 +96,8 @@ clearBookingFlow: (state) => {
       state.selectedTimeSlot = null;
       state.patientDetails = null;
       state.paymentMethod = null;
-      state.collectionMode = 'home';
+     state.collectionMode = 'home';
+      state.appliedCouponCode = null;
       state.selectedBranchId = null;
       state.selectedBranchName = null;
       state.bookings = [];
@@ -107,6 +114,7 @@ export const {
   setSlot, 
   setPatientDetails, 
   setPaymentMethod,
+  setAppliedCouponCode,
   setCollectionMode,
   finalizeBooking,
   setBookings,

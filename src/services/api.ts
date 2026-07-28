@@ -54,15 +54,36 @@ export const apiService = {
   getAllPackages: () => api.get('/packages').then(res => res.data),
   getTestById: (id: string) => api.get(`/tests/${id}`).then(res => res.data),
   createBooking: (data: any) => api.post('/bookings', data).then(res => res.data),
-createRazorpayOrder: (amount: number) => api.post('/bookings/razorpay/create-order', { amount }).then(res => res.data),
-  getRazorpayConfig: () => api.get('/finance/config').then(res => res.data),
+createPaymentOrder: (data: {
+    testIds: string[];
+    packageIds: string[];
+    collectionMode: string;
+    couponCode?: string;
+    scheduledDate?: string;
+    scheduledSlot?: string;
+    patientName?: string;
+    patientAge?: number;
+    patientGender?: string;
+    mobile?: string;
+    addressId?: string;
+    branchId?: string;
+  }) => api.post('/payments/create-order', data).then(res => res.data),
+  verifyPayment: (data: { razorpay_order_id: string; razorpay_payment_id: string; razorpay_signature: string; bookingId: string }) =>
+    api.post('/bookings/verify-payment', data).then(res => res.data),
+  getPricingPreview: (data: { testIds: string[]; packageIds: string[]; collectionMode: string; couponCode?: string }) =>
+    api.post('/payments/pricing-preview', data).then(res => res.data),
+  getInvoice: (bookingId: string) => api.get(`/payments/invoice/${bookingId}`).then(res => res.data),
   login: (data: any) => api.post('/auth/login', data).then(res => res.data),
   register: (data: any) => api.post('/auth/register', data).then(res => res.data),
 checkMobile: (mobile: string) => api.get(`/auth/check-mobile?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
-  sendOtp: (mobile: string) => api.post('/auth/otp/send', { mobile }).then(res => res.data),
+sendOtp: (mobile: string) => api.post('/auth/otp/send', { mobile }).then(res => res.data),
   verifyOtp: (mobile: string, otp: string) => api.post('/auth/otp/verify', { mobile, otp }).then(res => res.data),
   loginWithOtp: (mobile: string, otp: string) => api.post('/auth/otp/login', { mobile, otp }).then(res => res.data),
-  resetPassword: (mobile: string, password: string) => api.post('/auth/reset-password', { mobile, password }).then(res => res.data),
+  sendEmailOtp: (email: string) => api.post('/auth/email/send-otp', { email }).then(res => res.data),
+  verifyEmailOtp: (email: string, otp: string) => api.post('/auth/email/verify-otp', { email, otp }).then(res => res.data),
+  sendForgotPasswordOtp: (email: string) => api.post('/auth/email/forgot-password', { email }).then(res => res.data),
+  verifyForgotPasswordOtp: (email: string, otp: string) => api.post('/auth/email/verify-reset-otp', { email, otp }).then(res => res.data),
+  resetPassword: (email: string, password: string) => api.post('/auth/reset-password', { email, password }).then(res => res.data),
   getAddresses: (mobile: string) => api.get(`/addresses?mobile=${encodeURIComponent(mobile)}`).then(res => res.data),
   addAddress: (data: any) => api.post('/addresses', data).then(res => res.data),
   removeAddress: (id: string) => api.delete(`/addresses/${id}`).then(res => res.data),

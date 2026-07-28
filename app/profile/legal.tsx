@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   ScrollView,
   Platform,
-  Linking,
 } from 'react-native';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -60,25 +59,25 @@ export default function LegalScreen() {
         </View>
 
 <View style={styles.group}>
-          <LegalRow
+ <LegalRow
             icon="file-document-outline"
             label="Terms & Conditions"
             subtitle="Rules and guidelines for using MedsSeva"
-            onPress={() => Linking.openURL('https://medsseva-app.onrender.com/terms')}
+            onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}
           />
           <View style={styles.divider} />
           <LegalRow
             icon="shield-check-outline"
             label="Privacy Policy"
             subtitle="How we manage and protect your data"
-            onPress={() => Linking.openURL('https://medsseva-app.onrender.com/privacy')}
+            onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'privacy' } })}
           />
           <View style={styles.divider} />
           <LegalRow
             icon="information-outline"
             label="About Us"
             subtitle="Our mission and healthcare commitment"
-            onPress={() => Linking.openURL('https://medsseva-app.onrender.com/about')}
+            onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'about' } })}
           />
         </View>
 

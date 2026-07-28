@@ -26,7 +26,8 @@ export default function OTPScreen() {
   const [isSending, setIsSending] = useState(false);
   const [countdown, setCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
-  const [otpError, setOtpError] = useState('');
+const [otpError, setOtpError] = useState('');
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const inputRefs = useRef<Array<TextInput | null>>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -55,18 +56,19 @@ export default function OTPScreen() {
 
   const handleSendOtp = async () => {
     if (mobileNumber.length !== 10) return;
-    setIsSending(true);
+ setIsSending(true);
+    setServerError(null);
     try {
       const result = await apiService.checkMobile(mobileNumber);
       if (!result.exists) {
-        showError('This mobile number is not registered.');
+        setServerError('This mobile number is not registered.');
         setIsSending(false);
         return;
       }
       await apiService.sendOtp(mobileNumber);
       setStep('otp');
     } catch {
-      showError('Failed to send OTP. Please try again.');
+      setServerError('Failed to send OTP. Please try again.');
     } finally {
       setIsSending(false);
     }
@@ -170,6 +172,13 @@ export default function OTPScreen() {
                 )}
               </View>
 
+          {serverError && (
+                <View style={styles.serverErrorBox}>
+                  <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#EF4444" />
+                  <Text style={styles.serverErrorText}>{serverError}</Text>
+                </View>
+              )}
+
               <TouchableOpacity
                 style={[styles.primaryBtn, mobileNumber.length !== 10 && styles.btnDisabled]}
                 onPress={handleSendOtp}
@@ -259,10 +268,10 @@ const styles = StyleSheet.create({
   maskedNum: { color: '#0F172A', fontWeight: '600' },
   changeLink: { color: PRIMARY, fontWeight: '700', fontSize: 14 },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: '#334155', marginBottom: 8 },
-  mobileInputWrap: {
+mobileInputWrap: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
     borderRadius: 14, borderWidth: 1.5, borderColor: '#E2E8F0',
-    height: 56, paddingHorizontal: 14, marginBottom: 28,
+    height: 56, paddingHorizontal: 14, marginBottom: 12,
   },
   countryCode: { borderRightWidth: 1.5, borderColor: '#E2E8F0', paddingRight: 12, marginRight: 12 },
   countryCodeText: { fontSize: 15, fontWeight: '700', color: '#475569' },
@@ -286,7 +295,13 @@ const styles = StyleSheet.create({
   },
   btnDisabled: { opacity: 0.5, backgroundColor: '#94A3B8', shadowOpacity: 0 },
   primaryBtnText: { fontSize: 16, fontWeight: '700', color: '#fff' },
-  otpError: { fontSize: 13, color: '#EF4444', marginBottom: 12, marginLeft: 4 },
+otpError: { fontSize: 13, color: '#EF4444', marginBottom: 12, marginLeft: 4 },
+  serverErrorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#FECACA', width: '100%', marginBottom: 16,
+  },
+  serverErrorText: { fontSize: 13, color: '#EF4444', fontWeight: '600', flex: 1 },
   registerRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 8 },
   registerText: { fontSize: 13, color: '#64748B' },
   registerLink: { fontSize: 13, fontWeight: '700', color: PRIMARY },

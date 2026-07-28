@@ -4,6 +4,7 @@ import {
   RefreshControl, StatusBar, Switch, ActivityIndicator
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
+import { Image } from 'expo-image';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
 import { RootState } from '../../src/store';
@@ -163,8 +164,18 @@ const handleDecline = (bookingId: string) => {
       {/* Header */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <View style={styles.avatarCircle}>
-            <MaterialCommunityIcons name="account" size={22} color={COLORS.primary} />
+      <View style={styles.avatarCircle}>
+            {user?.avatarUrl ? (
+              <Image
+                source={{ uri: user.avatarUrl }}
+                style={styles.avatarImage}
+                contentFit="cover"
+               cachePolicy="none"
+                transition={200}
+              />
+            ) : (
+              <MaterialCommunityIcons name="account" size={22} color={COLORS.primary} />
+            )}
           </View>
           <View>
             <Text style={styles.helloText}>Hello, Partner</Text>
@@ -306,11 +317,12 @@ const styles = StyleSheet.create({
     backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  avatarCircle: {
+avatarCircle: {
     width: 44, height: 44, borderRadius: 22, backgroundColor: '#F0FDFA',
     justifyContent: 'center', alignItems: 'center',
-    borderWidth: 1, borderColor: '#CCFBF1',
+    borderWidth: 1, borderColor: '#CCFBF1', overflow: 'hidden',
   },
+  avatarImage: { width: 44, height: 44, borderRadius: 22 },
   helloText: { fontSize: 12, color: '#64748B' },
   partnerName: { fontSize: 16, fontWeight: '800', color: '#0F172A' },
   headerRight: { flexDirection: 'row', alignItems: 'center', gap: 12 },

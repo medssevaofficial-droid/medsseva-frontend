@@ -38,34 +38,42 @@ const isLabVisit = booking.collectionMode === 'lab';
 const [isRazorpayVisible, setIsRazorpayVisible] = useState(false);
   const [razorpayOrderId, setRazorpayOrderId] = useState<string>('');
   const [razorpayKeyId, setRazorpayKeyId] = useState<string>('');
+  const [razorpayAmount, setRazorpayAmount] = useState<number>(0);
 
 const processBackendBooking = async (paymentData?: any) => {
     setIsProcessing(true);
-   try {
-      console.log('[PAYMENT DEBUG] booking state:', JSON.stringify(booking));
-const payload = {
-        tests: cart.items,
-        scheduledDate: booking.selectedDate,
-        scheduledSlot: booking.selectedTimeSlot,
-        totalPaid: cart.finalAmount,
-        patientName: booking.patientDetails?.name || 'Guest User',
-        patientAge: booking.patientDetails?.age ? Number(booking.patientDetails.age) : undefined,
-        patientGender: booking.patientDetails?.gender || undefined,
-        mobile: booking.patientDetails?.mobile || undefined,
-        addressId: booking.selectedAddressId,
-        branchId: isLabVisit ? branchId : undefined,
-        collectionMode: booking.collectionMode,
-        paymentMethod: selectedMethod,
-        razorpay_payment_id: paymentData?.razorpay_payment_id,
-        razorpay_order_id: paymentData?.razorpay_order_id,
-        razorpay_signature: paymentData?.razorpay_signature,
-      };
-      
-      const response = await apiService.createBooking(payload);
+    try {
+      let response: any;
+
+      if (paymentData?.razorpay_payment_id) {
+        response = await apiService.verifyPayment({
+          razorpay_order_id: paymentData.razorpay_order_id,
+          razorpay_payment_id: paymentData.razorpay_payment_id,
+          razorpay_signature: paymentData.razorpay_signature,
+          bookingId: '',
+        });
+      } else {
+        const payload = {
+          testIds: cart.items.filter(i => i.itemType === 'test').map(i => i.id),
+          packageIds: cart.items.filter(i => i.itemType === 'package').map(i => i.id),
+          scheduledDate: booking.selectedDate,
+          scheduledSlot: booking.selectedTimeSlot,
+          patientName: booking.patientDetails?.name || 'Guest User',
+          patientAge: booking.patientDetails?.age ? Number(booking.patientDetails.age) : undefined,
+          patientGender: booking.patientDetails?.gender || undefined,
+          mobile: booking.patientDetails?.mobile || undefined,
+          addressId: booking.selectedAddressId,
+          branchId: isLabVisit ? branchId : undefined,
+          collectionMode: booking.collectionMode,
+          paymentMethod: selectedMethod,
+          couponCode: booking.appliedCouponCode || undefined,
+        };
+        response = await apiService.createBooking(payload);
+      }
 
       setIsProcessing(false);
-      
-const newBooking = {
+
+      const newBooking = {
         id: response.id,
         bookingCode: response.bookingCode,
         date: booking.selectedDate,
@@ -73,51 +81,55 @@ const newBooking = {
         status: response.status || 'PENDING',
         collectionMode: booking.collectionMode,
         tests: cart.items,
-        total: cart.finalAmount,
+        total: response.totalPaid,
         patientName: booking.patientDetails?.name,
         paymentMethod: selectedMethod,
       };
+
       dispatch(setPaymentMethod(selectedMethod as string));
       dispatch(finalizeBooking(newBooking));
       dispatch(clearCart());
-      
       router.replace('/checkout/success');
     } catch (err: any) {
       setIsProcessing(false);
-      const errorMessage = err.response?.data?.error || err.message || "Network Error";
-     showError(`Booking Failed: ${errorMessage}`);
+      const errorMessage = err.response?.data?.error || err.message || 'Network Error';
+      showError(`Booking Failed: ${errorMessage}`);
     }
   };
 
 const handlePayNow = async () => {
     if (!selectedMethod) return;
 
-    // Cash at home or lab walk-in: create booking, no online payment
     if (selectedMethod === 'cash' || selectedMethod === 'lab_walkin') {
       processBackendBooking();
     } else {
-      // UPI / online: go through Razorpay
       setIsProcessing(true);
-try {
-        console.log('[PAY] calling createRazorpayOrder with amount:', cart.finalAmount);
-        const [order, config] = await Promise.all([
-          apiService.createRazorpayOrder(cart.finalAmount),
-          apiService.getRazorpayConfig(),
-        ]);
-        console.log('[PAY] order response:', JSON.stringify(order));
-        console.log('[PAY] config response:', JSON.stringify(config));
-        setRazorpayOrderId(order.id);
-        setRazorpayKeyId(config.keyId);
+      try {
+        const order = await apiService.createPaymentOrder({
+          testIds: cart.items.filter(i => i.itemType === 'test').map(i => i.id),
+          packageIds: cart.items.filter(i => i.itemType === 'package').map(i => i.id),
+          collectionMode: isLabVisit ? 'lab' : 'home',
+          couponCode: booking.appliedCouponCode || undefined,
+         scheduledDate: booking.selectedDate ?? undefined,
+          scheduledSlot: booking.selectedTimeSlot ?? undefined,
+          patientName: booking.patientDetails?.name || 'Guest User',
+          patientAge: booking.patientDetails?.age ? Number(booking.patientDetails.age) : undefined,
+          patientGender: booking.patientDetails?.gender || undefined,
+          mobile: booking.patientDetails?.mobile || undefined,
+          addressId: booking.selectedAddressId ?? undefined,
+          branchId: (isLabVisit ? branchId : undefined) ?? undefined,
+        });
+        setRazorpayOrderId(order.razorpayOrderId);
+        setRazorpayKeyId(order.keyId);
+        setRazorpayAmount(Math.round(order.amount * 100));
         setIsProcessing(false);
         setIsRazorpayVisible(true);
-} catch (error: any) {
+      } catch (error: any) {
         setIsProcessing(false);
-        console.log('[PAY ERROR]', JSON.stringify(error?.response?.data), error?.message, error?.code);
         showError('Could not connect to payment server. Please try again.');
       }
     }
   };
-
   return (
     <View style={styles.container}>
       {/* Header */}
@@ -138,10 +150,12 @@ try {
             <Text style={styles.summaryLabel}>Total Tests</Text>
             <Text style={styles.summaryValue}>{cart.items.length}</Text>
           </View>
-          <View style={styles.summaryRow}>
+     <View style={styles.summaryRow}>
             <Text style={styles.summaryLabel}>Amount to Pay</Text>
-            <Text style={[styles.summaryValue, styles.amountHighlight]}>₹{cart.finalAmount}</Text>
           </View>
+          <Text style={styles.amountHelperText}>
+            Amount will be calculated at checkout.
+          </Text>
         </View>
 
       <Text style={styles.sectionTitle}>
@@ -209,12 +223,12 @@ try {
           disabled={!selectedMethod}
           onPress={handlePayNow}
         >
-          <Text style={styles.payBtnText}>
+       <Text style={styles.payBtnText}>
             {isLabVisit
               ? 'Confirm Booking'
               : selectedMethod === 'cash'
               ? 'Confirm (Pay at Home)'
-              : `Pay ₹${cart.finalAmount}`}
+              : 'Pay Now'}
           </Text>
         </TouchableOpacity>
       </View>
@@ -231,12 +245,12 @@ try {
       )}
 
      
-    <RazorpayWebView
+<RazorpayWebView
         isVisible={isRazorpayVisible}
         options={{
           key: razorpayKeyId,
           order_id: razorpayOrderId,
-          amount: cart.finalAmount * 100,
+          amount: razorpayAmount,
           currency: 'INR',
           name: 'MedsSeva',
           description: 'Checkout Booking',
@@ -313,9 +327,16 @@ const styles = StyleSheet.create({
     color: COLORS.textDark,
     fontWeight: 'bold',
   },
-  amountHighlight: {
-    ...TYPOGRAPHY.h2,
+amountHighlight: {
+    ...TYPOGRAPHY.body,
     color: COLORS.primary,
+    fontWeight: '600',
+  },
+  amountHelperText: {
+    fontSize: 12,
+    color: '#94A3B8',
+    marginTop: 2,
+    marginBottom: 4,
   },
   sectionTitle: {
     ...TYPOGRAPHY.h3,

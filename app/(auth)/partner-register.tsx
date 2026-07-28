@@ -16,6 +16,7 @@ export default function PartnerRegisterScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [otpStep, setOtpStep] = useState(false);
   const [otp, setOtp] = useState(['', '', '', '']);
+  const [serverError, setServerError] = useState<string | null>(null);
 const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [locationLoading, setLocationLoading] = useState(false);
   const [agreedToTerms, setAgreedToTerms] = useState(false);
@@ -68,26 +69,26 @@ const otpRefs = React.useRef<(TextInput | null)[]>([]);
     }
   };
 
-  const validateAndSendOtp = () => {
+const validateAndSendOtp = () => {
+    setServerError(null);
     if (!form.name || !form.mobile || !form.password || !form.labName || !form.role) {
-    showInfo('Please fill all required fields.');
+      setServerError('Please fill all required fields.');
       return;
     }
     if (form.mobile.length !== 10) {
-    showError('Enter a valid 10-digit mobile number.');
+      setServerError('Enter a valid 10-digit mobile number.');
       return;
     }
- if (form.password !== form.confirmPassword) {
-      showError('Passwords do not match.');
+    if (form.password !== form.confirmPassword) {
+      setServerError('Passwords do not match.');
       return;
     }
     if (!agreedToTerms) {
-      showError('Please accept the Terms of Service and Privacy Policy to continue.');
+      setServerError('Please accept the Terms of Service and Privacy Policy to continue.');
       return;
     }
     setOtpStep(true);
   };
-
   const handleVerifyAndSubmit = async () => {
     const otpVal = otp.join('');
     if (otpVal !== '1234') {
@@ -103,9 +104,9 @@ const otpRefs = React.useRef<(TextInput | null)[]>([]);
         city: form.city || undefined, branch: form.branch || undefined,
         address: form.address || undefined,
       });
-      router.replace('/(auth)/partner-pending');
+    router.replace('/(auth)/partner-pending');
     } catch (error: any) {
-     showError(error.response?.data?.error || 'Please try again.');
+      setServerError(error.response?.data?.error || 'Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -324,6 +325,13 @@ const otpRefs = React.useRef<(TextInput | null)[]>([]);
             </Text>
           </Text>
         </TouchableOpacity>
+  {serverError && (
+            <View style={styles.serverErrorBox}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#EF4444" />
+              <Text style={styles.serverErrorText}>{serverError}</Text>
+            </View>
+          )}
+
       <TouchableOpacity style={styles.submitBtn} onPress={validateAndSendOtp}>
           <Text style={styles.submitBtnText}>Continue</Text>
           <MaterialCommunityIcons name="arrow-right" size={18} color="#fff" style={{ marginLeft: 8 }} />
@@ -412,7 +420,13 @@ checkboxRow: {
     backgroundColor: '#F8FAFC', textAlign: 'center', fontSize: 22, fontWeight: '700', color: '#0F172A',
   },
   otpBoxFilled: { borderColor: COLORS.primary, backgroundColor: '#F0FDFA' },
- otpHint: { fontSize: 12, color: '#94A3B8', marginBottom: 32 },
+otpHint: { fontSize: 12, color: '#94A3B8', marginBottom: 32 },
+  serverErrorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#FECACA', width: '100%', marginBottom: 16,
+  },
+  serverErrorText: { fontSize: 13, color: '#EF4444', fontWeight: '600', flex: 1 },
   signInRow: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center', marginTop: 20 },
   signInText: { fontSize: 14, color: '#64748B' },
 signInLink: { fontSize: 14, fontWeight: '800', color: COLORS.primary },

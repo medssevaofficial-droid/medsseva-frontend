@@ -229,7 +229,7 @@ return (
                     keyboardType="numeric"
                     maxLength={3}
                     value={age}
-                    onChangeText={dobExists ? undefined : setAge}
+                onChangeText={setAge}
                     editable={!dobExists}
                     onFocus={() => !dobExists && setFocusedInput('age')}
                     onBlur={() => setFocusedInput(null)}

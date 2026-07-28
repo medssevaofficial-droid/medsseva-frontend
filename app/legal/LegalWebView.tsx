@@ -12,20 +12,21 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { WebView } from "react-native-webview";
 
-type LegalType = "terms" | "privacy" | "copyright";
+type LegalType = "terms" | "privacy" | "copyright" | "about";
 
 const LEGAL_URLS: Record<LegalType, string> = {
   terms: "https://medsseva.com/terms-of-service.html",
   privacy: "https://medsseva.com/privacy-policy.html",
   copyright: "https://medsseva.com/copyright.html",
+  about: "https://medsseva.com/aboutus.html",
 };
 
 const LEGAL_TITLES: Record<LegalType, string> = {
   terms: "Terms of Service",
   privacy: "Privacy Policy",
   copyright: "Copyright",
+  about: "About Us",
 };
-
 const INJECTED_CSS = `
   (function() {
     const style = document.createElement('style');
@@ -43,10 +44,9 @@ const INJECTED_CSS = `
 
 function resolveType(raw: string | string[] | undefined): LegalType {
   const val = Array.isArray(raw) ? raw[0] : raw;
-  if (val === "privacy" || val === "copyright") return val;
+  if (val === "privacy" || val === "copyright" || val === "about") return val;
   return "terms";
 }
-
 export default function LegalWebView() {
   const { type: rawType } = useLocalSearchParams<{ type: string }>();
   const type = resolveType(rawType);

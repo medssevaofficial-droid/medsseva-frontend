@@ -313,13 +313,8 @@ const handleReject = (bookingId: string) => {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
       <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <MaterialCommunityIcons name="plus-box-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.logoText}>MedsSeva</Text>
-        </View>
-        <TouchableOpacity style={styles.notifBtn}>
-          <MaterialCommunityIcons name="bell-outline" size={22} color="#475569" />
-        </TouchableOpacity>
+  
+       <View />
       </View>
 
     <ConfirmSheet
@@ -338,10 +333,13 @@ const handleReject = (bookingId: string) => {
         renderItem={renderBooking}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
         contentContainerStyle={styles.listContent}
-        ListEmptyComponent={
+   ListEmptyComponent={
           <View style={styles.emptyContainer}>
-            <MaterialCommunityIcons name="calendar-blank-outline" size={48} color="#CBD5E1" />
+            <View style={styles.emptyIconWrapper}>
+              <MaterialCommunityIcons name="calendar-blank-outline" size={56} color="#CBD5E1" />
+            </View>
             <Text style={styles.emptyText}>No active bookings</Text>
+            <Text style={styles.emptySubText}>New bookings assigned to you will appear here</Text>
           </View>
         }
       />
@@ -357,12 +355,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
     backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoText: { fontSize: 16, fontWeight: '800', color: COLORS.primary },
-  notifBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#F8FAFC',
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0',
-  },
+
+
   listContent: { padding: 16, paddingBottom: 40 },
   card: {
     backgroundColor: '#fff', borderRadius: 18, padding: 18,
@@ -419,6 +413,22 @@ const styles = StyleSheet.create({
     justifyContent: 'center', alignItems: 'center',
   },
   statusUpdateBtnText: { fontSize: 14, fontWeight: '800', color: '#fff' },
-  emptyContainer: { alignItems: 'center', paddingTop: 80 },
-  emptyText: { fontSize: 16, fontWeight: '600', color: '#94A3B8', marginTop: 16 },
+emptyContainer: {
+    flex: 1,
+    minHeight: 500,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyIconWrapper: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  emptyText: { fontSize: 17, fontWeight: '700', color: '#64748B', marginBottom: 8, textAlign: 'center' },
+  emptySubText: { fontSize: 13, fontWeight: '400', color: '#94A3B8', textAlign: 'center', lineHeight: 20 },
 });

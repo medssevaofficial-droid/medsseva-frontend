@@ -65,8 +65,12 @@ export default function PartnerLayout() {
           ),
         }}
       />
-   <Tabs.Screen
+<Tabs.Screen
         name="collect"
+        options={{ href: null }}
+      />
+      <Tabs.Screen
+        name="booking-detail"
         options={{ href: null }}
       />
     <Tabs.Screen

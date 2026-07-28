@@ -194,15 +194,7 @@ export default function PartnerProfileScreen() {
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-      <View style={styles.header}>
-        <View style={styles.logoRow}>
-          <MaterialCommunityIcons name="plus-box-outline" size={20} color={COLORS.primary} />
-          <Text style={styles.logoText}>MedsSeva</Text>
-        </View>
-        <TouchableOpacity style={styles.notifBtn}>
-          <MaterialCommunityIcons name="bell-outline" size={22} color="#475569" />
-        </TouchableOpacity>
-      </View>
+   <View style={styles.header} />
 
       <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
         <View style={styles.profileCard}>
@@ -324,12 +316,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20, paddingTop: 52, paddingBottom: 16,
     backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
   },
-  logoRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  logoText: { fontSize: 16, fontWeight: '800', color: COLORS.primary },
-  notifBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#F8FAFC',
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0',
-  },
+
   content: { padding: 16, paddingBottom: 40 },
   profileCard: {
     backgroundColor: '#fff', borderRadius: 20, padding: 24, alignItems: 'center',

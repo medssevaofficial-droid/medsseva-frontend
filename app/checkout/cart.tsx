@@ -8,7 +8,7 @@ import { Sparkles } from 'lucide-react-native';
 
 import { RootState } from '../../src/store';
 import { removeFromCart, updateQuantity } from '../../src/store/slices/cartSlice';
-import { setCollectionMode } from '../../src/store/slices/bookingSlice';
+import { setCollectionMode, setAppliedCouponCode } from '../../src/store/slices/bookingSlice';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { PremiumBottomSheet } from '../../src/components/PremiumBottomSheet';
 import { PremiumScratchModal } from '../../src/components/PremiumScratchModal';
@@ -32,21 +32,42 @@ const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; val: number; 
 
 const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
   const packageIds = cart.items.filter(i => i.itemType === 'package').map(i => i.id);
-  const baseCartTotal = cart.finalAmount;
 
-  const handleApplyCoupon = async (code: string) => {
+  const [pricing, setPricing] = useState<any>(null);
+  const [pricingLoading, setPricingLoading] = useState(false);
+
+  const fetchPricing = React.useCallback(async (coupon?: string) => {
+    if (cart.items.length === 0) return;
+    setPricingLoading(true);
+    try {
+      const { apiService } = await import('../../src/services/api');
+      const result = await apiService.getPricingPreview({
+        testIds,
+        packageIds,
+        collectionMode: visitMode === 'home' ? 'HOME' : 'LAB',
+        couponCode: coupon,
+      });
+      setPricing(result.pricing);
+    } catch {
+      setPricing(null);
+    } finally {
+      setPricingLoading(false);
+    }
+  }, [testIds.join(','), packageIds.join(','), visitMode]);
+
+  React.useEffect(() => {
+    fetchPricing(appliedCoupon?.code);
+  }, [fetchPricing]);
+
+const handleApplyCoupon = async (code: string) => {
     if (!code.trim()) return;
     setCouponLoading(true);
     setCouponError('');
     try {
-      const result = await couponApiService.validate({
-        code: code.trim().toUpperCase(),
-        cartTotal: baseCartTotal,
-        testIds,
-        packageIds,
-        collectionMode: visitMode === 'home' ? 'HOME' : 'LAB',
-      });
-      setAppliedCoupon({ code: result.code, val: result.discount, couponId: result.couponId });
+      await fetchPricing(code.trim().toUpperCase());
+      const upper = code.trim().toUpperCase();
+      setAppliedCoupon({ code: upper, val: 0, couponId: '' });
+      dispatch(setAppliedCouponCode(upper));
       setCouponInput('');
       setCouponSheetOpen(false);
     } catch (err: any) {
@@ -55,16 +76,7 @@ const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
       setCouponLoading(false);
     }
   };
-
-  // Dynamic offsets
-  const hasHomeCollection = cart.items.some(i => i.homeCollection);
-  const appliedCollectionCharge = (visitMode === 'home' && hasHomeCollection) ? cart.homeCollectionCharge : 0;
-  const collectionChargeDifference = (visitMode === 'center' && hasHomeCollection) ? cart.homeCollectionCharge : 0;
-  
-  // Final Calculation factoring Collection Charge + Reward Discount!
-  const couponDiscount = appliedCoupon ? appliedCoupon.val : 0;
-  const baseFinal = cart.finalAmount - collectionChargeDifference;
-  const calculatedFinalAmount = Math.max(0, baseFinal - couponDiscount);
+  const calculatedFinalAmount = pricing?.finalAmount ?? 0;
 
   if (cart.items.length === 0) {
     return (
@@ -176,8 +188,12 @@ const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
               </Text>
             </View>
           </TouchableOpacity>
-          {appliedCoupon ? (
-            <TouchableOpacity onPress={() => setAppliedCoupon(null)} style={styles.couponRemoveBtn}>
+        {appliedCoupon ? (
+            <TouchableOpacity onPress={() => {
+              setAppliedCoupon(null);
+              dispatch(setAppliedCouponCode(null));
+              fetchPricing(undefined);
+            }} style={styles.couponRemoveBtn}>
               <Text style={styles.removeCouponText}>Remove</Text>
             </TouchableOpacity>
           ) : (
@@ -190,30 +206,36 @@ const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
         {/* Bill Details */}
         <View style={styles.billContainer}>
           <Text style={styles.billTitle}>Bill Details</Text>
-          <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Item Total</Text>
-            <Text style={styles.billValue}>₹{cart.totalPrice}</Text>
-          </View>
-          <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Discount</Text>
-            <Text style={[styles.billValue, { color: COLORS.success }]}>- ₹{cart.totalDiscount}</Text>
-          </View>
-          {couponDiscount > 0 && (
-            <View style={styles.billRow}>
-              <Text style={styles.billLabel}>Coupon Reward</Text>
-              <Text style={[styles.billValue, { color: COLORS.success }]}>- ₹{couponDiscount}</Text>
-            </View>
-          )}
-          <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Home Collection Charge</Text>
-            <Text style={styles.billValue}>
-              ₹{appliedCollectionCharge}
-            </Text>
-          </View>
-         <View style={styles.billRow}>
-            <Text style={styles.billLabel}>Taxes (18% GST)</Text>
-            <Text style={styles.billValue}>₹{Math.round((cart.totalPrice - cart.totalDiscount) * 0.18)}</Text>
-          </View>
+  {pricingLoading ? (
+            <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 12 }} />
+          ) : pricing ? (
+            <>
+              <View style={styles.billRow}>
+                <Text style={styles.billLabel}>Item Total</Text>
+                <Text style={styles.billValue}>₹{pricing.subtotal}</Text>
+              </View>
+              <View style={styles.billRow}>
+                <Text style={styles.billLabel}>Discount</Text>
+                <Text style={[styles.billValue, { color: COLORS.success }]}>- ₹{pricing.testDiscount}</Text>
+              </View>
+              {pricing.couponDiscount > 0 && (
+                <View style={styles.billRow}>
+                  <Text style={styles.billLabel}>Coupon ({pricing.couponCode})</Text>
+                  <Text style={[styles.billValue, { color: COLORS.success }]}>- ₹{pricing.couponDiscount}</Text>
+                </View>
+              )}
+              {pricing.collectionCharge > 0 && (
+                <View style={styles.billRow}>
+                  <Text style={styles.billLabel}>Home Collection Charge</Text>
+                  <Text style={styles.billValue}>₹{pricing.collectionCharge}</Text>
+                </View>
+              )}
+              <View style={styles.billRow}>
+                <Text style={styles.billLabel}>Taxes (18% GST)</Text>
+                <Text style={styles.billValue}>₹{pricing.gst}</Text>
+              </View>
+            </>
+          ) : null}
           <View style={styles.divider} />
           <View style={styles.billRow}>
             <Text style={styles.billTotalLabel}>To Pay</Text>
@@ -313,10 +335,12 @@ const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
       <PremiumScratchModal
         visible={isScratchOpen}
         onClose={() => setScratchOpen(false)}
-       onApplyReward={(code, val) => {
+  onApplyReward={(code, val) => {
           setAppliedCoupon({ code, val, couponId: '' });
-        showSuccess(`Congratulations! You successfully scratched and applied ${code} to save ₹${val}!`);
-        }}
+          dispatch(setAppliedCouponCode(code));
+          fetchPricing(code);
+          showSuccess(`Congratulations! You successfully scratched and applied ${code} to save ₹${val}!`);
+        }}   
       />
     </View>
   );

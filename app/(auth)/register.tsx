@@ -48,8 +48,9 @@ export default function RegisterScreen() {
   const router = useRouter();
   const params = useLocalSearchParams();
   const dispatch = useDispatch();
-  const [isLoading, setIsLoading] = useState(false);
+const [isLoading, setIsLoading] = useState(false);
   const [showAccountSheet, setShowAccountSheet] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [termsAccepted, setTermsAccepted] = useState(false);
@@ -77,18 +78,28 @@ export default function RegisterScreen() {
   }, [prefilledMobile, prefilledName]);
 
   const onSubmit = async (data: any) => {
-    if (!termsAccepted) {
-      showError('Please accept Terms & Conditions and Privacy Policy.');
+  if (!termsAccepted) {
+      setServerError('Please accept Terms & Conditions and Privacy Policy.');
       return;
     }
     setIsLoading(true);
+    setServerError(null);
     try {
-      const response = await apiService.register({
+    const response = await apiService.register({
         name: data.name,
         email: data.email,
         mobile: data.mobile,
         password: data.password,
       });
+
+      if (response.requiresEmailVerification) {
+        router.replace({
+          pathname: '/(auth)/verify-email',
+          params: { email: response.email },
+        });
+        return;
+      }
+
       const userObj = {
         id: response.user.id,
         name: response.user.name,
@@ -119,14 +130,19 @@ export default function RegisterScreen() {
           router.replace('/(tabs)');
         } catch (loginError: any) {
           const loginErrMsg = loginError.response?.data?.error || '';
-          if (loginErrMsg.includes('Invalid')) {
-            showError('An account already exists with this mobile number. Please enter the correct password or use Forgot Password.');
+        if (loginErrMsg.includes('Invalid')) {
+            setServerError('An account already exists with this mobile number. Please enter the correct password or use Forgot Password.');
           } else {
             setShowAccountSheet(true);
           }
         }
-      } else {
-        showError(errorMsg || 'Failed to register. Please try again.');
+   } else if (error.response?.data?.requiresEmailVerification) {
+        router.replace({
+          pathname: '/(auth)/verify-email',
+          params: { email: data.email },
+        });
+  } else {
+        setServerError(errorMsg || 'Failed to register. Please try again.');
       }
     } finally {
       setIsLoading(false);
@@ -272,6 +288,13 @@ return (
           </Text>
         </TouchableOpacity>
 
+     {serverError && (
+          <View style={styles.serverErrorBox}>
+            <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#EF4444" />
+            <Text style={styles.serverErrorText}>{serverError}</Text>
+          </View>
+        )}
+
         <TouchableOpacity
           style={[styles.submitBtn, isLoading && styles.btnDisabled]}
           onPress={handleSubmit(onSubmit)}
@@ -369,5 +392,11 @@ const styles = StyleSheet.create({
   copyright: { fontSize: 12, color: '#7A9AAA', textAlign: 'center', marginBottom: 8 },
   footerLinks: { flexDirection: 'row', justifyContent: 'center', alignItems: 'center' },
   footerLink: { fontSize: 13, color: '#5A7080' },
-  footerSep: { fontSize: 13, color: '#94A3B8', marginHorizontal: 4 },
+footerSep: { fontSize: 13, color: '#94A3B8', marginHorizontal: 4 },
+  serverErrorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#FECACA', width: '100%', marginBottom: 16,
+  },
+  serverErrorText: { fontSize: 13, color: '#EF4444', fontWeight: '600', flex: 1 },
 });

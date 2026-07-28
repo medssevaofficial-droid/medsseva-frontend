@@ -29,8 +29,9 @@ const loginSchema = yup.object().shape({
 export default function LoginScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
-  const [isLoading, setIsLoading] = useState(false);
+const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const { control: rawControl, handleSubmit, formState: { errors } } = useForm({
     resolver: yupResolver(loginSchema),
@@ -38,8 +39,9 @@ export default function LoginScreen() {
   });
   const control = rawControl as any;
 
-  const onSubmit = async (data: any) => {
+const onSubmit = async (data: any) => {
     setIsLoading(true);
+    setServerError(null);
     dispatch(loginStart());
     try {
       const response = await apiService.login({ mobile: data.mobile, password: data.password });
@@ -63,10 +65,18 @@ await AsyncStorage.setItem('user', JSON.stringify(fullUserObj));
       } else {
         router.replace('/(tabs)');
       }
-    } catch (error: any) {
+ } catch (error: any) {
       console.error('Login Error:', error);
-      const errorMsg = error.response?.data?.error || 'Failed to login. Please try again.';
-      showError(errorMsg);
+      const errData = error.response?.data;
+      if (errData?.requiresEmailVerification) {
+        router.push({
+          pathname: '/(auth)/verify-email',
+          params: { email: errData.email },
+        });
+        return;
+      }
+   const errorMsg = errData?.error || 'Failed to login. Please try again.';
+      setServerError(errorMsg);
     } finally {
       setIsLoading(false);
     }
@@ -139,7 +149,14 @@ await AsyncStorage.setItem('user', JSON.stringify(fullUserObj));
               </View>
             )}
           />
-          {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+       {errors.password && <Text style={styles.errorText}>{errors.password.message}</Text>}
+
+          {serverError && (
+            <View style={styles.serverErrorBox}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#EF4444" />
+              <Text style={styles.serverErrorText}>{serverError}</Text>
+            </View>
+          )}
 
           <View style={styles.forgotRow}>
             <TouchableOpacity onPress={() => router.push('/(auth)/otp')}>
@@ -227,7 +244,13 @@ const styles = StyleSheet.create({
   inputWrapError: { borderColor: '#EF4444' },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 14, color: '#0F172A' },
-  errorText: { fontSize: 12, color: '#EF4444', marginTop: -12, marginBottom: 10, alignSelf: 'flex-start' },
+errorText: { fontSize: 12, color: '#EF4444', marginTop: -12, marginBottom: 10, alignSelf: 'flex-start' },
+  serverErrorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#FECACA', width: '100%', marginBottom: 16,
+  },
+  serverErrorText: { fontSize: 13, color: '#EF4444', fontWeight: '600', flex: 1 },
   forgotRow: {
     flexDirection: 'row', justifyContent: 'space-between',
     alignItems: 'center', width: '100%', marginBottom: 24,

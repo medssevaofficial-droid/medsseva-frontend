@@ -18,14 +18,16 @@ export default function PartnerLoginScreen() {
   const [identifier, setIdentifier] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+ const [isLoading, setIsLoading] = useState(false);
+  const [serverError, setServerError] = useState<string | null>(null);
 
   const handleLogin = async () => {
     if (!identifier || !password) {
      showInfo('Please enter your email/mobile and password.');
       return;
     }
-    setIsLoading(true);
+  setIsLoading(true);
+    setServerError(null);
     try {
       const isEmail = identifier.includes('@');
       const response = await apiService.login({
@@ -33,11 +35,11 @@ export default function PartnerLoginScreen() {
         password,
       });
 
-      if (response.user.role !== 'PATHOLOGY_PARTNER') {
-      showError('This login is only for Pathology Partners.');
+  if (response.user.role !== 'PATHOLOGY_PARTNER') {
+        setServerError('This login is only for Pathology Partners.');
+        setIsLoading(false);
         return;
       }
-
       const userObj = {
         id: response.user.id,
         name: response.user.name,
@@ -53,11 +55,11 @@ export default function PartnerLoginScreen() {
       router.replace('/(partner)/home');
     } catch (error: any) {
       const err = error.response?.data;
-      if (err?.pendingApproval) {
+    if (err?.pendingApproval) {
         router.replace('/(auth)/partner-pending');
         return;
       }
-   showError(err?.error || 'Please try again.');
+      setServerError(err?.error || 'Please try again.');
     } finally {
       setIsLoading(false);
     }
@@ -102,6 +104,13 @@ export default function PartnerLoginScreen() {
               <MaterialCommunityIcons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={18} color="#94A3B8" />
             </TouchableOpacity>
           </View>
+
+        {serverError && (
+            <View style={styles.serverErrorBox}>
+              <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#EF4444" />
+              <Text style={styles.serverErrorText}>{serverError}</Text>
+            </View>
+          )}
 
           <TouchableOpacity style={styles.forgotBtn}>
             <Text style={styles.forgotText}>Forgot Password?</Text>
@@ -168,6 +177,12 @@ const styles = StyleSheet.create({
   },
   inputIcon: { marginRight: 10 },
   input: { flex: 1, fontSize: 14, color: '#0F172A' },
+serverErrorBox: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,
+    borderWidth: 1, borderColor: '#FECACA', width: '100%', marginBottom: 16,
+  },
+  serverErrorText: { fontSize: 13, color: '#EF4444', fontWeight: '600', flex: 1 },
   forgotBtn: { alignSelf: 'flex-end', marginBottom: 24 },
   forgotText: { fontSize: 12, fontWeight: '700', color: COLORS.primary },
   loginBtn: {

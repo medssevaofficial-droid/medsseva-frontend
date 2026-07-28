@@ -7,6 +7,9 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
 import { CheckCircle2 } from 'lucide-react-native';
+import RNBlobUtil from 'react-native-blob-util';
+import { Platform, PermissionsAndroid } from 'react-native';
+import { showSuccess, showError } from '../../src/store/toastStore';
 
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { apiService } from '../../src/services/api';
@@ -70,6 +73,54 @@ const liveBooking = bookings;
   const otp = liveBooking?.collectionOtp;
   const showOtp = !isPaidOnline && otp && ['ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'REACHED_LOCATION'].includes(liveBooking?.status);
 
+const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadInvoice = async () => {
+    const invoiceUrl = liveBooking?.payment?.invoiceUrl;
+    const bookingCode = liveBooking?.bookingCode || 'Invoice';
+    if (!invoiceUrl) return;
+
+    if (Platform.OS === 'android' && Platform.Version < 29) {
+      try {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.WRITE_EXTERNAL_STORAGE
+        );
+        if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+          Alert.alert('Permission Denied', 'Storage permission is required to download the invoice.');
+          return;
+        }
+      } catch {}
+    }
+
+    setDownloading(true);
+    try {
+      const fileName = `MedSeva-Invoice-${bookingCode}.pdf`;
+      const downloadPath =
+        Platform.OS === 'android'
+          ? `${RNBlobUtil.fs.dirs.DownloadDir}/${fileName}`
+          : `${RNBlobUtil.fs.dirs.DocumentDir}/${fileName}`;
+
+      await RNBlobUtil.config({
+        fileCache: true,
+        path: downloadPath,
+        addAndroidDownloads: {
+          useDownloadManager: true,
+          notification: true,
+          title: fileName,
+          description: 'Downloading MedSeva Invoice',
+          mime: 'application/pdf',
+          mediaScannable: true,
+        },
+      }).fetch('GET', invoiceUrl);
+
+    showSuccess('Invoice downloaded successfully.');
+    } catch {
+      showError('Failed to download invoice. Please try again.');
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await refetch();
@@ -113,15 +164,15 @@ const liveBooking = bookings;
 
           const bannerConfig: { icon: string; text: string } =
             s === 'WAITING_FOR_PARTNER' ? { icon: 'radar',                  text: 'Searching for a nearby partner...' } :
-            s === 'ASSIGNED'            ? { icon: 'account-search',          text: 'Partner found — Confirming assignment...' } :
-            s === 'ACCEPTED'            ? { icon: 'account-check',           text: 'Partner Assigned — Preparing to visit' } :
-            s === 'ON_THE_WAY'          ? { icon: 'motorbike',               text: `On The Way — ${partnerName || 'Partner'} is heading to you` } :
+            s === 'ASSIGNED'            ? { icon: 'account-search',          text: 'Partner found, Confirming assignment...' } :
+            s === 'ACCEPTED'            ? { icon: 'account-check',           text: 'Partner Assigned, Preparing to visit' } :
+            s === 'ON_THE_WAY'          ? { icon: 'motorbike',               text: `On The Way, ${partnerName || 'Partner'} is heading to you` } :
             s === 'REACHED_LOCATION'    ? { icon: 'map-marker-check',        text: `Arrived: ${partnerName || 'Partner'} is at your location` } :
             s === 'SAMPLE_COLLECTED'    ? { icon: 'test-tube',               text: 'Sample Collected — Heading to lab' } :
-            s === 'DELIVERED_TO_LAB'    ? { icon: 'hospital-building',       text: 'Reached Lab — Sample handed over' } :
-            s === 'PROCESSING'          ? { icon: 'flask-outline',           text: 'Processing — Tests underway at lab' } :
-            s === 'REPORT_READY'        ? { icon: 'file-document-check',     text: 'Report Ready — Check your reports tab' } :
-            s === 'COMPLETED'           ? { icon: 'check-circle-outline',    text: 'Completed — Thank you for choosing MedsSeva' } :
+            s === 'DELIVERED_TO_LAB'    ? { icon: 'hospital-building',       text: 'Reached Lab, Sample handed over' } :
+            s === 'PROCESSING'          ? { icon: 'flask-outline',           text: 'Processing, Tests underway at lab' } :
+            s === 'REPORT_READY'        ? { icon: 'file-document-check',     text: 'Report Ready, Check your reports tab' } :
+            s === 'COMPLETED'           ? { icon: 'check-circle-outline',    text: 'Completed! Thank you for choosing MedsSeva' } :
                                           { icon: 'clock-outline',           text: 'Processing your booking...' };
 
           return (
@@ -210,12 +261,58 @@ const liveBooking = bookings;
             )}
 
      {/* Payment status */}
-            {isPaidOnline ? (
-        <View style={styles.paidBadgeCard}>
-                <MaterialCommunityIcons name="check-circle" size={18} color="#10B981" />
-                <Text style={styles.paidBadgeText}>Payment Done</Text>
-                <CheckCircle2 size={14} color="#10B981" style={{ marginHorizontal: 4 }} />
-                <Text style={styles.paidBadgeText}>— Invoice will be generated after sample collection</Text>
+         {isPaidOnline ? (
+              <View style={[styles.paidBadgeCard, { flexDirection: 'column', alignItems: 'flex-start', gap: 10 }]}>
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                  <MaterialCommunityIcons name="check-circle" size={18} color="#10B981" />
+                  <Text style={styles.paidBadgeText}>Payment Done</Text>
+                </View>
+  {liveBooking?.payment?.invoiceUrl ? (
+                  <View style={{ width: '100%' }}>
+                    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 12 }}>
+                      <MaterialCommunityIcons name="file-check-outline" size={15} color="#059669" />
+                      <Text style={{ fontSize: 13, fontWeight: '700', color: '#065F46' }}>Invoice Generated</Text>
+                    </View>
+                    <View style={{ flexDirection: 'row', gap: 10 }}>
+                      <TouchableOpacity
+                        onPress={() => Linking.openURL(liveBooking.payment.invoiceUrl)}
+                        style={{
+                          flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                          backgroundColor: '#059669', borderRadius: 10, paddingVertical: 10, gap: 6,
+                        }}
+                      >
+                        <MaterialCommunityIcons name="eye-outline" size={16} color="#fff" />
+                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>View Invoice</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity
+                        onPress={handleDownloadInvoice}
+                        disabled={downloading}
+                        style={{
+                          flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+                          backgroundColor: downloading ? '#93C5FD' : '#0284C7', borderRadius: 10, paddingVertical: 10, gap: 6,
+                        }}
+                      >
+                        {downloading
+                          ? <ActivityIndicator size="small" color="#fff" />
+                          : <MaterialCommunityIcons name="download-outline" size={16} color="#fff" />
+                        }
+                        <Text style={{ color: '#fff', fontSize: 13, fontWeight: '700' }}>
+                          {downloading ? 'Downloading...' : 'Download'}
+                        </Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : currentStatusRank >= 6 ? (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <ActivityIndicator size="small" color="#059669" />
+                    <Text style={[styles.paidBadgeText, { fontSize: 12, color: '#047857' }]}>Invoice is being generated...</Text>
+                  </View>
+                ) : (
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <MaterialCommunityIcons name="information-outline" size={14} color="#047857" />
+                    <Text style={[styles.paidBadgeText, { fontSize: 12, color: '#047857' }]}>Invoice will be generated after sample collection</Text>
+                  </View>
+                )}
               </View>
             ) : liveBooking?.paymentStatus === 'PENDING' && ['ASSIGNED', 'ACCEPTED', 'ON_THE_WAY', 'REACHED_LOCATION'].includes(liveBooking?.status) ? (
               <View style={styles.pendingPayCard}>
@@ -244,8 +341,7 @@ const liveBooking = bookings;
             <View style={styles.timeline}>
               {TRACKING_STEPS.map((step, index) => {
                 const isCompleted = currentStatusRank >= step.doneAtRank;
-                // "In Progress" = this step's threshold not yet reached,
-                // but the previous step is done (or it's step 1 and booking exists)
+               
                 const prevDoneAtRank = index === 0 ? -1 : TRACKING_STEPS[index - 1].doneAtRank;
                 const isCurrent = !isCompleted && currentStatusRank >= prevDoneAtRank;
                 const isLast = index === TRACKING_STEPS.length - 1;
