@@ -28,8 +28,8 @@ export default function ReportsScreen() {
 useEffect(() => {
     const messaging = getMessaging();
     const unsub = onMessage(messaging, async (msg) => {
-      const type = msg.data?.type;
-      if (type === 'REPORT_READY' || type === 'REPORT_SENT' || type === 'REPORT_APPROVED') {
+ const type = msg.data?.type;
+      if (type === 'REPORT_READY' || type === 'REPORT_SENT' || type === 'REPORT_APPROVED' || type === 'PAYMENT_SUCCESS') {
         queryClient.invalidateQueries({ queryKey: ['my-reports'] });
       }
     });

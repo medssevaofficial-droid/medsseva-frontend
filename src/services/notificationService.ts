@@ -104,8 +104,8 @@ export const getDeepLinkRoute = (data: Record<string, string>): string | null =>
     case 'SAMPLE_RECEIVED_IN_LAB':
     case 'PAYMENT_FAILED':
       return '/(tabs)/bookings';
-    case 'PARTNER_ON_THE_WAY':
-      return '/(tabs)/track';
+  case 'PARTNER_ON_THE_WAY':
+      return '/(tabs)/bookings';
     case 'REPORT_READY':
     case 'REPORT_SENT':
     case 'REPORT_APPROVED':
