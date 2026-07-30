@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
@@ -80,7 +81,20 @@ export default function PackageDetailsScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+   <ScreenWrapper
+        bottomButton={
+          <View style={styles.footerInner}>
+            <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
+              <MaterialCommunityIcons name="cart-plus" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
+              <Text style={styles.cartSecondaryButtonText}>Add to Cart</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bookPrimaryButton} onPress={handleBookNow}>
+              <Text style={styles.bookPrimaryButtonText}>Book Now</Text>
+            </TouchableOpacity>
+          </View>
+        }
+        contentContainerStyle={styles.scrollContent}
+      >
         {/* Banner Card - Soft & Accessible Theme */}
         <View style={styles.mainCard}>
           <View style={styles.badgeRow}>
@@ -179,19 +193,7 @@ export default function PackageDetailsScreen() {
             <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textSecondary} />
           </TouchableOpacity>
         </View>
-      </ScrollView>
-
-      {/* Sticky Bottom Footer - Dual Action */}
-      <View style={styles.bottomFooter}>
-        <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
-          <MaterialCommunityIcons name="cart-plus" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
-          <Text style={styles.cartSecondaryButtonText}>Add to Cart</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.bookPrimaryButton} onPress={handleBookNow}>
-          <Text style={styles.bookPrimaryButtonText}>Book Now</Text>
-        </TouchableOpacity>
-      </View>
+ </ScreenWrapper>
 
       {/* Preparation Bottom Sheet */}
       <PremiumBottomSheet visible={isPrepSheetOpen} onClose={() => setPrepSheetOpen(false)} height={400}>
@@ -305,14 +307,9 @@ const styles = StyleSheet.create({
   actionListLeft: { flexDirection: 'row', alignItems: 'center' },
   actionListTitle: { ...TYPOGRAPHY.body, color: COLORS.textDark, fontWeight: '600', marginLeft: 16 },
 
-  // Footer Actions
-  bottomFooter: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row', padding: 16, paddingBottom: 32,
-    borderTopWidth: 1, borderTopColor: COLORS.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 10,
-    justifyContent: 'space-between'
+footerInner: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   cartSecondaryButton: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

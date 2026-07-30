@@ -1,10 +1,10 @@
 /*eslint-disabled*/
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar,
-TextInput,
+  View, Text, StyleSheet, TouchableOpacity,
+  ActivityIndicator, Platform, StatusBar, TextInput,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
 import { yupResolver } from '@hookform/resolvers/yup';
@@ -154,9 +154,12 @@ const [isLoading, setIsLoading] = useState(false);
   const strengthLabels = ['', 'Weak', 'Fair', 'Good', 'Strong'];
 
 return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" keyboardDismissMode="on-drag">
+      <ScreenWrapper
+        backgroundColor="#E8F0F3"
+        contentContainerStyle={styles.scrollContent}
+      >
 
         <ConfirmSheet
           visible={showAccountSheet}
@@ -326,8 +329,8 @@ return (
             <Text style={styles.footerLink}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+</ScreenWrapper>
+    </View>
   );
 }
 const styles = StyleSheet.create({

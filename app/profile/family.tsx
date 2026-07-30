@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { 
-View, 
+  View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  ScrollView, 
   TextInput, 
   Modal, 
   Platform, 
+  ScrollView,
   ActivityIndicator
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -107,7 +108,7 @@ const handleDeleteMember = (id: string, memberName: string) => {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+     <ScreenWrapper contentContainerStyle={styles.scrollContent}>
         <View style={styles.infoCard}>
           <MaterialCommunityIcons name="account-group-outline" size={36} color={COLORS.primary} />
           <Text style={styles.infoText}>
@@ -150,8 +151,8 @@ const handleDeleteMember = (id: string, memberName: string) => {
           ))
         )}
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
+    <View style={{ height: 100 }} />
+      </ScreenWrapper>
 
       {/* Floating Add Member Button */}
       <TouchableOpacity 

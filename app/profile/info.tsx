@@ -4,9 +4,9 @@ import {
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  ScrollView, 
   Platform 
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -104,11 +104,11 @@ export default function InfoScreen() {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+  <ScreenWrapper contentContainerStyle={styles.scrollContent}>
         {type === 'privacy' && renderPrivacyPolicy()}
         {type === 'terms' && renderTermsOfService()}
         {type === 'help' && renderHelpCenter()}
-      </ScrollView>
+</ScreenWrapper>
     </View>
   );
 }

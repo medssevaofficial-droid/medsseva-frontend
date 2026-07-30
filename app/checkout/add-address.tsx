@@ -5,11 +5,10 @@ import {
   StyleSheet,
   TextInput,
   TouchableOpacity,
-  ScrollView,
-  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -111,11 +110,14 @@ try {
     }
   };
 
+const saveButton = (
+    <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAddress}>
+      <Text style={styles.saveBtnText}>Save & Add Address</Text>
+    </TouchableOpacity>
+  );
+
   return (
-    <KeyboardAvoidingView 
-      style={styles.container} 
-      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-    >
+    <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
@@ -153,12 +155,9 @@ try {
         </TouchableOpacity>
       </View>
 
-      {/* Detail Forms Container */}
-      <ScrollView 
-        style={styles.formScrollView} 
+  <ScreenWrapper
+        bottomButton={saveButton}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
       >
         <View style={styles.sectionHeader}>
           <MaterialCommunityIcons name="map-marker-radius" size={20} color={COLORS.primary} />
@@ -264,23 +263,17 @@ try {
           placeholderTextColor="#94A3B8"
         />
 
-        <View style={{ height: 20 }} />
-      </ScrollView>
-
-      {/* Fixed Save Button Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity style={styles.saveBtn} onPress={handleSaveAddress}>
-          <Text style={styles.saveBtnText}>Save & Add Address</Text>
-        </TouchableOpacity>
-      </View>
-    </KeyboardAvoidingView>
+<View style={{ height: 20 }} />
+      </ScreenWrapper>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+container: {
     flex: 1,
     backgroundColor: COLORS.background,
+    display: 'flex',
   },
   header: {
     backgroundColor: COLORS.primary,
@@ -345,12 +338,8 @@ locationButtonsRow: {
     color: '#94A3B8',
     fontWeight: 'bold',
   },
-  formScrollView: {
-    flex: 1,
-  },
-  scrollContent: {
+scrollContent: {
     padding: 20,
-    paddingBottom: 120,
   },
   sectionHeader: {
     flexDirection: 'row',
@@ -415,19 +404,7 @@ locationButtonsRow: {
   typeChipTextActive: {
     color: COLORS.textLight,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.surface,
-    padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    ...SHADOWS.soft,
-    elevation: 8,
-  },
+
   saveBtn: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,

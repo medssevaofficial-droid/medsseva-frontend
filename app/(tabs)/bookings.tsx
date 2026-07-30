@@ -85,7 +85,7 @@ const queryClient = useQueryClient();
         time: b.scheduledSlot || 'Morning Slot',
         status: mappedStatus,
         patient: b.patientName || user?.name || 'Self',
-        homeCollection: b.address?.type !== 'CENTER',
+        homeCollection: b.collectionMode === 'HOME',
       };
     });
   }, [rawBookings, user]);

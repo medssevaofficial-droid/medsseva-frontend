@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Platform,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -49,7 +49,7 @@ export default function LegalScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+   <ScreenWrapper contentContainerStyle={styles.scroll}>
         <View style={styles.bannerCard}>
           <View style={styles.bannerIcon}>
             <MaterialCommunityIcons name="gavel" size={36} color={COLORS.primary} />
@@ -88,7 +88,7 @@ export default function LegalScreen() {
         </View>
         <Text style={styles.footerVersion}>App Version 1.0.0 (Build 42)</Text>
       <Text style={styles.footerCopy}>© {new Date().getFullYear()} MedsSeva Diagnostics Private Limited</Text>
-      </ScrollView>
+</ScreenWrapper>
     </View>
   );
 }

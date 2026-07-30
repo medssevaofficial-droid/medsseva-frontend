@@ -4,10 +4,10 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -100,10 +100,7 @@ export default function PaymentMethodsScreen() {
           <ActivityIndicator size="large" color={COLORS.primary} />
         </View>
       ) : (
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-        >
+    <ScreenWrapper contentContainerStyle={styles.scrollContent}>
           {primaryUpi && (
             <>
               <Text style={styles.sectionTitle}>Preferred Method</Text>
@@ -255,8 +252,8 @@ export default function PaymentMethodsScreen() {
             <Text style={styles.addMethodBtnText}>Add New Payment Method</Text>
           </TouchableOpacity>
 
-          <View style={{ height: 40 }} />
-        </ScrollView>
+      <View style={{ height: 40 }} />
+        </ScreenWrapper>
       )}
 
       <ConfirmSheet

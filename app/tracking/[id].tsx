@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, RefreshControl, Linking, Alert
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -38,16 +39,14 @@ const TRACKING_STEPS = [
   { id: 7, title: 'Report Ready',      icon: 'file-document-check', doneAtRank: 9  }, // REPORT_READY and above
 ];
 
-// Same mapping for the 6-step horizontal mini tracker
 const MINI_STEPS = [
-  { label: 'Booking\nRequested', icon: 'clock-outline',     doneAtRank: 0  },
-  { label: 'Partner\nAssigned',  icon: 'account-check',     doneAtRank: 2  },
-  { label: 'On The\nWay',        icon: 'motorbike',          doneAtRank: 4  },
-  { label: 'Arrived',            icon: 'map-marker-check',  doneAtRank: 5  },
-  { label: 'Sample\nCollected',  icon: 'test-tube',          doneAtRank: 6  },
-  { label: 'Reached\nLab',       icon: 'hospital-building', doneAtRank: 7  },
+  { label: 'Booking Requested', icon: 'clock-outline',     doneAtRank: 0  },
+  { label: 'Partner Assigned',  icon: 'account-check',     doneAtRank: 2  },
+  { label: 'On The Way',        icon: 'motorbike',          doneAtRank: 4  },
+  { label: 'Arrived',           icon: 'map-marker-check',  doneAtRank: 5  },
+  { label: 'Sample Collected',  icon: 'test-tube',          doneAtRank: 6  },
+  { label: 'Reached Lab',       icon: 'hospital-building', doneAtRank: 7  },
 ];
-
 const getStatusRank = (status: string): number => {
   const rank = STATUS_ORDER.indexOf(status);
   return rank === -1 ? 0 : rank;
@@ -56,6 +55,7 @@ export default function TrackingScreen() {
   const { id } = useLocalSearchParams();
   const bookingId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
 
 const { data: bookings = null, isLoading, refetch } = useQuery({
@@ -66,7 +66,7 @@ const { data: bookings = null, isLoading, refetch } = useQuery({
   });
 
 const liveBooking = bookings;
-  // Single source of truth — everything derives from this one rank value
+  // Single source of truth - everything derives from this one rank value
   const currentStatusRank = getStatusRank(liveBooking?.status || 'PENDING');
   const isAssigned = liveBooking?.assignedPartnerId != null;
   const isPaidOnline = liveBooking?.paymentStatus === 'SUCCESS';
@@ -134,7 +134,7 @@ const [downloading, setDownloading] = useState(false);
 
   const partnerName = liveBooking?.assignedPartner?.user?.name;
   const partnerRole = liveBooking?.assignedPartner?.role || 'Sample Collection Executive';
-  const partnerRating = liveBooking?.assignedPartner?.rating?.toFixed(1) || '—';
+  const partnerRating = liveBooking?.assignedPartner?.rating?.toFixed(1) || '-';
   const testNames = liveBooking?.tests?.map((t: any) => t.test?.name).filter(Boolean).join(', ') || 'Diagnostic Test';
 
   return (
@@ -147,7 +147,7 @@ const [downloading, setDownloading] = useState(false);
         <View style={{ width: 24 }} />
       </View>
 
-   {/* Live Partner Tracking Card — replaces fake map */}
+   {/* Live Partner Tracking Card - replaces fake map */}
       <View style={styles.trackingCard}>
      {/* Status Banner */}
       {(() => {
@@ -168,7 +168,7 @@ const [downloading, setDownloading] = useState(false);
             s === 'ACCEPTED'            ? { icon: 'account-check',           text: 'Partner Assigned, Preparing to visit' } :
             s === 'ON_THE_WAY'          ? { icon: 'motorbike',               text: `On The Way, ${partnerName || 'Partner'} is heading to you` } :
             s === 'REACHED_LOCATION'    ? { icon: 'map-marker-check',        text: `Arrived: ${partnerName || 'Partner'} is at your location` } :
-            s === 'SAMPLE_COLLECTED'    ? { icon: 'test-tube',               text: 'Sample Collected — Heading to lab' } :
+            s === 'SAMPLE_COLLECTED'    ? { icon: 'test-tube',               text: 'Sample Collected - Heading to lab' } :
             s === 'DELIVERED_TO_LAB'    ? { icon: 'hospital-building',       text: 'Reached Lab, Sample handed over' } :
             s === 'PROCESSING'          ? { icon: 'flask-outline',           text: 'Processing, Tests underway at lab' } :
             s === 'REPORT_READY'        ? { icon: 'file-document-check',     text: 'Report Ready, Check your reports tab' } :
@@ -192,7 +192,7 @@ const [downloading, setDownloading] = useState(false);
               <View style={styles.onlineDot} />
             </View>
             <View style={styles.partnerDetails}>
-              <Text style={styles.partnerNameText}>{partnerName || '—'}</Text>
+              <Text style={styles.partnerNameText}>{partnerName || '-'}</Text>
               <Text style={styles.partnerRoleText}>{partnerRole}</Text>
               <View style={styles.ratingRow}>
                 <MaterialCommunityIcons name="star" size={13} color="#F59E0B" />
@@ -215,7 +215,7 @@ const [downloading, setDownloading] = useState(false);
           </View>
         )}
 
-{/* Horizontal mini tracker — driven purely from currentStatusRank */}
+{/* Horizontal mini tracker - driven purely from currentStatusRank */}
         <View style={styles.miniStepsRow}>
           {MINI_STEPS.map((step, i, arr) => {
             const isDone = currentStatusRank >= step.doneAtRank;
@@ -239,8 +239,9 @@ const [downloading, setDownloading] = useState(false);
         </View>
       </View>
 
-      <ScrollView
+  <ScrollView
         style={styles.timelineContainer}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
       >
@@ -248,7 +249,7 @@ const [downloading, setDownloading] = useState(false);
           <ActivityIndicator color={COLORS.primary} size="large" style={{ marginVertical: 20 }} />
         ) : (
           <>
-            {/* OTP Box — only for pay-at-doorstep */}
+            {/* OTP Box - only for pay-at-doorstep */}
             {showOtp && (
               <View style={styles.otpCard}>
                 <MaterialCommunityIcons name="shield-key-outline" size={22} color={COLORS.primary} />
@@ -325,7 +326,7 @@ const [downloading, setDownloading] = useState(false);
             <View style={styles.patientInfoContainer}>
               <View style={styles.patientInfoCol}>
                 <Text style={styles.patientLabel}>Patient</Text>
-                <Text style={styles.patientValue}>{liveBooking?.patientName || '—'}</Text>
+                <Text style={styles.patientValue}>{liveBooking?.patientName || '-'}</Text>
               </View>
               <View style={[styles.patientInfoCol, { marginLeft: 16 }]}>
                 <Text style={styles.patientLabel}>Tests</Text>
@@ -337,7 +338,7 @@ const [downloading, setDownloading] = useState(false);
               Booking Code: {liveBooking?.bookingCode || bookingId?.substring(0, 8).toUpperCase()}
             </Text>
 
-{/* Vertical timeline — driven purely from currentStatusRank, same as horizontal */}
+{/* Vertical timeline - driven purely from currentStatusRank, same as horizontal */}
             <View style={styles.timeline}>
               {TRACKING_STEPS.map((step, index) => {
                 const isCompleted = currentStatusRank >= step.doneAtRank;
@@ -511,18 +512,19 @@ trackingCard: {
     color: COLORS.textSecondary,
     lineHeight: 16,
   },
-  miniStepsRow: {
+ miniStepsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
+    alignItems: 'flex-start',
+    paddingHorizontal: 12,
     paddingBottom: 16,
-    paddingTop: 4,
+    paddingTop: 8,
   },
   miniStep: {
+    flex: 1,
     alignItems: 'center',
-    gap: 4,
+    minWidth: 0,
   },
-miniStepCircle: {
+  miniStepCircle: {
     width: 26,
     height: 26,
     borderRadius: 13,
@@ -536,22 +538,24 @@ miniStepCircle: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
-miniStepLabel: {
-    fontSize: 9,
+  miniStepLabel: {
+    fontSize: 8,
     fontWeight: '600',
     color: '#94A3B8',
     textAlign: 'center',
-    marginTop: 2,
+    marginTop: 4,
+    lineHeight: 11,
+    flexWrap: 'wrap',
   },
   miniStepLabelActive: {
     color: COLORS.primary,
   },
   miniStepLine: {
-    flex: 1,
+    width: 20,
     height: 2,
     backgroundColor: '#E2E8F0',
-    marginBottom: 14,
-    marginHorizontal: 4,
+    marginTop: 12,
+    flexShrink: 0,
   },
   miniStepLineActive: {
     backgroundColor: COLORS.primary,

@@ -3,6 +3,7 @@ import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
   ActivityIndicator, RefreshControl
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -48,6 +49,7 @@ export default function LabTrackingScreen() {
   const { id } = useLocalSearchParams();
   const bookingId = typeof id === 'string' ? id : Array.isArray(id) ? id[0] : '';
   const router = useRouter();
+  const insets = useSafeAreaInsets();
   const [refreshing, setRefreshing] = useState(false);
   const [reachingLab, setReachingLab] = useState(false);
 
@@ -91,25 +93,25 @@ const onRefresh = useCallback(async () => {
       return { color: '#F59E0B', icon: 'clock-outline', text: 'Waiting for Lab Approval' };
     }
 if (s === 'CONFIRMED') {
-      return { color: COLORS.primary, icon: 'check-decagram-outline', text: 'Accepted — Visit the lab at your scheduled slot' };
+      return { color: COLORS.primary, icon: 'check-decagram-outline', text: 'Accepted - Visit the lab at your scheduled slot' };
     }
  if (s === 'PATIENT_REACHED_LAB' && liveBooking?.paymentStatus !== 'SUCCESS') {
       return { color: '#7C3AED', icon: 'map-marker-check', text: 'You have reached the lab, Please complete payment at the counter' };
     }
     if (s === 'PATIENT_REACHED_LAB' && liveBooking?.paymentStatus === 'SUCCESS') {
-      return { color: '#059669', icon: 'credit-card-check-outline', text: 'Payment received — Waiting for sample collection' };
+      return { color: '#059669', icon: 'credit-card-check-outline', text: 'Payment received - Waiting for sample collection' };
     }
     if (s === 'SAMPLE_COLLECTED') {
       return { color: '#0284C7', icon: 'test-tube', text: 'Sample Collected at Lab' };
     }
     if (s === 'PROCESSING') {
-      return { color: '#0F172A', icon: 'flask-outline', text: 'Processing — Tests underway at lab' };
+      return { color: '#0F172A', icon: 'flask-outline', text: 'Processing - Tests underway at lab' };
     }
     if (s === 'REPORT_READY') {
-      return { color: '#059669', icon: 'file-document-check', text: 'Report Ready — Check your reports tab' };
+      return { color: '#059669', icon: 'file-document-check', text: 'Report Ready - Check your reports tab' };
     }
     if (s === 'COMPLETED') {
-      return { color: '#059669', icon: 'check-circle-outline', text: 'Completed — Thank you for choosing MedsSeva' };
+      return { color: '#059669', icon: 'check-circle-outline', text: 'Completed - Thank you for choosing MedsSeva' };
     }
     return { color: '#F59E0B', icon: 'clock-outline', text: 'Processing your booking...' };
   })();
@@ -151,8 +153,9 @@ if (s === 'CONFIRMED') {
         )}
       </View>
 
-      <ScrollView
+ <ScrollView
         style={styles.timelineContainer}
+        contentContainerStyle={{ paddingBottom: insets.bottom + 24 }}
         showsVerticalScrollIndicator={false}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
       >
@@ -171,7 +174,7 @@ if (s === 'CONFIRMED') {
             <View style={styles.patientInfoContainer}>
               <View style={styles.patientInfoCol}>
                 <Text style={styles.patientLabel}>Patient</Text>
-                <Text style={styles.patientValue}>{liveBooking?.patientName || '—'}</Text>
+                <Text style={styles.patientValue}>{liveBooking?.patientName || '-'}</Text>
               </View>
               <View style={[styles.patientInfoCol, { marginLeft: 16 }]}>
                 <Text style={styles.patientLabel}>Tests</Text>

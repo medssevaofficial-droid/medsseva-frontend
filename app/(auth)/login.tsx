@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar, TextInput,
+  View, Text, StyleSheet, TouchableOpacity,
+  ActivityIndicator, Platform, StatusBar, TextInput,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { showError } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { useForm, Controller } from 'react-hook-form';
@@ -82,14 +83,12 @@ await AsyncStorage.setItem('user', JSON.stringify(fullUserObj));
     }
   };
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+return (
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
-      <ScrollView
+      <ScreenWrapper
+        backgroundColor="#E8F0F3"
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
       >
         <TouchableOpacity
           style={styles.backBtn}
@@ -201,8 +200,8 @@ await AsyncStorage.setItem('user', JSON.stringify(fullUserObj));
             <Text style={styles.footerLink}>Privacy Policy</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+ </ScreenWrapper>
+    </View>
   );
 }
 

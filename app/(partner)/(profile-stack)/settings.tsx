@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, StatusBar, ScrollView, KeyboardAvoidingView, Platform,
+  ActivityIndicator, StatusBar,
 } from 'react-native';
+import ScreenWrapper from '../../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -65,11 +66,24 @@ export default function SettingsScreen() {
     }
   };
 
+const saveButton = (
+    <TouchableOpacity
+      style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+      onPress={handleChangePassword}
+      disabled={isSaving}
+      activeOpacity={0.85}
+    >
+      {isSaving
+        ? <ActivityIndicator color="#fff" size="small" />
+        : <Text style={styles.saveBtnText}>Update Password</Text>
+      }
+    </TouchableOpacity>
+  );
+
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-    
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScreenWrapper bottomButton={saveButton} contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
             <View style={styles.sectionIcon}>
@@ -146,20 +160,9 @@ export default function SettingsScreen() {
             )}
           </View>
 
-          <TouchableOpacity
-            style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-            onPress={handleChangePassword}
-            disabled={isSaving}
-            activeOpacity={0.85}
-          >
-            {isSaving
-              ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={styles.saveBtnText}>Update Password</Text>
-            }
-          </TouchableOpacity>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+</View>
+      </ScreenWrapper>
+    </View>
   );
 }
 

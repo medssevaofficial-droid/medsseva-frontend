@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, StatusBar, Linking,
 } from 'react-native';
+import ScreenWrapper from '@/src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -53,7 +54,7 @@ export default function MyBranchScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
   
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+     <ScreenWrapper contentContainerStyle={styles.content}>
         {isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -113,8 +114,8 @@ export default function MyBranchScreen() {
               </TouchableOpacity>
             )}
           </>
-        )}
-      </ScrollView>
+)}
+      </ScreenWrapper>
     </View>
   );
 }

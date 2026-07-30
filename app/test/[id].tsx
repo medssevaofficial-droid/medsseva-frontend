@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch } from 'react-redux';
 import { DeviceEventEmitter } from 'react-native';
@@ -34,7 +36,7 @@ export default function TestDetailsScreen() {
     fetchTest();
   }, [id]);
 
-  if (loading) {
+if (loading) {
     return (
       <View style={[styles.container, styles.centerAll]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -49,7 +51,6 @@ export default function TestDetailsScreen() {
       </View>
     );
   }
-
   const discountPercent = Math.round(((test.price - test.discountedPrice) / test.price) * 100);
 
 const handleAddToCart = () => {
@@ -68,20 +69,35 @@ const handleAddToCart = () => {
     DeviceEventEmitter.emit('openGlobalScheduler', { testName: test.name });
   };  
 
-  return (
+ return (
     <View style={styles.container}>
-      {/* Top Header */}
-      <View style={styles.header}>
-        <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-          <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.textLight} />
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Test Details</Text>
-        <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/checkout/cart')}>
-          <MaterialCommunityIcons name="cart-outline" size={24} color={COLORS.textLight} />
-        </TouchableOpacity>
-      </View>
+      <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
+            <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Test Details</Text>
+          <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/checkout/cart')}>
+            <MaterialCommunityIcons name="cart-outline" size={24} color={COLORS.textLight} />
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+      <ScreenWrapper
+        backgroundColor="#F8FAFC"
+        contentContainerStyle={styles.scrollContent}
+        bottomButton={
+          <View style={styles.footerRow}>
+            <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
+              <MaterialCommunityIcons name="cart-plus" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
+              <Text style={styles.cartSecondaryButtonText}>Add to Cart</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.bookPrimaryButton} onPress={handleBookNow}>
+              <Text style={styles.bookPrimaryButtonText}>Book Now</Text>
+            </TouchableOpacity>
+          </View>
+        }
+      >
         {/* Banner Card - Soft & Accessible Theme */}
         <View style={styles.mainCard}>
           <View style={styles.badgeRow}>
@@ -168,19 +184,7 @@ const handleAddToCart = () => {
             <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textSecondary} />
           </TouchableOpacity>
         </View>
-      </ScrollView>
-
-      {/* Sticky Bottom Footer - Dual Action */}
-      <View style={styles.bottomFooter}>
-        <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
-          <MaterialCommunityIcons name="cart-plus" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
-          <Text style={styles.cartSecondaryButtonText}>Add to Cart</Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity style={styles.bookPrimaryButton} onPress={handleBookNow}>
-          <Text style={styles.bookPrimaryButtonText}>Book Now</Text>
-        </TouchableOpacity>
-      </View>
+</ScreenWrapper>
 
       {/* Preparation Bottom Sheet */}
       <PremiumBottomSheet visible={isPrepSheetOpen} onClose={() => setPrepSheetOpen(false)} height={400}>
@@ -201,7 +205,7 @@ const handleAddToCart = () => {
         </TouchableOpacity>
       </PremiumBottomSheet>
 
-      {/* FAQ Bottom Sheet */}
+    
       <PremiumBottomSheet visible={isFaqSheetOpen} onClose={() => setFaqSheetOpen(false)} height={500}>
         <Text style={styles.sheetTitle}>Frequently Asked Questions</Text>
         <ScrollView showsVerticalScrollIndicator={false}>
@@ -220,17 +224,18 @@ const handleAddToCart = () => {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+container: { flex: 1, backgroundColor: '#F8FAFC' },
   centerAll: { justifyContent: 'center', alignItems: 'center' },
+  headerSafeArea: { backgroundColor: COLORS.primary },
   header: {
-    paddingTop: 60, paddingBottom: 20, paddingHorizontal: 20,
+    paddingBottom: 20, paddingHorizontal: 20, paddingTop: 12,
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
     backgroundColor: COLORS.primary,
   },
   backButton: { padding: 4 },
   headerTitle: { ...TYPOGRAPHY.h2, color: COLORS.textLight },
   cartButton: { padding: 4 },
-  scrollContent: { paddingBottom: 120, padding: 16 },
+scrollContent: { padding: 16 },
   
   // Soft & Accessible Cards
   mainCard: {
@@ -292,14 +297,9 @@ const styles = StyleSheet.create({
   actionListLeft: { flexDirection: 'row', alignItems: 'center' },
   actionListTitle: { ...TYPOGRAPHY.body, color: COLORS.textDark, fontWeight: '600', marginLeft: 16 },
 
-  // Footer Actions
-  bottomFooter: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#FFFFFF',
-    flexDirection: 'row', padding: 16, paddingBottom: 32,
-    borderTopWidth: 1, borderTopColor: COLORS.border,
-    shadowColor: '#000', shadowOffset: { width: 0, height: -4 }, shadowOpacity: 0.05, shadowRadius: 12, elevation: 10,
-    justifyContent: 'space-between'
+footerRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
   },
   cartSecondaryButton: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',

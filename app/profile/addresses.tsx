@@ -1,12 +1,12 @@
 import React from 'react';
 import { 
-View, 
+  View, 
   Text, 
   StyleSheet, 
   TouchableOpacity, 
-  ScrollView, 
   Platform
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -62,7 +62,18 @@ const handleDelete = (id: string) => {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+    <ScreenWrapper
+        contentContainerStyle={styles.scrollContent}
+        bottomButton={
+          <TouchableOpacity
+            style={styles.addBtn}
+            onPress={() => router.push('/checkout/add-address')}
+          >
+            <MaterialCommunityIcons name="map-marker-plus-outline" size={22} color="#FFFFFF" style={{ marginRight: 8 }} />
+            <Text style={styles.addBtnText}>Add New Address</Text>
+          </TouchableOpacity>
+        }
+      >
         {addresses.length === 0 ? (
           <View style={styles.emptyContainer}>
             <MaterialCommunityIcons name="map-marker-off-outline" size={70} color="#CBD5E1" />
@@ -99,19 +110,7 @@ const handleDelete = (id: string) => {
           ))
         )}
 
-        <View style={{ height: 100 }} />
-      </ScrollView>
-
-      {/* Add New CTA */}
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={styles.addBtn} 
-          onPress={() => router.push('/checkout/add-address')}
-        >
-          <MaterialCommunityIcons name="map-marker-plus-outline" size={22} color="#FFFFFF" style={{ marginRight: 8 }} />
-          <Text style={styles.addBtnText}>Add New Address</Text>
-        </TouchableOpacity>
-      </View>
+</ScreenWrapper>
     </View>
   );
 }
@@ -217,17 +216,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     marginLeft: 6,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    padding: 20,
-    backgroundColor: '#FFFFFF',
-    borderTopWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  addBtn: {
+addBtn: {
     backgroundColor: COLORS.primary,
     flexDirection: 'row',
     paddingVertical: 16,

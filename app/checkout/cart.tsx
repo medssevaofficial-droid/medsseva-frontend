@@ -1,46 +1,76 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, ActivityIndicator } from 'react-native';
-import { showSuccess } from '../../src/store/toastStore';
+import React, { useState, useCallback, useRef } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  TextInput,
+  ActivityIndicator,
+  FlatList,
+  KeyboardAvoidingView,
+  Platform,
+  Keyboard,
+} from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
+import { showSuccess, showError } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
+import { useFocusEffect } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { Sparkles } from 'lucide-react-native';
 
 import { RootState } from '../../src/store';
-import { removeFromCart, updateQuantity } from '../../src/store/slices/cartSlice';
+import { removeFromCart } from '../../src/store/slices/cartSlice';
 import { setCollectionMode, setAppliedCouponCode } from '../../src/store/slices/bookingSlice';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { PremiumBottomSheet } from '../../src/components/PremiumBottomSheet';
-import { PremiumScratchModal } from '../../src/components/PremiumScratchModal';
-import { couponApiService } from '../../src/services/api';  
-import { LinearGradient } from 'expo-linear-gradient';
+import { couponApiService, apiService } from '../../src/services/api';
+
+interface BackendCoupon {
+  id: string;
+  code: string;
+  name?: string;
+  description?: string;
+  discountType: 'PERCENTAGE' | 'FIXED';
+  discountValue: number;
+  minOrderAmount: number;
+  maxDiscount?: number;
+  usageLimit?: number;
+  usedCount: number;
+  expiresAt?: string;
+  isActive: boolean;
+  isFirstOrderOnly: boolean;
+  _count?: { redemptions: number };
+}
 
 export default function CartScreen() {
   const router = useRouter();
   const dispatch = useDispatch();
-  
+
   const cart = useSelector((state: RootState) => state.cart);
 
   const [visitMode, setVisitMode] = useState<'home' | 'center'>('home');
-  
+
   const [isCouponSheetOpen, setCouponSheetOpen] = useState(false);
-  const [isScratchOpen, setScratchOpen] = useState(false);
-const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; val: number; couponId: string } | null>(null);
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; val: number; couponId: string } | null>(null);
   const [couponInput, setCouponInput] = useState('');
   const [couponLoading, setCouponLoading] = useState(false);
   const [couponError, setCouponError] = useState('');
 
-const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
-  const packageIds = cart.items.filter(i => i.itemType === 'package').map(i => i.id);
+  const [availableCoupons, setAvailableCoupons] = useState<BackendCoupon[]>([]);
+  const [couponsLoading, setCouponsLoading] = useState(false);
 
   const [pricing, setPricing] = useState<any>(null);
   const [pricingLoading, setPricingLoading] = useState(false);
 
-  const fetchPricing = React.useCallback(async (coupon?: string) => {
+  const inputRef = useRef<TextInput>(null);
+
+  const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
+  const packageIds = cart.items.filter(i => i.itemType === 'package').map(i => i.id);
+
+  const fetchPricing = useCallback(async (coupon?: string) => {
     if (cart.items.length === 0) return;
     setPricingLoading(true);
     try {
-      const { apiService } = await import('../../src/services/api');
       const result = await apiService.getPricingPreview({
         testIds,
         packageIds,
@@ -55,28 +85,161 @@ const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
     }
   }, [testIds.join(','), packageIds.join(','), visitMode]);
 
-  React.useEffect(() => {
-    fetchPricing(appliedCoupon?.code);
-  }, [fetchPricing]);
+  const fetchAvailableCoupons = useCallback(async () => {
+    setCouponsLoading(true);
+    try {
+      const data = await couponApiService.getPublicCoupons();
+      const now = new Date();
+      const active = (data as BackendCoupon[]).filter(c => {
+        if (!c.isActive) return false;
+        if (c.expiresAt && new Date(c.expiresAt) < now) return false;
+        return true;
+      });
+      setAvailableCoupons(active);
+    } catch {
+      setAvailableCoupons([]);
+    } finally {
+      setCouponsLoading(false);
+    }
+  }, []);
 
-const handleApplyCoupon = async (code: string) => {
-    if (!code.trim()) return;
+  useFocusEffect(
+    useCallback(() => {
+      fetchPricing(appliedCoupon?.code);
+    }, [fetchPricing])
+  );
+
+  const handleOpenCouponSheet = useCallback(() => {
+    fetchAvailableCoupons();
+    setCouponError('');
+    setCouponSheetOpen(true);
+  }, [fetchAvailableCoupons]);
+
+  const handleApplyCoupon = useCallback(async (code: string) => {
+    const trimmed = code.trim().toUpperCase();
+    if (!trimmed) return;
+
+    Keyboard.dismiss();
     setCouponLoading(true);
     setCouponError('');
+
     try {
-      await fetchPricing(code.trim().toUpperCase());
-      const upper = code.trim().toUpperCase();
-      setAppliedCoupon({ code: upper, val: 0, couponId: '' });
-      dispatch(setAppliedCouponCode(upper));
+      const subtotal = pricing?.subtotal ?? cart.items.reduce((sum, i) => sum + i.discountedPrice, 0);
+      const result = await couponApiService.validate({
+        code: trimmed,
+        cartTotal: subtotal,
+        testIds,
+        packageIds,
+        collectionMode: visitMode === 'home' ? 'HOME' : 'LAB',
+      });
+
+      if (!result.valid) {
+        setCouponError(result.error || 'Invalid coupon');
+        return;
+      }
+
+      setAppliedCoupon({ code: trimmed, val: result.discount, couponId: result.couponId });
+      dispatch(setAppliedCouponCode(trimmed));
       setCouponInput('');
       setCouponSheetOpen(false);
+      await fetchPricing(trimmed);
+      showSuccess(`Coupon applied! You saved ₹${result.discount}`);
     } catch (err: any) {
       setCouponError(err.response?.data?.error || 'Invalid coupon code');
     } finally {
       setCouponLoading(false);
     }
-  };
+  }, [pricing, cart.items, testIds, packageIds, visitMode, fetchPricing, dispatch]);
+
+  const handleRemoveCoupon = useCallback(() => {
+    setAppliedCoupon(null);
+    dispatch(setAppliedCouponCode(null));
+    fetchPricing(undefined);
+  }, [fetchPricing, dispatch]);
+
   const calculatedFinalAmount = pricing?.finalAmount ?? 0;
+
+  const getBadgeLabel = (coupon: BackendCoupon): string => {
+    const now = new Date();
+    const created = new Date(coupon.id ? 0 : 0);
+    const isNew = coupon.usedCount === 0;
+    const isLimited = coupon.usageLimit && (coupon.usageLimit - coupon.usedCount) <= 10;
+
+    if (isNew) return 'NEW';
+    if (isLimited) return 'LIMITED';
+    if (coupon.discountType === 'FIXED') return `FLAT ₹${coupon.discountValue} OFF`;
+    return `${coupon.discountValue}% OFF`;
+  };
+
+  const getBadgeColor = (label: string): string => {
+    if (label === 'NEW') return '#10B981';
+    if (label === 'LIMITED') return '#F59E0B';
+    return COLORS.primary;
+  };
+
+  const formatExpiry = (expiresAt?: string): string => {
+    if (!expiresAt) return 'No Expiry';
+    return `Expires ${new Date(expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+  };
+
+  const renderCouponCard = ({ item }: { item: BackendCoupon }) => {
+    const isApplied = appliedCoupon?.code === item.code;
+    const badge = getBadgeLabel(item);
+    const badgeColor = getBadgeColor(badge);
+
+    return (
+      <View style={[styles.couponCard, isApplied && styles.couponCardSelected]}>
+        <View style={styles.couponCardTop}>
+          <View style={styles.couponCardLeft}>
+            <View style={[styles.badge, { backgroundColor: badgeColor + '20', borderColor: badgeColor + '40' }]}>
+              <Text style={[styles.badgeText, { color: badgeColor }]}>{badge}</Text>
+            </View>
+            <Text style={styles.couponCode}>{item.code}</Text>
+            {item.name ? <Text style={styles.couponName}>{item.name}</Text> : null}
+            {item.description ? <Text style={styles.couponDesc}>{item.description}</Text> : null}
+          </View>
+          <TouchableOpacity
+            style={[styles.applyChip, isApplied && styles.applyChipApplied]}
+            onPress={() => isApplied ? handleRemoveCoupon() : handleApplyCoupon(item.code)}
+            disabled={couponLoading}
+          >
+            <Text style={[styles.applyChipText, isApplied && styles.applyChipTextApplied]}>
+              {isApplied ? 'Applied' : 'Apply'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <View style={styles.couponDivider} />
+
+        <View style={styles.couponCardMeta}>
+          <View style={styles.couponMetaItem}>
+            <MaterialCommunityIcons name="tag-outline" size={13} color="#64748B" />
+            <Text style={styles.couponMetaText}>
+              {item.discountType === 'FIXED'
+                ? `Flat ₹${item.discountValue} off`
+                : `${item.discountValue}% off${item.maxDiscount ? ` (upto ₹${item.maxDiscount})` : ''}`}
+            </Text>
+          </View>
+          {item.minOrderAmount > 0 && (
+            <View style={styles.couponMetaItem}>
+              <MaterialCommunityIcons name="cart-outline" size={13} color="#64748B" />
+              <Text style={styles.couponMetaText}>Min order ₹{item.minOrderAmount}</Text>
+            </View>
+          )}
+          <View style={styles.couponMetaItem}>
+            <MaterialCommunityIcons name="calendar-outline" size={13} color="#64748B" />
+            <Text style={styles.couponMetaText}>{formatExpiry(item.expiresAt)}</Text>
+          </View>
+          {item.isFirstOrderOnly && (
+            <View style={styles.couponMetaItem}>
+              <MaterialCommunityIcons name="star-outline" size={13} color="#F59E0B" />
+              <Text style={[styles.couponMetaText, { color: '#F59E0B' }]}>First order only</Text>
+            </View>
+          )}
+        </View>
+      </View>
+    );
+  };
 
   if (cart.items.length === 0) {
     return (
@@ -110,19 +273,36 @@ const handleApplyCoupon = async (code: string) => {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        
-        {/* Visit Mode Dual Toggle */}
+      <ScreenWrapper
+        bottomButton={
+          <View style={styles.footerInner}>
+            <View style={styles.footerLeft}>
+              <Text style={styles.footerTotalLabel}>Total Amount</Text>
+             <Text style={styles.footerTotalAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>₹{calculatedFinalAmount}</Text>
+            </View>
+            <TouchableOpacity
+              style={styles.continueBtn}
+              onPress={() => {
+                dispatch(setCollectionMode(visitMode === 'center' ? 'lab' : 'home'));
+                router.push('/checkout/address');
+              }}
+            >
+              <Text style={styles.continueBtnText}>Continue Booking</Text>
+              <MaterialCommunityIcons name="arrow-right" size={20} color={COLORS.textLight} />
+            </TouchableOpacity>
+          </View>
+        }
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.visitSelector}>
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.visitBtn, visitMode === 'home' && styles.visitBtnActive]}
             onPress={() => setVisitMode('home')}
           >
             <MaterialCommunityIcons name="home-circle-outline" size={20} color={visitMode === 'home' ? '#FFF' : COLORS.primary} />
             <Text style={[styles.visitBtnText, visitMode === 'home' && styles.visitBtnTextActive]}>Home Collection</Text>
           </TouchableOpacity>
-          
-          <TouchableOpacity 
+          <TouchableOpacity
             style={[styles.visitBtn, visitMode === 'center' && styles.visitBtnActive]}
             onPress={() => setVisitMode('center')}
           >
@@ -131,11 +311,11 @@ const handleApplyCoupon = async (code: string) => {
           </TouchableOpacity>
         </View>
 
-{visitMode === 'center' && (
-          <View style={[styles.centersSection, { paddingHorizontal: 0 }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', backgroundColor: COLORS.primaryLight + '15', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: COLORS.primaryLight + '40' }}>
+        {visitMode === 'center' && (
+          <View style={styles.centersSection}>
+            <View style={styles.infoBox}>
               <MaterialCommunityIcons name="information-outline" size={20} color={COLORS.primary} />
-              <Text style={{ ...TYPOGRAPHY.caption, color: COLORS.primary, flex: 1, marginLeft: 10, lineHeight: 18 }}>
+              <Text style={styles.infoBoxText}>
                 You'll select your preferred lab branch on the next screen.
               </Text>
             </View>
@@ -159,7 +339,10 @@ const handleApplyCoupon = async (code: string) => {
               </View>
             </View>
             <View style={styles.cartCardRight}>
-              <TouchableOpacity onPress={() => dispatch(removeFromCart({ id: item.id, itemType: item.itemType }))} style={styles.removeBtn}>
+              <TouchableOpacity
+                onPress={() => dispatch(removeFromCart({ id: item.id, itemType: item.itemType }))}
+                style={styles.removeBtn}
+              >
                 <MaterialCommunityIcons name="trash-can-outline" size={20} color={COLORS.danger} />
               </TouchableOpacity>
             </View>
@@ -171,42 +354,32 @@ const handleApplyCoupon = async (code: string) => {
           <Text style={styles.addMoreText}>Add More Tests</Text>
         </TouchableOpacity>
 
-        {/* Coupon Apply Strip */}
-        <View style={styles.couponStrip}>
-          <TouchableOpacity 
-            style={styles.couponLeft} 
-            activeOpacity={0.7} 
-            onPress={() => setCouponSheetOpen(true)}
-          >
-            <MaterialCommunityIcons name="ticket-percent-outline" size={24} color={COLORS.primary} />
-            <View style={{ marginLeft: 12, flex: 1 }}>
-              <Text style={styles.couponTitle}>
-                {appliedCoupon ? `Coupon: ${appliedCoupon.code}` : 'Apply Coupons & Offers'}
-              </Text>
-              <Text style={styles.couponSub}>
-                {appliedCoupon ? `You saved ₹${appliedCoupon.val} on this order!` : 'Try lucky scratch for up to ₹300 OFF'}
-              </Text>
-            </View>
-          </TouchableOpacity>
-        {appliedCoupon ? (
-            <TouchableOpacity onPress={() => {
-              setAppliedCoupon(null);
-              dispatch(setAppliedCouponCode(null));
-              fetchPricing(undefined);
-            }} style={styles.couponRemoveBtn}>
+        <TouchableOpacity
+          style={styles.couponStrip}
+          activeOpacity={0.7}
+          onPress={handleOpenCouponSheet}
+        >
+          <MaterialCommunityIcons name="ticket-percent-outline" size={24} color={COLORS.primary} />
+          <View style={styles.couponStripCenter}>
+            <Text style={styles.couponTitle}>
+              {appliedCoupon ? `Coupon: ${appliedCoupon.code}` : 'Apply Coupons & Offers'}
+            </Text>
+            <Text style={styles.couponSub}>
+              {appliedCoupon ? `You saved ₹${appliedCoupon.val} on this order!` : 'View all available offers'}
+            </Text>
+          </View>
+          {appliedCoupon ? (
+            <TouchableOpacity onPress={handleRemoveCoupon} style={styles.couponRemoveBtn}>
               <Text style={styles.removeCouponText}>Remove</Text>
             </TouchableOpacity>
           ) : (
-            <TouchableOpacity onPress={() => setCouponSheetOpen(true)}>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#94A3B8" />
-            </TouchableOpacity>
+            <MaterialCommunityIcons name="chevron-right" size={24} color="#94A3B8" />
           )}
-        </View>
+        </TouchableOpacity>
 
-        {/* Bill Details */}
         <View style={styles.billContainer}>
           <Text style={styles.billTitle}>Bill Details</Text>
-  {pricingLoading ? (
+          {pricingLoading ? (
             <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 12 }} />
           ) : pricing ? (
             <>
@@ -242,106 +415,77 @@ const handleApplyCoupon = async (code: string) => {
             <Text style={styles.billTotalValue}>₹{calculatedFinalAmount}</Text>
           </View>
         </View>
-      </ScrollView>
+      </ScreenWrapper>
 
-      <View style={styles.footer}>
-        <View style={styles.footerLeft}>
-          <Text style={styles.footerTotalLabel}>Total Amount</Text>
-          <Text style={styles.footerTotalAmount}>₹{calculatedFinalAmount}</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.continueBtn} 
-  onPress={() => {
-            if (visitMode === 'center') {
-              dispatch(setCollectionMode('lab'));
-            } else {
-              dispatch(setCollectionMode('home'));
-            }
-            router.push('/checkout/address');
-          }}
-        >
-          <Text style={styles.continueBtnText}>Continue Booking</Text>
-          <MaterialCommunityIcons name="arrow-right" size={20} color={COLORS.textLight} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Coupon Drawer */}
       <PremiumBottomSheet
         visible={isCouponSheetOpen}
-        onClose={() => setCouponSheetOpen(false)}
+        onClose={() => {
+          Keyboard.dismiss();
+          setCouponSheetOpen(false);
+          setCouponError('');
+        }}
       >
-        <View style={styles.modalBody}>
-          {/* Scratch Card Invite Widget */}
-          <TouchableOpacity 
-            style={styles.scratchInvite} 
-            activeOpacity={0.9} 
-            onPress={() => {
-              setCouponSheetOpen(false);
-              setTimeout(() => setScratchOpen(true), 300);
-            }}
-          >
-            <LinearGradient colors={['#FEF3C7', '#FFFBEB']} style={styles.scratchInviteGrad}>
-              <MaterialCommunityIcons name="gift" size={36} color="#F59E0B" />
-       <View style={{ marginLeft: 12, flex: 1 }}>
-                <View style={{ flexDirection: 'row', alignItems: 'center' }}>
-                  <Sparkles size={14} color="#F59E0B" style={{ marginRight: 4 }} />
-                  <Text style={styles.inviteTitle}>Lucky Scratch Card</Text>
-                  <Sparkles size={14} color="#F59E0B" style={{ marginLeft: 4 }} />
-                </View>
-                <Text style={styles.inviteDesc}>Try your luck! Swipe to reveal a randomized cashback reward up to ₹300.</Text>
-              </View>
-              <MaterialCommunityIcons name="chevron-right" size={24} color="#D97706" />
-            </LinearGradient>
-          </TouchableOpacity>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 80 : 0}
+        >
+          <View style={styles.sheetBody}>
+            <Text style={styles.sheetTitle}>Coupons & Offers</Text>
 
-          <Text style={styles.modalHeading}>Available Promos</Text>
-        <View style={{ flexDirection: 'row', gap: 8, marginBottom: 16 }}>
-            <View style={{ flex: 1, borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 12, paddingVertical: 10, backgroundColor: '#F8FAFC' }}>
-              <Text style={{ fontSize: 12, color: '#64748B' }} onPress={() => {}}>
-                <Text
-                  style={{ fontSize: 13, color: '#0F172A' }}
-                  suppressHighlighting
-                >
-                  {couponInput}
-                </Text>
-              </Text>
+            <View style={styles.inputRow}>
               <TextInput
-                style={{ fontSize: 13, color: '#0F172A', padding: 0 }}
+                ref={inputRef}
+                style={styles.couponTextInput}
                 placeholder="Enter coupon code"
                 placeholderTextColor="#94A3B8"
                 value={couponInput}
                 onChangeText={setCouponInput}
                 autoCapitalize="characters"
+                autoCorrect={false}
+                returnKeyType="done"
+                onSubmitEditing={() => handleApplyCoupon(couponInput)}
               />
+              <TouchableOpacity
+                style={[styles.applyBtn, !couponInput.trim() && styles.applyBtnDisabled]}
+                onPress={() => handleApplyCoupon(couponInput)}
+                disabled={couponLoading || !couponInput.trim()}
+              >
+                {couponLoading
+                  ? <ActivityIndicator size="small" color="#FFF" />
+                  : <Text style={styles.applyBtnText}>Apply</Text>
+                }
+              </TouchableOpacity>
             </View>
-            <TouchableOpacity
-              style={[styles.promoApplyBtn, { paddingHorizontal: 16, justifyContent: 'center' }]}
-              onPress={() => handleApplyCoupon(couponInput)}
-              disabled={couponLoading}
-            >
-              {couponLoading
-                ? <ActivityIndicator size="small" color={COLORS.primary} />
-                : <Text style={styles.promoApplyBtnText}>Apply</Text>
-              }
-            </TouchableOpacity>
-          </View>
-          {couponError ? (
-            <Text style={{ fontSize: 11, color: '#EF4444', marginBottom: 12, paddingHorizontal: 4 }}>{couponError}</Text>
-          ) : null}
-        </View>
-      </PremiumBottomSheet>
 
-      {/* Dynamic Scratch Interaction Modal */}
-      <PremiumScratchModal
-        visible={isScratchOpen}
-        onClose={() => setScratchOpen(false)}
-  onApplyReward={(code, val) => {
-          setAppliedCoupon({ code, val, couponId: '' });
-          dispatch(setAppliedCouponCode(code));
-          fetchPricing(code);
-          showSuccess(`Congratulations! You successfully scratched and applied ${code} to save ₹${val}!`);
-        }}   
-      />
+            {couponError ? (
+              <View style={styles.errorRow}>
+                <MaterialCommunityIcons name="alert-circle-outline" size={14} color="#EF4444" />
+                <Text style={styles.errorText}>{couponError}</Text>
+              </View>
+            ) : null}
+
+            {couponsLoading ? (
+              <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: 24 }} />
+            ) : availableCoupons.length > 0 ? (
+              <>
+                <Text style={styles.availableLabel}>Available Offers</Text>
+                <FlatList
+                  data={availableCoupons}
+                  keyExtractor={item => item.id}
+                  renderItem={renderCouponCard}
+                  scrollEnabled={false}
+                  ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
+                />
+              </>
+            ) : (
+              <View style={styles.emptyOffers}>
+                <MaterialCommunityIcons name="ticket-outline" size={40} color={COLORS.border} />
+                <Text style={styles.emptyOffersText}>No offers available right now</Text>
+              </View>
+            )}
+          </View>
+        </KeyboardAvoidingView>
+      </PremiumBottomSheet>
     </View>
   );
 }
@@ -403,6 +547,66 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 16,
     paddingBottom: 100,
+  },
+  visitSelector: {
+    flexDirection: 'row',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    padding: 5,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.soft,
+  },
+  visitBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+    borderRadius: 16,
+  },
+  visitBtnActive: {
+    backgroundColor: COLORS.primary,
+  },
+  visitBtnText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.primary,
+    marginLeft: 6,
+  },
+  visitBtnTextActive: {
+    color: '#FFFFFF',
+  },
+  centersSection: {
+    marginBottom: 20,
+  },
+  infoBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primaryLight + '15',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight + '40',
+  },
+  infoBoxText: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primary,
+    flex: 1,
+    marginLeft: 10,
+    lineHeight: 18,
+  },
+  cartItemsHeader: {
+    marginTop: 4,
+    marginBottom: 8,
+  },
+  sectionSubhead: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textDark,
+    marginBottom: 10,
+    letterSpacing: 0.5,
   },
   cartCard: {
     flexDirection: 'row',
@@ -469,6 +673,40 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginLeft: 8,
   },
+  couponStrip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FFFFFF',
+    borderRadius: 20,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    ...SHADOWS.soft,
+  },
+  couponStripCenter: {
+    flex: 1,
+    marginLeft: 12,
+  },
+  couponTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    color: COLORS.textDark,
+  },
+  couponSub: {
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  couponRemoveBtn: {
+    padding: 6,
+  },
+  removeCouponText: {
+    fontSize: 12,
+    fontWeight: 'bold',
+    color: COLORS.danger,
+  },
   billContainer: {
     backgroundColor: COLORS.surface,
     borderRadius: 16,
@@ -509,22 +747,15 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.h2,
     color: COLORS.textDark,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.surface,
+footerInner: {
     flexDirection: 'row',
-    padding: 20,
-    paddingBottom: 30,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    justifyContent: 'space-between',
     alignItems: 'center',
+    gap: 12,
   },
   footerLeft: {
     flex: 1,
+    flexShrink: 1,
+    minWidth: 0,
   },
   footerTotalLabel: {
     ...TYPOGRAPHY.caption,
@@ -533,14 +764,16 @@ const styles = StyleSheet.create({
   footerTotalAmount: {
     ...TYPOGRAPHY.h1,
     color: COLORS.textDark,
+    flexShrink: 1,
   },
   continueBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: COLORS.primary,
-    paddingHorizontal: 24,
+    paddingHorizontal: 16,
     paddingVertical: 14,
     borderRadius: 30,
+    flexShrink: 0,
   },
   continueBtnText: {
     ...TYPOGRAPHY.subtitle,
@@ -548,201 +781,173 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginRight: 8,
   },
-  visitSelector: {
-    flexDirection: 'row',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 5,
-    marginHorizontal: 16,
-    marginTop: 16,
+  sheetBody: {
+    paddingHorizontal: 16,
+    paddingBottom: 32,
+  },
+  sheetTitle: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: COLORS.textDark,
     marginBottom: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    ...SHADOWS.soft,
   },
-  visitBtn: {
-    flex: 1,
+  inputRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    borderRadius: 16,
-  },
-  visitBtnActive: {
-    backgroundColor: COLORS.primary,
-  },
-  visitBtnText: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.primary,
-    marginLeft: 6,
-  },
-  visitBtnTextActive: {
-    color: '#FFFFFF',
-  },
-  centersSection: {
-    marginHorizontal: 16,
-    marginBottom: 20,
-  },
-  sectionSubhead: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: COLORS.textDark,
-    marginBottom: 10,
-    letterSpacing: 0.5,
-  },
-  centersScroll: {
-    flexDirection: 'row',
-  },
-  centerCard: {
-    width: 260,
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 20,
-    padding: 14,
-    marginRight: 12,
-    ...SHADOWS.soft,
-    shadowOpacity: 0.03,
-  },
-  centerCardActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  centerCardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
-  },
-  centerName: {
-    fontSize: 13,
-    fontWeight: 'bold',
-    color: COLORS.textDark,
-    flex: 1,
-  },
-  centerDist: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: COLORS.primary,
-    marginBottom: 2,
-  },
-  centerAddr: {
-    fontSize: 11,
-    color: '#64748B',
-  },
-  centerTextActive: {
-    color: '#FFFFFF',
-  },
-  cartItemsHeader: {
-    marginHorizontal: 16,
-    marginTop: 4,
+    gap: 10,
     marginBottom: 8,
   },
-  couponStrip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    paddingVertical: 14,
-    paddingHorizontal: 16,
-    marginHorizontal: 16,
-    marginBottom: 16,
-    borderWidth: 1,
+  couponTextInput: {
+    flex: 1,
+    borderWidth: 1.5,
     borderColor: '#E2E8F0',
-    ...SHADOWS.soft,
-    shadowOpacity: 0.04,
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#0F172A',
+    backgroundColor: '#F8FAFC',
+    letterSpacing: 1,
   },
-  couponLeft: {
+  applyBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 12,
+    paddingHorizontal: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: 76,
+  },
+  applyBtnDisabled: {
+    backgroundColor: '#CBD5E1',
+  },
+  applyBtnText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  errorRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+    paddingHorizontal: 2,
+  },
+  errorText: {
+    fontSize: 12,
+    color: '#EF4444',
     flex: 1,
   },
-  couponTitle: {
+  availableLabel: {
     fontSize: 13,
-    fontWeight: 'bold',
-    color: COLORS.textDark,
+    fontWeight: '700',
+    color: COLORS.textSecondary,
+    marginTop: 20,
+    marginBottom: 12,
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
   },
-  couponSub: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 1,
-  },
-  couponRemoveBtn: {
-    padding: 6,
-  },
-  removeCouponText: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: COLORS.danger,
-  },
-  modalBody: {
-    paddingHorizontal: 16,
-    paddingBottom: 30,
-  },
-  scratchInvite: {
-    borderRadius: 20,
-    overflow: 'hidden',
-    marginBottom: 24,
+  couponCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
     borderWidth: 1.5,
-    borderColor: '#FCD34D',
-    ...SHADOWS.soft,
-  },
-  scratchInviteGrad: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-  },
-  inviteTitle: {
-    fontSize: 14,
-    fontWeight: '900',
-    color: '#92400E',
-  },
-  inviteDesc: {
-    fontSize: 11,
-    color: '#B45309',
-    lineHeight: 15,
-    marginTop: 2,
-  },
-  modalHeading: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.textDark,
-    marginBottom: 12,
-  },
-  promoItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 12,
+    overflow: 'hidden',
   },
-  promoCode: {
-    fontSize: 14,
-    fontWeight: 'bold',
-    color: COLORS.primary,
+  couponCardSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + '04',
+  },
+  couponCardTop: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    padding: 14,
+    gap: 12,
+  },
+  couponCardLeft: {
+    flex: 1,
+  },
+  badge: {
+    alignSelf: 'flex-start',
+    borderRadius: 6,
+    borderWidth: 1,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    marginBottom: 8,
+  },
+  badgeText: {
+    fontSize: 10,
+    fontWeight: '800',
     letterSpacing: 0.5,
   },
-  promoDesc: {
+  couponCode: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: COLORS.primary,
+    letterSpacing: 1.5,
+    fontFamily: Platform.OS === 'ios' ? 'Courier New' : 'monospace',
+  },
+  couponName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: COLORS.textDark,
+    marginTop: 3,
+  },
+  couponDesc: {
     fontSize: 11,
     color: '#64748B',
     marginTop: 2,
+    lineHeight: 16,
   },
-  promoApplyBtn: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
+  applyChip: {
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
+    borderRadius: 20,
     paddingHorizontal: 16,
-    paddingVertical: 6,
-    borderRadius: 15,
+    paddingVertical: 7,
+    alignSelf: 'center',
   },
-  promoApplyBtnText: {
+  applyChipApplied: {
+    backgroundColor: COLORS.primary,
+  },
+  applyChipText: {
     fontSize: 12,
-    fontWeight: 'bold',
+    fontWeight: '800',
     color: COLORS.primary,
+  },
+  applyChipTextApplied: {
+    color: '#FFF',
+  },
+  couponDivider: {
+    height: 1,
+    borderStyle: 'dashed',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginHorizontal: 14,
+  },
+  couponCardMeta: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    padding: 12,
+    paddingTop: 10,
+    gap: 10,
+  },
+  couponMetaItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+  },
+  couponMetaText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '500',
+  },
+  emptyOffers: {
+    alignItems: 'center',
+    paddingVertical: 40,
+    gap: 12,
+  },
+  emptyOffersText: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
   },
 });

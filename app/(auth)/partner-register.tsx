@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
 import {
- View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  TextInput, ActivityIndicator, Platform, StatusBar, KeyboardAvoidingView
+  View, Text, StyleSheet, TouchableOpacity,
+  TextInput, ActivityIndicator, Platform, StatusBar,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
@@ -112,11 +113,15 @@ const validateAndSendOtp = () => {
     }
   };
 
-  if (otpStep) {
+if (otpStep) {
     return (
       <View style={styles.container}>
         <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-        <ScrollView contentContainerStyle={styles.content}>
+        <ScreenWrapper
+          backgroundColor="#F8FAFC"
+          contentContainerStyle={styles.content}
+          disableKeyboardDismiss
+        >
           <TouchableOpacity style={styles.backBtn} onPress={() => setOtpStep(false)}>
             <MaterialCommunityIcons name="arrow-left" size={22} color="#334155" />
           </TouchableOpacity>
@@ -152,18 +157,17 @@ const validateAndSendOtp = () => {
               }
             </TouchableOpacity>
           </View>
-        </ScrollView>
+</ScreenWrapper>
       </View>
     );
   }
-
-  return (
-  <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-    >
+return (
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
-      <ScrollView contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+      <ScreenWrapper
+        backgroundColor="#F8FAFC"
+        contentContainerStyle={styles.content}
+      >
         <View style={styles.topRow}>
           <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
             <MaterialCommunityIcons name="arrow-left" size={22} color="#334155" />
@@ -343,8 +347,8 @@ const validateAndSendOtp = () => {
             <Text style={styles.signInLink}>Sign In</Text>
           </TouchableOpacity>
         </View>
-</ScrollView>
-    </KeyboardAvoidingView>
+</ScreenWrapper>
+    </View>
   );
 }
 const styles = StyleSheet.create({

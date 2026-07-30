@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal, Platform } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useLocalSearchParams, useRouter, Stack } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useQuery } from '@tanstack/react-query';
@@ -66,23 +66,23 @@ const { data: report, isLoading } = useQuery({
     },
     enabled: !!id,
   });
-  if (isLoading) {
+if (isLoading) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <ScreenWrapper scrollable={false}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
           <ActivityIndicator size="large" color="#006D6F" />
         </View>
-      </SafeAreaView>
+      </ScreenWrapper>
     );
   }
 
   if (!report) {
     return (
-      <SafeAreaView style={styles.safeArea}>
+      <ScreenWrapper scrollable={false}>
         <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', padding: 24 }}>
           <Text style={{ color: '#64748B', textAlign: 'center' }}>Report not found or not yet released.</Text>
         </View>
-      </SafeAreaView>
+      </ScreenWrapper>
     );
   }
 
@@ -144,8 +144,33 @@ const handleDownload = async () => {
     setSuccessFileName('');
   };
 
-  return (
-    <SafeAreaView style={styles.safeArea}>
+return (
+    <View style={{ flex: 1 }}>
+    <ScreenWrapper
+      backgroundColor="#F8FAFC"
+      bottomButton={
+        report?.pdfUrl ? (
+          <TouchableOpacity
+            style={[styles.downloadFAB, downloading && { backgroundColor: COLORS.secondary }]}
+            onPress={handleDownload}
+            disabled={downloading}
+            activeOpacity={0.8}
+          >
+            {downloading ? (
+              <ActivityIndicator color="#FFF" size="small" />
+            ) : (
+              <MaterialCommunityIcons name="file-download-outline" size={24} color="#FFF" />
+            )}
+            <Text style={styles.fabText}>{downloading ? 'Downloading...' : 'Download Report PDF'}</Text>
+          </TouchableOpacity>
+        ) : (
+          <View style={[styles.downloadFAB, { backgroundColor: '#94A3B8' }]}>
+            <MaterialCommunityIcons name="clock-outline" size={24} color="#FFF" />
+            <Text style={styles.fabText}>PDF not yet available</Text>
+          </View>
+        )
+      }
+    >
       <Stack.Screen
         options={{
           title: report.testName,
@@ -161,7 +186,7 @@ const handleDownload = async () => {
         }}
       />
 
-      <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+  <View style={styles.container}>
         <View style={styles.letterhead}>
           <View style={styles.brandRow}>
             <View style={styles.logoBox}>
@@ -284,14 +309,12 @@ const handleDownload = async () => {
             </View>
           </View>
         )}
-
-        <View style={styles.finePrint}>
+<View style={styles.finePrint}>
           <Text style={styles.finePrintText}>NOT VALID FOR MEDICO LEGAL PURPOSE</Text>
           <Text style={styles.finePrintSub}>Diagnostic Verification Facility</Text>
         </View>
-
-     <View style={{ height: 100 }} />
-      </ScrollView>
+      </View>
+    </ScreenWrapper>
 
       <Modal
         visible={successVisible}
@@ -327,39 +350,15 @@ const handleDownload = async () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
-      </Modal>
-
-      <View style={styles.floatingContainer}>
-        {report?.pdfUrl ? (
-          <TouchableOpacity
-            style={[styles.downloadFAB, downloading && { backgroundColor: COLORS.secondary }]}
-            onPress={handleDownload}
-            disabled={downloading}
-            activeOpacity={0.8}
-          >
-            {downloading ? (
-              <ActivityIndicator color="#FFF" size="small" />
-            ) : (
-              <MaterialCommunityIcons name="file-download-outline" size={24} color="#FFF" />
-            )}
-            <Text style={styles.fabText}>{downloading ? 'Downloading...' : 'Download Report PDF'}</Text>
-          </TouchableOpacity>
-        ) : (
-          <View style={[styles.downloadFAB, { backgroundColor: '#94A3B8' }]}>
-            <MaterialCommunityIcons name="clock-outline" size={24} color="#FFF" />
-            <Text style={styles.fabText}>PDF not yet available</Text>
-          </View>
-        )}
-      </View>
-    </SafeAreaView>
+     </View>
+</Modal>
+    </View>
   );
 }
-
 const styles = StyleSheet.create({
-  safeArea: { flex: 1, backgroundColor: '#FFF' },
+
   headerBackBtn: { marginLeft: -10, padding: 8 },
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+container: { flex: 1 },
   letterhead: { backgroundColor: COLORS.primary, padding: 20, paddingTop: 24, borderBottomRightRadius: 24, borderBottomLeftRadius: 24, ...SHADOWS.soft },
   brandRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 16 },
   logoBox: { width: 40, height: 40, borderRadius: 8, borderWidth: 2, borderColor: '#FFF', justifyContent: 'center', alignItems: 'center', marginRight: 12 },
@@ -419,7 +418,6 @@ modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center
   modalBtnPrimaryText: { color: '#FFF', fontWeight: 'bold', fontSize: 15 },
   modalBtnSecondary: { backgroundColor: '#F1F5F9', borderRadius: 30, paddingVertical: 14, alignItems: 'center' },
   modalBtnSecondaryText: { color: COLORS.textDark, fontWeight: 'bold', fontSize: 15 },
-  floatingContainer: { position: 'absolute', bottom: 24, left: 16, right: 16 },
-  downloadFAB: { backgroundColor: COLORS.primary, borderRadius: 30, height: 56, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', ...SHADOWS.glow },
+downloadFAB: { backgroundColor: COLORS.primary, borderRadius: 30, height: 56, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', ...SHADOWS.glow },
   fabText: { color: '#FFF', fontSize: 15, fontWeight: 'bold', marginLeft: 10 },
 });

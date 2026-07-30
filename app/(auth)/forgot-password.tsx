@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  ActivityIndicator, KeyboardAvoidingView, Platform, StatusBar, TextInput, Dimensions
+  View, Text, StyleSheet, TouchableOpacity,
+  ActivityIndicator, Platform, StatusBar, TextInput, Dimensions,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { showError } from '../../src/store/toastStore';
@@ -123,10 +124,14 @@ setIsSending(true);
   const otpFilled = otp.join('').length === 6;
   const BOX_SIZE = (width - 48 - 40 - 50) / 6;
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+return (
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScreenWrapper
+        backgroundColor="#E8F0F3"
+        contentContainerStyle={styles.scrollContent}
+        disableKeyboardDismiss
+      >
 
         <TouchableOpacity
           style={styles.backBtn}
@@ -306,8 +311,8 @@ setIsSending(true);
             </>
           )}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+</ScreenWrapper>
+    </View>
   );
 }
 

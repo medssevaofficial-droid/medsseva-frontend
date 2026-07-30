@@ -4,12 +4,11 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Platform,
   TextInput,
   ActivityIndicator,
-  SafeAreaView,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -175,8 +174,23 @@ export default function AddCardScreen() {
     return null;
   };
 
+const saveButton = (
+    <TouchableOpacity
+      style={[styles.saveBtn, addCardMutation.isPending && { opacity: 0.7 }]}
+      activeOpacity={0.8}
+      onPress={handleAddCard}
+      disabled={addCardMutation.isPending}
+    >
+      {addCardMutation.isPending ? (
+        <ActivityIndicator color="#FFF" />
+      ) : (
+        <Text style={styles.saveBtnText}>Save Card Securely</Text>
+      )}
+    </TouchableOpacity>
+  );
+
   return (
-    <SafeAreaView style={styles.safeArea}>
+    <View style={styles.safeArea}>
       <StatusBar style="light" />
 
       <View style={styles.header}>
@@ -187,12 +201,10 @@ export default function AddCardScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView
-        style={styles.scroll}
+<ScreenWrapper
+        scrollViewStyle={styles.scroll}
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        bottomButton={saveButton}
       >
         <View style={styles.cardPreviewWrapper}>
           <LinearGradient
@@ -325,22 +337,9 @@ export default function AddCardScreen() {
           </Text>
         </View>
 
-        <TouchableOpacity
-          style={[styles.saveBtn, addCardMutation.isPending && { opacity: 0.7 }]}
-          activeOpacity={0.8}
-          onPress={handleAddCard}
-          disabled={addCardMutation.isPending}
-        >
-          {addCardMutation.isPending ? (
-            <ActivityIndicator color="#FFF" />
-          ) : (
-            <Text style={styles.saveBtnText}>Save Card Securely</Text>
-          )}
-        </TouchableOpacity>
-
-        <View style={{ height: 40 }} />
-      </ScrollView>
-    </SafeAreaView>
+<View style={{ height: 40 }} />
+      </ScreenWrapper>
+    </View>
   );
 }
 

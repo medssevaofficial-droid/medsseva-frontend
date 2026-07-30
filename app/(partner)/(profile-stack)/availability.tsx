@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, ScrollView,StyleSheet, TouchableOpacity,
   ActivityIndicator, StatusBar, Switch,
 } from 'react-native';
+import ScreenWrapper from '@/src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import Toast from 'react-native-toast-message';
@@ -81,12 +82,24 @@ export default function AvailabilityScreen() {
     );
   }
 
+ const saveButton = (
+    <TouchableOpacity
+      style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+      onPress={handleSave}
+      disabled={isSaving}
+      activeOpacity={0.85}
+    >
+      {isSaving
+        ? <ActivityIndicator color="#fff" size="small" />
+        : <Text style={styles.saveBtnText}>Save Availability</Text>
+      }
+    </TouchableOpacity>
+  );
+
   return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
- 
-
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+      <ScreenWrapper bottomButton={saveButton} contentContainerStyle={styles.content}>
         <View style={styles.card}>
           <View style={styles.toggleRow}>
             <View style={styles.toggleLeft}>
@@ -216,18 +229,7 @@ export default function AvailabilityScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-          onPress={handleSave}
-          disabled={isSaving}
-          activeOpacity={0.85}
-        >
-          {isSaving
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.saveBtnText}>Save Availability</Text>
-          }
-        </TouchableOpacity>
-      </ScrollView>
+</ScreenWrapper>
     </View>
   );
 }

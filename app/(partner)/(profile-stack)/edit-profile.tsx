@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, StatusBar, KeyboardAvoidingView, Platform,
+  View, Text, StyleSheet, TouchableOpacity,
+  TextInput, ActivityIndicator, StatusBar,
 } from 'react-native';
+import ScreenWrapper from '@/src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -88,11 +89,24 @@ export default function EditProfileScreen() {
     );
   }
 
+const saveButton = (
+    <TouchableOpacity
+      style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+      onPress={handleSave}
+      disabled={isSaving}
+      activeOpacity={0.85}
+    >
+      {isSaving
+        ? <ActivityIndicator color="#fff" size="small" />
+        : <Text style={styles.saveBtnText}>Save Changes</Text>
+      }
+    </TouchableOpacity>
+  );
+
   return (
-    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-   
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScreenWrapper bottomButton={saveButton} contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
 
@@ -110,7 +124,7 @@ export default function EditProfileScreen() {
           <View style={styles.fieldGroup}>
             <Text style={styles.label}>Mobile Number</Text>
             <View style={[styles.input, styles.readonlyInput]}>
-              <Text style={styles.readonlyText}>{user?.mobile || '—'}</Text>
+              <Text style={styles.readonlyText}>{user?.mobile || '-'}</Text>
               <View style={styles.verifiedBadge}>
                 <MaterialCommunityIcons name="check-circle" size={14} color="#059669" />
                 <Text style={styles.verifiedText}>Verified</Text>
@@ -200,19 +214,8 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-          onPress={handleSave}
-          disabled={isSaving}
-          activeOpacity={0.85}
-        >
-          {isSaving
-            ? <ActivityIndicator color="#fff" size="small" />
-            : <Text style={styles.saveBtnText}>Save Changes</Text>
-          }
-        </TouchableOpacity>
-      </ScrollView>
-    </KeyboardAvoidingView>
+</ScreenWrapper>
+    </View>
   );
 }
 

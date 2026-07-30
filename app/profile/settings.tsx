@@ -4,9 +4,9 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   Platform,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -61,7 +61,7 @@ export default function SettingsScreen() {
         <View style={{ width: 40 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+  <ScreenWrapper contentContainerStyle={styles.scroll}>
         <Text style={styles.sectionLabel}>PROFILE</Text>
         <View style={styles.group}>
           <SettingsRow
@@ -100,7 +100,7 @@ export default function SettingsScreen() {
         </View>
 
         <Text style={styles.versionText}>App Version 1.0.0 (Build 42)</Text>
-      </ScrollView>
+    </ScreenWrapper>
 
       <ConfirmSheet
         visible={showLogoutSheet}

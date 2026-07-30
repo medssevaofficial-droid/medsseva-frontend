@@ -77,7 +77,6 @@ finalizeBooking: (state, action: PayloadAction<any>) => {
       state.selectedTimeSlot = null;
       state.patientDetails = null;
       state.paymentMethod = null;
-   state.collectionMode = 'home';
       state.appliedCouponCode = null;
       state.selectedBranchId = null;
       state.selectedBranchName = null;

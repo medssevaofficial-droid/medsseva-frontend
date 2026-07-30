@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Modal } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { showError } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { useSelector, useDispatch } from 'react-redux';
@@ -12,7 +13,7 @@ import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { apiService } from '../../src/services/api';
 import { RazorpayWebView } from '../../components/RazorpayWebView';
 
-// Payment methods shown depend on collectionMode — computed below from Redux
+// Payment methods shown depend on collectionMode - computed below from Redux
 const HOME_PAYMENT_METHODS = [
   { id: 'upi', name: 'Pay Now via UPI', icon: 'qrcode-scan', description: 'Pay instantly. Booking confirmed immediately.' },
   { id: 'cash', name: 'Pay at Home (Cash)', icon: 'cash', description: 'Pay the lab assistant at your doorstep before sample collection.' },
@@ -141,7 +142,24 @@ const handlePayNow = async () => {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+     <ScreenWrapper
+        bottomButton={
+          <TouchableOpacity
+            style={[styles.payBtn, !selectedMethod && styles.payBtnDisabled]}
+            disabled={!selectedMethod}
+            onPress={handlePayNow}
+          >
+            <Text style={styles.payBtnText}>
+              {isLabVisit
+                ? 'Confirm Booking'
+                : selectedMethod === 'cash'
+                ? 'Confirm (Pay at Home)'
+                : 'Pay Now'}
+            </Text>
+          </TouchableOpacity>
+        }
+        contentContainerStyle={styles.scrollContent}
+      >
         
         {/* Summary Card */}
         <View style={styles.summaryCard}>
@@ -214,24 +232,7 @@ const handlePayNow = async () => {
           <Text style={styles.securityText}>100% Secure & Encrypted Payments</Text>
         </View>
 
-      </ScrollView>
-
-      {/* Footer */}
-<View style={styles.footer}>
-        <TouchableOpacity 
-          style={[styles.payBtn, !selectedMethod && styles.payBtnDisabled]} 
-          disabled={!selectedMethod}
-          onPress={handlePayNow}
-        >
-       <Text style={styles.payBtnText}>
-            {isLabVisit
-              ? 'Confirm Booking'
-              : selectedMethod === 'cash'
-              ? 'Confirm (Pay at Home)'
-              : 'Pay Now'}
-          </Text>
-        </TouchableOpacity>
-      </View>
+</ScreenWrapper>
 
       {/* Processing Overlay */}
       {isProcessing && (
@@ -419,17 +420,7 @@ methodName: {
     marginLeft: 8,
     fontWeight: 'bold',
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.surface,
-    padding: 20,
-    paddingBottom: 30,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
+  
   payBtn: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,

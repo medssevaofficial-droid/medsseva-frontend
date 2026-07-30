@@ -35,6 +35,7 @@ api.interceptors.request.use(
 );
 
 export const couponApiService = {
+  getPublicCoupons: () => api.get('/coupons').then(res => res.data),
   validate: async (data: {
     code: string;
     cartTotal: number;
@@ -173,7 +174,12 @@ uploadAvatar: (imageUri: string, mimeType: string, fileName: string) => {
   getPartnerAvailabilitySchedule: () => api.get('/partner/availability/schedule').then(res => res.data),
   updatePartnerAvailabilitySchedule: (data: any) => api.patch('/partner/availability/schedule', data).then(res => res.data),
   getPartnerBranch: () => api.get('/partner/branch').then(res => res.data),
-  getPartnerRatings: () => api.get('/partner/ratings').then(res => res.data),
+getPartnerRatings: () => api.get('/partner/ratings').then(res => res.data),
+  getDeliveryBranches: () => api.get('/partner/delivery-branches').then(res => res.data),
+  selectDeliveryBranch: (bookingId: string, branchId: string) =>
+    api.post(`/partner/bookings/${bookingId}/select-branch`, { branchId }).then(res => res.data),
+  confirmBranchDelivery: (bookingId: string) =>
+    api.post(`/partner/bookings/${bookingId}/confirm-delivery`).then(res => res.data),
 
   getOrCreateConversation: () => api.get('/chat/conversation').then(res => res.data),
   getChatMessages: (conversationId: string, cursor?: string) =>

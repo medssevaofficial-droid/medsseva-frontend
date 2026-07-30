@@ -51,12 +51,9 @@ const loadBookings = useCallback(async () => {
         apiService.getPartnerNotifications(),
       ]);
 
- // Active assigned jobs (all non-terminal statuses)
-  const activeAssigned = assignedData.filter((b: Booking) =>
-        ['ACCEPTED', 'ON_THE_WAY', 'REACHED_LOCATION', 'SAMPLE_COLLECTED', 'DELIVERED_TO_LAB', 'PROCESSING'].includes(b.status)
+const activeAssigned = assignedData.filter((b: Booking) =>
+        ['ACCEPTED', 'ON_THE_WAY', 'REACHED_LOCATION', 'SAMPLE_COLLECTED', 'SELECTING_DELIVERY_BRANCH', 'DELIVERING_TO_BRANCH', 'DELIVERED_TO_LAB', 'PROCESSING'].includes(b.status)
       );
-
-      // Pending requests from notifications (WAITING_FOR_PARTNER, not yet assigned to anyone)
       const pendingRequests = pendingData.map((b: any) => ({
         ...b,
         patientMobile: b.patientMobile || null,
@@ -73,8 +70,7 @@ const loadBookings = useCallback(async () => {
         return true;
       });
 
-    // Sort: pending requests first, then active jobs by workflow stage
-      merged.sort((a: Booking, b: Booking) => {
+merged.sort((a: Booking, b: Booking) => {
         const order: Record<string, number> = {
           WAITING_FOR_PARTNER: 0,
           ASSIGNED: 1,
@@ -82,8 +78,10 @@ const loadBookings = useCallback(async () => {
           ON_THE_WAY: 3,
           REACHED_LOCATION: 4,
           SAMPLE_COLLECTED: 5,
-          DELIVERED_TO_LAB: 6,
-          PROCESSING: 7,
+          SELECTING_DELIVERY_BRANCH: 6,
+          DELIVERING_TO_BRANCH: 7,
+          DELIVERED_TO_LAB: 8,
+          PROCESSING: 9,
         };
         return (order[a.status] ?? 99) - (order[b.status] ?? 99);
       });
@@ -109,8 +107,6 @@ const getNextStatus = (current: string): string | null => {
     const flow: Record<string, string> = {
       ACCEPTED: 'ON_THE_WAY',
       ON_THE_WAY: 'REACHED_LOCATION',
-      // REACHED_LOCATION is handled separately via handleUpdateStatus
-      SAMPLE_COLLECTED: 'DELIVERED_TO_LAB',
     };
     return flow[current] || null;
   };
@@ -123,12 +119,27 @@ const getNextStatusLabel = (current: string, paymentStatus: string): string => {
     const labels: Record<string, string> = {
       ACCEPTED: 'Start Journey',
       ON_THE_WAY: 'Reached Location',
-      SAMPLE_COLLECTED: 'Delivered to Lab',
+      SAMPLE_COLLECTED: 'Select Delivery Branch',
+      DELIVERING_TO_BRANCH: 'Confirm Delivery',
     };
     return labels[current] || '';
   };
 
 const handleUpdateStatus = async (booking: Booking) => {
+   if (booking.status === 'SAMPLE_COLLECTED') {
+router.push({
+        pathname: '/partner-flow/select-branch',
+        params: { bookingId: booking.id },
+      } as any);
+      return;
+    }
+    if (booking.status === 'DELIVERING_TO_BRANCH') {
+      router.push({
+        pathname: '/partner-flow/deliver-sample',
+        params: { bookingId: booking.id },
+      } as any);
+      return;
+    }
     if (booking.status === 'REACHED_LOCATION') {
       if (booking.paymentStatus === 'SUCCESS') {
         // Online-paid: skip OTP/payment screen, go straight to SAMPLE_COLLECTED
@@ -144,9 +155,8 @@ const handleUpdateStatus = async (booking: Booking) => {
           setUpdatingId(null);
         }
       } else {
-        // Pay-at-doorstep: go to OTP/payment collect screen
-        router.push(
-          `/(partner)/collect?bookingId=${booking.id}&paymentStatus=${booking.paymentStatus}&otpVerified=${(booking as any).otpVerified ?? false}` as any
+     router.push(
+          `/partner-flow/collect?bookingId=${booking.id}&paymentStatus=${booking.paymentStatus}&otpVerified=${(booking as any).otpVerified ?? false}` as any
         );
       }
       return;

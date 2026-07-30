@@ -4,14 +4,15 @@ import {
   Text,
   StyleSheet,
   TouchableOpacity,
-  ScrollView,
   TextInput,
   Platform,
   Modal,
   Dimensions,
   FlatList,
+  ScrollView,
   StatusBar,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -125,10 +126,19 @@ export default function EditProfileScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
+ <ScreenWrapper
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        bottomButton={
+          <TouchableOpacity
+            style={[styles.primaryUpdateBtn, isSaving && { opacity: 0.7 }]}
+            onPress={handleSave}
+            activeOpacity={0.85}
+            disabled={isSaving}
+          >
+            <Text style={styles.primaryUpdateBtnText}>{isSaving ? 'Saving...' : 'Save Changes & Sync'}</Text>
+            <MaterialCommunityIcons name="sync" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
+          </TouchableOpacity>
+        }
       >
         <View style={styles.formSection}>
           <View style={styles.cardContainer}>
@@ -229,19 +239,8 @@ export default function EditProfileScreen() {
           </View>
         </View>
 
-        <TouchableOpacity
-          style={[styles.primaryUpdateBtn, isSaving && { opacity: 0.7 }]}
-          onPress={handleSave}
-          activeOpacity={0.85}
-          disabled={isSaving}
-        >
-          <Text style={styles.primaryUpdateBtnText}>{isSaving ? 'Saving...' : 'Save Changes & Sync'}</Text>
-          <MaterialCommunityIcons name="sync" size={18} color="#FFFFFF" style={{ marginLeft: 8 }} />
-        </TouchableOpacity>
-
-        <View style={{ height: 50 }} />
-      </ScrollView>
-
+  <View style={{ height: 50 }} />
+      </ScreenWrapper>
       <Modal visible={isCalendarVisible} transparent animationType="slide">
         <View style={styles.modalBackdrop}>
           <View style={styles.calendarSheet}>

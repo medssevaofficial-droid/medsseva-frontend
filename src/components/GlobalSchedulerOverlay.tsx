@@ -282,7 +282,7 @@ const filteredPackages = testSearchQuery.trim() === '' ? [] : allPackages.filter
               <View style={styles.headerArea}>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.headTitle}>Schedule Appointment</Text>
-                  <Text style={styles.headSubtitle}>Fill details — we confirm within 30 minutes</Text>
+                  <Text style={styles.headSubtitle}>Fill details - we confirm within 30 minutes</Text>
                 </View>
                 <TouchableOpacity style={styles.closeBtn} onPress={() => setIsOpen(false)}>
                   <MaterialCommunityIcons name="close" size={20} color="#475569" />

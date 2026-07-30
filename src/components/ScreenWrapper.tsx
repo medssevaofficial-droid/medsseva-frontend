@@ -1,0 +1,127 @@
+import React, { useCallback } from 'react';
+import {
+  View,
+  StyleSheet,
+  Keyboard,
+  ViewStyle,
+  Platform,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { KeyboardAwareScrollView } from 'react-native-keyboard-aware-scroll-view';
+import { COLORS } from '../theme/theme';
+
+interface ScreenWrapperProps {
+  children: React.ReactNode;
+  bottomButton?: React.ReactNode;
+  scrollable?: boolean;
+  backgroundColor?: string;
+  contentContainerStyle?: ViewStyle;
+  scrollViewStyle?: ViewStyle;
+  disableKeyboardDismiss?: boolean;
+  refreshControl?: React.ReactElement;
+}
+
+export default function ScreenWrapper({
+  children,
+  bottomButton,
+  scrollable = true,
+  backgroundColor = COLORS.background,
+  contentContainerStyle,
+  scrollViewStyle,
+  disableKeyboardDismiss = false,
+  refreshControl,
+}: ScreenWrapperProps) {
+  const insets = useSafeAreaInsets();
+  const bottomInset = insets.bottom;
+
+  const handleScrollBeginDrag = useCallback(() => {
+    if (!disableKeyboardDismiss) {
+      Keyboard.dismiss();
+    }
+  }, [disableKeyboardDismiss]);
+
+  if (!scrollable) {
+    return (
+      <View style={[styles.container, { backgroundColor }]}>
+        <View style={[styles.nonScrollContent, contentContainerStyle]}>
+          {children}
+        </View>
+        {bottomButton && (
+          <View
+            style={[
+              styles.buttonContainer,
+              { paddingBottom: bottomInset > 0 ? bottomInset : 16 },
+            ]}
+          >
+            {bottomButton}
+          </View>
+        )}
+      </View>
+    );
+  }
+
+  return (
+    <View style={[styles.container, { backgroundColor }]}>
+      <KeyboardAwareScrollView
+        style={[styles.scrollView, scrollViewStyle]}
+        contentContainerStyle={[
+          styles.scrollContent,
+          { paddingBottom: bottomButton ? 80 + bottomInset : 24 + bottomInset },
+          contentContainerStyle,
+        ]}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="interactive"
+        onScrollBeginDrag={handleScrollBeginDrag}
+        extraScrollHeight={Platform.OS === 'ios' ? 32 : 16}
+        extraHeight={Platform.OS === 'android' ? 80 : 0}
+        enableResetScrollToCoords={false}
+        enableAutomaticScroll
+        showsVerticalScrollIndicator={false}
+        bounces
+        alwaysBounceVertical
+       refreshControl={refreshControl as any}
+        scrollEventThrottle={16}
+      >
+        {children}
+      </KeyboardAwareScrollView>
+
+      {bottomButton && (
+        <View
+          style={[
+            styles.buttonContainer,
+            { paddingBottom: bottomInset > 0 ? bottomInset : 16 },
+          ]}
+        >
+          {bottomButton}
+        </View>
+      )}
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 0,
+  },
+  nonScrollContent: {
+    flex: 1,
+  },
+  buttonContainer: {
+    backgroundColor: COLORS.surface,
+    paddingTop: 12,
+    paddingHorizontal: 20,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    elevation: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+  },
+});

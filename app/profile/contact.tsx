@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform, Linking } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, Platform, Linking } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -92,11 +93,7 @@ export default function ContactScreen() {
           <Text style={styles.bannerSubtext}>Reach out to our specialized diagnostics support desk for any inquiries.</Text>
         </View>
       </LinearGradient>
-
-      <ScrollView 
-        showsVerticalScrollIndicator={false} 
-        contentContainerStyle={styles.scrollBody}
-      >
+<ScreenWrapper contentContainerStyle={styles.scrollBody}> 
         <View style={styles.contentCard}>
           <Text style={styles.sectionHeading}>Diagnostic Center Details</Text>
           
@@ -146,11 +143,10 @@ export default function ContactScreen() {
         <View style={styles.footerMessage}>
           <Text style={styles.footerText}>MedsSeva is committed to giving you prompt assistance for all lab reports and test booking queries.</Text>
         </View>
-      </ScrollView>
+</ScreenWrapper>
     </View>
   );
 }
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,

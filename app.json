@@ -12,6 +12,12 @@
     },
     "android": {
       "package": "com.kanha0415.medssevaapp",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyBJyWuAP9KhGnan9fuldH8BIBmYvF_n-io"
+        }
+      },
+      "softwareKeyboardLayoutMode": "resize",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -32,7 +38,13 @@
         "android.permission.RECEIVE_BOOT_COMPLETED",
         "android.permission.VIBRATE",
         "android.permission.USE_FINGERPRINT",
-        "android.permission.USE_BIOMETRIC"
+        "android.permission.USE_BIOMETRIC",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_MEDIA_LOCATION",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"
       ]
     },
     "web": {
@@ -167,7 +179,8 @@
       "expo-audio",
       "expo-asset",
       "expo-sharing",
-      "expo-web-browser"
+      "expo-web-browser",
+      "expo-background-task"
     ],
     "experiments": {
       "typedRoutes": true
@@ -175,7 +188,7 @@
     "extra": {
       "router": {},
       "eas": {
-        "projectId": "82102d25-9c8e-47f2-9ada-735685ea0aed"
+       
       }
     }
   }

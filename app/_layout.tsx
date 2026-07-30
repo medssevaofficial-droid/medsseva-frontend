@@ -144,7 +144,8 @@ const restoreSession = async () => {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-     <Stack.Screen name="(partner)" options={{ headerShown: false }} />
+  <Stack.Screen name="(partner)" options={{ headerShown: false }} />
+        <Stack.Screen name="partner-flow" options={{ headerShown: false }} />
         <Stack.Screen name="support" options={{ headerShown: false }} />
       </Stack>
     <GlobalSchedulerOverlay />

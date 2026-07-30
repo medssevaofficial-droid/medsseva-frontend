@@ -213,7 +213,7 @@ if (!selectedFile) {
               Upload your prescription and our team will identify the required tests and assist with booking.
             </Text>
 
-            <View style={styles.stepsRow}>
+            {/* <View style={styles.stepsRow}>
               {[
                 { icon: 'file-upload-outline', label: 'Upload File' },
                 { icon: 'magnify-scan', label: 'We Review' },
@@ -226,11 +226,11 @@ if (!selectedFile) {
                   <Text style={styles.stepLabel}>{step.label}</Text>
                 </View>
               ))}
-            </View>
+            </View> */}
 
             {!selectedFile ? (
               <View style={styles.uploadOptionsSection}>
-                <Text style={styles.uploadLabel}>Select Source</Text>
+                {/* <Text style={styles.uploadLabel}>Select Source</Text> */}
                 <View style={styles.uploadOptionsRow}>
                   <TouchableOpacity style={styles.uploadOption} onPress={handleCamera} activeOpacity={0.8}>
                     <View style={[styles.uploadOptionIcon, { backgroundColor: '#EFF6FF' }]}>
@@ -252,7 +252,7 @@ if (!selectedFile) {
                   </TouchableOpacity>
                 </View>
                 <Text style={styles.formatHint}>
-                  Supported: JPG, PNG, WEBP, PDF, DOC, DOCX — Max 20 MB
+                  Supported: JPG, PNG, WEBP, PDF, DOC, DOCX - Max 20 MB
                 </Text>
               </View>
             ) : (

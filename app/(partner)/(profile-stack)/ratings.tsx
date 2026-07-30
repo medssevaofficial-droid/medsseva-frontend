@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, TouchableOpacity,
   ActivityIndicator, StatusBar,
 } from 'react-native';
+import ScreenWrapper from '@/src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 
@@ -62,8 +63,8 @@ export default function RatingsScreen() {
           <MaterialCommunityIcons name="star-off" size={48} color="#CBD5E1" />
           <Text style={styles.emptyTitle}>No ratings yet</Text>
         </View>
-      ) : (
-        <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+   ) : (
+        <ScreenWrapper contentContainerStyle={styles.content}>
           <View style={styles.overallCard}>
             <View style={styles.overallLeft}>
               <Text style={styles.overallScore}>{data.overallRating.toFixed(1)}</Text>
@@ -136,8 +137,8 @@ export default function RatingsScreen() {
                 </View>
               ))}
             </View>
-          )}
-        </ScrollView>
+      )}
+        </ScreenWrapper>
       )}
     </View>
   );

@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, ScrollView, useWindowDimensions
+  View, Text, StyleSheet, TouchableOpacity, TextInput,
+  ActivityIndicator, useWindowDimensions,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import QRCode from 'react-native-qrcode-svg';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
-import { showError } from '../../src/store/toastStore';
+import { apiService } from '../../src/services/api';
+import { showError, showSuccess } from '../../src/store/toastStore';
 import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 
 type Step = 'otp' | 'payment' | 'upi_waiting' | 'done' | 'sample_collected';
@@ -156,18 +157,16 @@ const handleCollectSample = async () => {
     try {
       await apiService.updateBookingStatus(bookingId, 'SAMPLE_COLLECTED');
       setStep('sample_collected');
-  } catch (e: any) {
+    } catch (e: any) {
       showError(e?.response?.data?.error || 'Could not update status.');
     }
   };
 
-  const handleDeliverToLab = async () => {
-    try {
-      await apiService.updateBookingStatus(bookingId, 'DELIVERED_TO_LAB');
-      router.back();
-  } catch (e: any) {
-      showError(e?.response?.data?.error || 'Could not update status.');
-    }
+const handleDeliverToLab = () => {
+    router.push({
+      pathname: '/partner-flow/select-branch',
+      params: { bookingId },
+    } as any);
   };
 
 
@@ -191,7 +190,7 @@ if (step === 'otp') {
           <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScreenWrapper disableKeyboardDismiss contentContainerStyle={styles.scrollContent}>
           <View style={styles.iconCircle}>
             <MaterialCommunityIcons name="shield-key-outline" size={40} color={COLORS.primary} />
           </View>
@@ -240,8 +239,8 @@ if (step === 'otp') {
               ? <ActivityIndicator color="#fff" />
               : <Text style={styles.primaryBtnText}>Verify OTP</Text>
             }
-          </TouchableOpacity>
-        </ScrollView>
+       </TouchableOpacity>
+        </ScreenWrapper>
       </View>
     );
   }
@@ -257,7 +256,7 @@ if (step === 'upi_waiting') {
           <Text style={styles.headerTitle}>Collect Payment</Text>
           <View style={{ width: 36 }} />
         </View>
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScreenWrapper contentContainerStyle={styles.scrollContent}>
           <View style={styles.qrAmountRow}>
             <Text style={styles.qrAmountLabel}>Amount Payable</Text>
             <Text style={styles.qrAmountValue}>₹{qrData?.amount?.toFixed(2)}</Text>
@@ -302,19 +301,28 @@ if (step === 'upi_waiting') {
             }}
           >
             <MaterialCommunityIcons name="check-circle-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBtnText}>Patient Paid — Confirm</Text>
+            <Text style={styles.primaryBtnText}>Patient Paid - Confirm</Text>
           </TouchableOpacity>
-          <Text style={styles.upiNote}>
+     <Text style={styles.upiNote}>
             Tap above only after patient shows payment confirmation on their UPI app.
           </Text>
-        </ScrollView>
+        </ScreenWrapper>
       </View>
     );
   }
 
-  if (step === 'payment') {
+if (step === 'payment') {
     return (
       <View style={styles.container}>
+        <ConfirmSheet
+          visible={showCashConfirm}
+          title="Confirm Cash Collection"
+          message="Have you received the full cash payment from the patient?"
+          confirmLabel="Yes, Collected"
+          cancelLabel="Cancel"
+          onConfirm={confirmCashCollected}
+          onCancel={() => setShowCashConfirm(false)}
+        />
         <View style={styles.header}>
           <TouchableOpacity onPress={() => setStep('otp')} style={styles.backBtn}>
             <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
@@ -323,7 +331,7 @@ if (step === 'upi_waiting') {
           <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScreenWrapper contentContainerStyle={styles.scrollContent}>
           <View style={[styles.iconCircle, { backgroundColor: '#FEF3C7' }]}>
             <MaterialCommunityIcons name="check-decagram-outline" size={40} color="#D97706" />
           </View>
@@ -358,15 +366,14 @@ if (step === 'upi_waiting') {
               ? <ActivityIndicator color={COLORS.primary} />
               : <MaterialCommunityIcons name="chevron-right" size={22} color="#94A3B8" />
             }
-          </TouchableOpacity>
-        </ScrollView>
+   </TouchableOpacity>
+        </ScreenWrapper>
       </View>
     );
   }
 
 
-
-  if (step === 'sample_collected') {
+if (step === 'sample_collected') {
     return (
       <View style={styles.container}>
         <View style={styles.header}>
@@ -375,13 +382,13 @@ if (step === 'upi_waiting') {
           <View style={{ width: 36 }} />
         </View>
 
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+        <ScreenWrapper contentContainerStyle={styles.scrollContent}>
           <View style={[styles.iconCircle, { backgroundColor: '#EDE9FE' }]}>
             <MaterialCommunityIcons name="test-tube" size={40} color="#7C3AED" />
           </View>
           <Text style={styles.stepTitle}>Sample Collected</Text>
-          <Text style={styles.stepSubtitle}>
-            Sample has been collected successfully. Please deliver it to the lab and confirm below.
+       <Text style={styles.stepSubtitle}>
+            Sample collected successfully. Select the MedSeva branch you will deliver it to.
           </Text>
 
           <View style={styles.progressRow}>
@@ -410,16 +417,16 @@ if (step === 'upi_waiting') {
             </Text>
           </View>
 
-          <TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#7C3AED' }]} onPress={handleDeliverToLab}>
-            <MaterialCommunityIcons name="truck-delivery-outline" size={20} color="#fff" style={{ marginRight: 8 }} />
-            <Text style={styles.primaryBtnText}>Delivered to Lab</Text>
+<TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#7C3AED' }]} onPress={handleDeliverToLab}>
+            <MaterialCommunityIcons name="hospital-building" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.primaryBtnText}>Select Delivery Branch</Text>
           </TouchableOpacity>
-        </ScrollView>
+        </ScreenWrapper>
       </View>
     );
   }
 
-  return (
+return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={{ width: 36 }} />
@@ -427,7 +434,7 @@ if (step === 'upi_waiting') {
         <View style={{ width: 36 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScreenWrapper contentContainerStyle={styles.scrollContent}>
         <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7' }]}>
           <MaterialCommunityIcons name="check-circle" size={40} color="#059669" />
         </View>
@@ -447,11 +454,11 @@ if (step === 'upi_waiting') {
           </Text>
         </View>
 
-        <TouchableOpacity style={styles.primaryBtn} onPress={handleCollectSample}>
+<TouchableOpacity style={styles.primaryBtn} onPress={handleCollectSample}>
           <MaterialCommunityIcons name="test-tube" size={20} color="#fff" style={{ marginRight: 8 }} />
           <Text style={styles.primaryBtnText}>Collect Sample</Text>
         </TouchableOpacity>
-      </ScrollView>
+      </ScreenWrapper>
     </View>
   );
 }

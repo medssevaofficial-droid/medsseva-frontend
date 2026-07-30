@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Platform } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { showError, showInfo } from '../../src/store/toastStore';
 import { ConfirmSheet } from '../../src/components/ConfirmSheet';
 import { useRouter } from 'expo-router';
@@ -165,7 +166,18 @@ const handleDelete = (id: string) => {
         <View style={{ width: 24 }} />
       </View>
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
+    <ScreenWrapper
+        bottomButton={
+          <TouchableOpacity
+            style={[styles.continueBtn, (collectionMode === 'lab' ? !selectedBranchId : !selectedId) && styles.continueBtnDisabled]}
+            disabled={collectionMode === 'lab' ? !selectedBranchId : !selectedId}
+            onPress={handleContinue}
+          >
+            <Text style={styles.continueBtnText}>Continue to Slot Selection</Text>
+          </TouchableOpacity>
+        }
+        contentContainerStyle={styles.scrollContent}
+      >
         
         <TouchableOpacity 
           style={styles.addAddressCard} 
@@ -362,18 +374,7 @@ const handleDelete = (id: string) => {
         </>
         )}
 
-      </ScrollView>
-
-      {/* Footer */}
-   <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[styles.continueBtn, (collectionMode === 'lab' ? !selectedBranchId : !selectedId) && styles.continueBtnDisabled]} 
-          disabled={collectionMode === 'lab' ? !selectedBranchId : !selectedId}
-          onPress={handleContinue}
-        >
-          <Text style={styles.continueBtnText}>Continue to Slot Selection</Text>
-        </TouchableOpacity>
-      </View>
+  </ScreenWrapper>
     </View>
   );
 }
@@ -556,19 +557,7 @@ emptySub: {
   skeletonBox: {
     backgroundColor: '#E2E8F0',
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.surface,
-    padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 34 : 24,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    ...SHADOWS.soft,
-    elevation: 8,
-  },
+
   continueBtn: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  TextInput, ActivityIndicator, Modal, Animated
+  View, Text, StyleSheet, TouchableOpacity,
+  TextInput, ActivityIndicator, Modal, Animated,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -126,7 +127,7 @@ const calculateAgeFromDob = (dob: string): string => {
     if (!isValid) return;
 
     if (hasProfileChanges()) {
-      // User edited profile fields — ask what to do
+      // User edited profile fields - ask what to do
       setShowUpdateModal(true);
       setPendingContinue(true);
     } else {
@@ -190,7 +191,18 @@ return (
           <Text style={styles.loadingText}>Loading your profile...</Text>
         </View>
       ) : (
-        <ScrollView contentContainerStyle={styles.scrollContent}>
+      <ScreenWrapper
+          bottomButton={
+            <TouchableOpacity
+              style={[styles.continueBtn, !isValid && styles.continueBtnDisabled]}
+              disabled={!isValid}
+              onPress={handleContinue}
+            >
+              <Text style={styles.continueBtnText}>Proceed to Payment</Text>
+            </TouchableOpacity>
+          }
+          contentContainerStyle={styles.scrollContent}
+        >
 
           {profileError && (
             <View style={styles.errorBanner}>
@@ -263,7 +275,7 @@ return (
                 maxLength={10}
                 value={mobile}
                 onChangeText={setMobile}
-                editable={false}  // Mobile is identity — not editable
+                editable={false}  // Mobile is identity - not editable
                 onFocus={() => setFocusedInput('mobile')}
                 onBlur={() => setFocusedInput(null)}
               />
@@ -300,20 +312,7 @@ return (
             />
 
           </View>
-        </ScrollView>
-      )}
-
-      {/* Footer */}
-      {!profileLoading && (
-        <View style={styles.footer}>
-          <TouchableOpacity
-            style={[styles.continueBtn, !isValid && styles.continueBtnDisabled]}
-            disabled={!isValid}
-            onPress={handleContinue}
-          >
-            <Text style={styles.continueBtnText}>Proceed to Payment</Text>
-          </TouchableOpacity>
-        </View>
+ </ScreenWrapper>
       )}
 
       {/* Update Profile Modal */}
@@ -591,17 +590,7 @@ lockedBadge: {
   textArea: {
     height: 100,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.surface,
-    padding: 20,
-    paddingBottom: 30,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
+
   continueBtn: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,

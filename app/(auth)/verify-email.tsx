@@ -1,9 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView,
-  StatusBar, Dimensions,
+  ActivityIndicator, Platform, StatusBar, Dimensions,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -120,13 +120,13 @@ const [otpError, setOtpError] = useState('');
 
   const otpFilled = otp.join('').length === 6;
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={styles.container}>
+return (
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
-      <ScrollView
+      <ScreenWrapper
+        backgroundColor="#E8F0F3"
         contentContainerStyle={styles.scrollContent}
-        showsVerticalScrollIndicator={false}
-        keyboardShouldPersistTaps="handled"
+        disableKeyboardDismiss
       >
         <View style={styles.card}>
           <View style={styles.iconCircle}>
@@ -204,8 +204,8 @@ const [otpError, setOtpError] = useState('');
         </View>
 
         <Text style={styles.copyright}>© {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
-      </ScrollView>
-    </KeyboardAvoidingView>
+ </ScreenWrapper>
+    </View>
   );
 }
 

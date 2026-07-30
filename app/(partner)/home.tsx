@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  View, Text, StyleSheet, TouchableOpacity,
   RefreshControl, StatusBar, Switch, ActivityIndicator
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { Image } from 'expo-image';
 import { useSelector } from 'react-redux';
@@ -205,12 +206,10 @@ const handleDecline = (bookingId: string) => {
         </View>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
+   <ScreenWrapper
         contentContainerStyle={styles.scrollContent}
+        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} colors={[COLORS.primary]} />}
       >
-        {/* Stats Card */}
         <View style={styles.statsCard}>
           <View style={styles.statsTopRow}>
             <View style={styles.todayJobsBlock}>
@@ -302,8 +301,8 @@ const handleDecline = (bookingId: string) => {
         <View style={styles.tipCard}>
           <MaterialCommunityIcons name="lightbulb-outline" size={18} color="#F59E0B" />
           <Text style={styles.tipText}>Keep your sample collection kit sanitized before every visit to maintain high hygiene ratings.</Text>
-        </View>
-      </ScrollView>
+</View>
+      </ScreenWrapper>
     </View>
   );
 }

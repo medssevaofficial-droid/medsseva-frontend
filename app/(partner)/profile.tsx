@@ -3,12 +3,12 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
   TouchableOpacity,
   StatusBar,
   ActivityIndicator,
   Alert,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { Image } from 'expo-image';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -196,7 +196,7 @@ export default function PartnerProfileScreen() {
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
    <View style={styles.header} />
 
-      <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
+    <ScreenWrapper contentContainerStyle={styles.content}>
         <View style={styles.profileCard}>
           <TouchableOpacity
             style={styles.avatarWrap}
@@ -292,7 +292,7 @@ export default function PartnerProfileScreen() {
         </TouchableOpacity>
 
         <Text style={styles.versionText}>App Version 2.4.1 Build 8801</Text>
-      </ScrollView>
+</ScreenWrapper>
 
       <ConfirmSheet
         visible={showLogoutSheet}

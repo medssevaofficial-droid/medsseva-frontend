@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Alert } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -105,7 +106,18 @@ const handleContinue = () => {
         <View style={{ width: 24 }} />
       </View>
 
-    <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.scrollContent}>
+  <ScreenWrapper
+        bottomButton={
+          <TouchableOpacity
+            style={[styles.continueBtn, (!selectedDateObj || !selectedTime) && styles.continueBtnDisabled]}
+            disabled={!selectedDateObj || !selectedTime}
+            onPress={handleContinue}
+          >
+            <Text style={styles.continueBtnText}>Continue to Patient Details</Text>
+          </TouchableOpacity>
+        }
+        contentContainerStyle={styles.scrollContent}
+      >
         
       <View style={styles.pickerContainer}>
           <Text style={styles.sectionTitle}>Schedule Appointment</Text>
@@ -208,18 +220,7 @@ const handleContinue = () => {
           </Text>
         </View>
 
-      </ScrollView>
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <TouchableOpacity 
-          style={[styles.continueBtn, (!selectedDateObj || !selectedTime) && styles.continueBtnDisabled]} 
-          disabled={!selectedDateObj || !selectedTime}
-          onPress={handleContinue}
-        >
-          <Text style={styles.continueBtnText}>Continue to Patient Details</Text>
-        </TouchableOpacity>
-      </View>
+  </ScreenWrapper>
 
       {/* Custom Material Picker Modals */}
 <MaterialDatePickerModal
@@ -348,17 +349,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
     lineHeight: 20,
   },
-  footer: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.surface,
-    padding: 20,
-    paddingBottom: 30,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
+
   continueBtn: {
     backgroundColor: COLORS.primary,
     paddingVertical: 16,

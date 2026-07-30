@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, TextInput,
-  ActivityIndicator, KeyboardAvoidingView, Platform, ScrollView, StatusBar, Dimensions
+  ActivityIndicator, Platform, StatusBar, Dimensions,
 } from 'react-native';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { showError } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
@@ -132,10 +133,14 @@ const [otpError, setOtpError] = useState('');
     }
   };
 
-  return (
-    <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.container}>
+ return (
+    <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
-      <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+      <ScreenWrapper
+        backgroundColor="#E8F0F3"
+        contentContainerStyle={styles.scrollContent}
+        disableKeyboardDismiss
+      >
         <View style={styles.card}>
           <TouchableOpacity
             style={styles.backBtn}
@@ -252,8 +257,8 @@ const [otpError, setOtpError] = useState('');
             </>
           )}
         </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+ </ScreenWrapper>
+    </View>
   );
 }
 
