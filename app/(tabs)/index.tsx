@@ -1,6 +1,6 @@
 /*eslint-disabled*/
 import React, { useState, useRef, useEffect, memo } from 'react';
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, Modal, Pressable, StatusBar, Platform, Image, DeviceEventEmitter, FlatList } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Dimensions, Animated, StatusBar, Platform, Image, FlatList ,Pressable} from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useSelector } from 'react-redux';
 import { useRouter } from 'expo-router';
@@ -9,14 +9,14 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle } from 'react-native-svg';
 import * as Location from 'expo-location';
 import { RootState } from '../../src/store';
-import { confirmAndLogout } from '../../src/utils/logout';
+
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { useNotificationPermission } from '../../src/hooks/useNotificationPermission';
 import { useQuery } from '@tanstack/react-query';
 import { apiService } from '../../src/services/api';
 import { PremiumTestCard } from '../../src/components/PremiumTestCard';
 import { PremiumPackageCard } from '../../src/components/PremiumPackageCard';
-import { PrescriptionUploadModal } from '../../src/components/PrescriptionUploadModal';
+
 import { LocationPickerModal } from '../../src/components/LocationPickerModal';
 
 const { width, height } = Dimensions.get('window');
@@ -186,51 +186,6 @@ const [activeHeroIndex, setActiveHeroIndex] = useState(0);
     }).start();
   };
   
-  // Drawer Animated States
-  const [isDrawerVisible, setDrawerVisible] = useState(false);
-  const slideAnim = useRef(new Animated.Value(-width * 0.75)).current;
-  const opacityAnim = useRef(new Animated.Value(0)).current;
-
-  const openDrawer = () => {
-    setDrawerVisible(true);
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 1,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  };
-
-  const closeDrawer = (callback?: () => void) => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -width * 0.75,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacityAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      setDrawerVisible(false);
-      if (callback) callback();
-    });
-  };
-
-  const handleDrawerNavigation = (path: string) => {
-    closeDrawer(() => {
-      router.push(path as any);
-    });
-  };
-
   const getCategoryIcon = (iconName: string, catId: string) => {
     const name = (iconName || '').toLowerCase();
     const id = (catId || '').toLowerCase();
@@ -260,12 +215,7 @@ const filteredTests = activeCategory === 'all'
     <View style={styles.container}>
       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       
-      {/* Premium Sticky TopAppBar (fixed above ScrollView) */}
-      <View style={styles.stickyHeader}>
-        <TouchableOpacity style={styles.hamburgerBtn} onPress={openDrawer}>
-          <MaterialCommunityIcons name="menu" size={24} color={COLORS.textLight} />
-        </TouchableOpacity>
-        
+  <View style={styles.stickyHeader}>
         <Image 
           source={require('../../assets/images/logo.png')} 
           style={styles.brandLogo} 
@@ -326,7 +276,7 @@ const filteredTests = activeCategory === 'all'
         <View style={styles.floatingActionsRow}>
           <TouchableOpacity 
             style={styles.floatingActionCard} 
-            onPress={() => setPrescriptionVisible(true)}
+         onPress={() => router.push('/prescription/upload' as any)}
             activeOpacity={0.8}
           >
             <View style={[styles.floatingIconBox, { backgroundColor: '#F0FDFA' }]}>
@@ -574,12 +524,7 @@ const filteredTests = activeCategory === 'all'
           </Pressable>
         </Animated.View>
         
-        {/* Premium Health Checkup Journey Roadmap Section */}
-     <TouchableOpacity 
-          style={styles.journeyCard}
-          activeOpacity={0.9}
-          onPress={() => router.push('/search')}
-        >
+   <View style={styles.journeyCard}>
           <Text style={styles.journeyTitle}>Health Checkup Journey</Text>
           
           <View 
@@ -607,8 +552,8 @@ const filteredTests = activeCategory === 'all'
               <Circle cx={journeyWidth - 32} cy={448} r={5} fill="#0D9488" />
             </Svg>
 
-            {/* Step 1: Book with Ease */}
-            <View style={styles.stepRow}>
+      {/* Step 1: Book with Ease */}
+            <TouchableOpacity style={styles.stepRow} activeOpacity={0.7} onPress={() => router.push('/search')}>
               <View style={[styles.iconBoxWrapper, { backgroundColor: '#FFF5EB' }]}>
                 <MaterialCommunityIcons name="calendar-clock-outline" size={28} color="#3B82F6" />
               </View>
@@ -616,10 +561,10 @@ const filteredTests = activeCategory === 'all'
                 <Text style={styles.stepTitle}>Book with Ease</Text>
                 <Text style={styles.stepDesc}>Choose your test, time slot, and book instantly.</Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* Step 2: Hassle-Free Collection */}
-            <View style={[styles.stepRow, { justifyContent: 'flex-end' }]}>
+            <TouchableOpacity style={[styles.stepRow, { justifyContent: 'flex-end' }]} activeOpacity={0.7} onPress={() => router.push('/home-collection' as any)}>
               <View style={styles.stepTextColRight}>
                 <Text style={[styles.stepTitle, { textAlign: 'right' }]}>Hassle-Free Home Collection</Text>
                 <Text style={[styles.stepDesc, { textAlign: 'right' }]}>Safe & timely sample collection by trained phlebotomist.</Text>
@@ -627,10 +572,10 @@ const filteredTests = activeCategory === 'all'
               <View style={[styles.iconBoxWrapper, { backgroundColor: '#FFF5EB' }]}>
                 <MaterialCommunityIcons name="home-heart" size={28} color="#F59E0B" />
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* Step 3: Secure Sample Transfer */}
-            <View style={styles.stepRow}>
+            <TouchableOpacity style={styles.stepRow} activeOpacity={0.7} onPress={() => router.push('/sample-journey' as any)}>
               <View style={[styles.iconBoxWrapper, { backgroundColor: '#FFF5EB' }]}>
                 <MaterialCommunityIcons name="truck-check-outline" size={28} color="#10B981" />
               </View>
@@ -638,10 +583,10 @@ const filteredTests = activeCategory === 'all'
                 <Text style={styles.stepTitle}>Secure Sample Transfer to Labs</Text>
                 <Text style={styles.stepDesc}>Temperature controlled & safe sample transportation to lab.</Text>
               </View>
-            </View>
+            </TouchableOpacity>
 
             {/* Step 4: Easy Report Access */}
-            <View style={[styles.stepRow, { justifyContent: 'flex-end' }]}>
+            <TouchableOpacity style={[styles.stepRow, { justifyContent: 'flex-end' }]} activeOpacity={0.7} onPress={() => router.push('/(tabs)/reports')}>
               <View style={styles.stepTextColRight}>
                 <Text style={[styles.stepTitle, { textAlign: 'right' }]}>Quick & Easy Report Access</Text>
                 <Text style={[styles.stepDesc, { textAlign: 'right' }]}>Get your reports within 6 hours via WhatsApp, SMS, and Email.</Text>
@@ -649,124 +594,15 @@ const filteredTests = activeCategory === 'all'
               <View style={[styles.iconBoxWrapper, { backgroundColor: '#FFF5EB' }]}>
                 <MaterialCommunityIcons name="clipboard-pulse-outline" size={28} color="#EF4444" />
               </View>
-            </View>
+            </TouchableOpacity>
           </View>
-        </TouchableOpacity>
-        
-        {/* Streamlined bottom spacing for perfect footer alignment */}
+        </View>
         <View style={{ height: 30 }} />
       </ScrollView>
 
-      {/* Premium Left Side Drawer Modal */}
-      <Modal
-        transparent
-        visible={isDrawerVisible}
-        animationType="none"
-        onRequestClose={() => closeDrawer()}
-      >
-        <View style={styles.drawerOverlay}>
-          <Pressable style={styles.drawerBackdrop} onPress={() => closeDrawer()}>
-            <Animated.View style={[styles.drawerBackdropFill, { opacity: opacityAnim }]} />
-          </Pressable>
+     
 
-          <Animated.View 
-            style={[
-              styles.drawerContent, 
-              { transform: [{ translateX: slideAnim }] }
-            ]}
-          >
-            {/* Drawer Header with Gradient */}
-            <LinearGradient colors={[COLORS.primary, COLORS.secondary]} style={styles.drawerHeader}>
-              <View style={styles.drawerUserBox}>
-                <View style={styles.drawerAvatar}>
-                  <Text style={styles.drawerAvatarText}>
-                    {(user?.name || 'G')[0].toUpperCase()}
-                  </Text>
-                </View>
-                <View style={styles.drawerUserInfo}>
-                  <Text style={styles.drawerUserName}>{user?.name || 'Guest'}</Text>
-                  <Text style={styles.drawerUserSub}>Verified Member</Text>
-                </View>
-              </View>
-              <TouchableOpacity style={styles.drawerCloseBtn} onPress={() => closeDrawer()}>
-                <MaterialCommunityIcons name="close" size={20} color={COLORS.textLight} />
-              </TouchableOpacity>
-            </LinearGradient>
-
-            {/* Drawer Body */}
-            <ScrollView style={styles.drawerItemsContainer} showsVerticalScrollIndicator={false}>
-              {[
-                { label: 'Home Dashboard', icon: 'home-variant', route: '/(tabs)' },
-                { label: 'My Bookings', icon: 'calendar-check', route: '/(tabs)/bookings' },
-                { label: 'My Reports', icon: 'file-document-outline', route: '/(tabs)/reports' },
-                { label: 'Cart', icon: 'cart-outline', route: '/checkout/cart', badge: cartCount },
-                { label: 'My Profile', icon: 'account-outline', route: '/(tabs)/profile' },
-           { 
-                  label: 'Book A Test', 
-                  icon: 'flask-outline', 
-                  route: '/search'
-                },
-                { label: 'Health Packages', icon: 'package-variant-closed', route: '/package' },
-              ].map((item, index) => (
-                <TouchableOpacity 
-                  key={index} 
-                  style={styles.drawerItem} 
-                  onPress={() => {
-                    if ('action' in item && typeof item.action === 'function') {
-                      closeDrawer();
-                      item.action();
-                    } else if ('route' in item && item.route) {
-                      handleDrawerNavigation(item.route);
-                    }
-                  }}
-                >
-                  <View style={styles.drawerItemIconBox}>
-                    <MaterialCommunityIcons name={item.icon as any} size={22} color={COLORS.primary} />
-                  </View>
-                  <Text style={styles.drawerItemLabel}>{item.label}</Text>
-                  
-                  {item.badge !== undefined && item.badge > 0 ? (
-                    <View style={styles.drawerItemBadge}>
-                      <Text style={styles.drawerItemBadgeText}>{item.badge}</Text>
-                    </View>
-                  ) : (
-                    <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.border} />
-                  )}
-                </TouchableOpacity>
-              ))}
-
-              <View style={styles.drawerDivider} />
-
-              <TouchableOpacity 
-                style={styles.drawerItem} 
-                onPress={() => {
-                 closeDrawer(() => router.push('/support/chat'));
-                }}
-              >
-                <View style={[styles.drawerItemIconBox, { backgroundColor: COLORS.warningLight }]}>
-                  <MaterialCommunityIcons name="headphones" size={20} color={COLORS.warning} />
-                </View>
-                <Text style={styles.drawerItemLabel}>Help & Support</Text>
-              </TouchableOpacity>
-            </ScrollView>
-
-            {/* Drawer Footer */}
-            <View style={styles.drawerFooter}>
-<TouchableOpacity style={styles.logoutBtn} onPress={() => { closeDrawer(() => confirmAndLogout()); }}>
-                <MaterialCommunityIcons name="logout" size={20} color={COLORS.danger} />
-                <Text style={styles.logoutBtnText}>Log Out</Text>
-              </TouchableOpacity>
-              <Text style={styles.appVersion}>App Version v1.0.1</Text>
-            </View>
-          </Animated.View>
-        </View>
-      </Modal>
-
-      {/* Global Sheet for Quick Prescriptions */}
-      <PrescriptionUploadModal
-        visible={isPrescriptionVisible}
-        onClose={() => setPrescriptionVisible(false)}
-      />
+   
 
       {/* Dynamic Highly Aesthetic Location Picker */}
   <LocationPickerModal
@@ -836,15 +672,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  hamburgerBtn: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
+
   greetingBox: {},
   greetingText: {
     ...TYPOGRAPHY.body,
@@ -1114,150 +942,6 @@ horizontalScroll: {
     resizeMode: 'cover',
   },
 
-  // Side Drawer Styles
-  drawerOverlay: {
-    flex: 1,
-    flexDirection: 'row',
-  },
- drawerBackdrop: {
-            position: 'absolute',
-            top: 0, left: 0, right: 0, bottom: 0,
-          },
-  drawerBackdropFill: {
-    flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-  },
-  drawerContent: {
-    width: width * 0.75,
-    height: '100%',
-    backgroundColor: COLORS.surface,
-    ...SHADOWS.glow,
-    elevation: 20,
-  },
-  drawerHeader: {
-    paddingTop: Platform.OS === 'ios' ? 60 : 50,
-    paddingBottom: 24,
-    paddingHorizontal: 20,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  drawerUserBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
-  },
-  drawerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255, 255, 255, 0.5)',
-  },
-  drawerAvatarText: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.textLight,
-    fontWeight: 'bold',
-  },
-  drawerUserInfo: {
-    marginLeft: 12,
-    flex: 1,
-  },
-  drawerUserName: {
-    ...TYPOGRAPHY.subtitle,
-    color: COLORS.textLight,
-    fontWeight: 'bold',
-  },
-  drawerUserSub: {
-    ...TYPOGRAPHY.caption,
-    color: 'rgba(255, 255, 255, 0.8)',
-    marginTop: 2,
-  },
-  drawerCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255, 255, 255, 0.1)',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  drawerItemsContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  drawerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    borderRadius: 12,
-    marginBottom: 3,
-  },
-  drawerItemIconBox: {
-    width: 38,
-    height: 38,
-    borderRadius: 10,
-    backgroundColor: '#E0F2FE',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  drawerItemLabel: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textDark,
-    fontWeight: '600',
-    flex: 1,
-  },
-  drawerItemBadge: {
-    backgroundColor: COLORS.accent,
-    borderRadius: 10,
-    minWidth: 20,
-    height: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 6,
-  },
-  drawerItemBadgeText: {
-    color: COLORS.textLight,
-    fontSize: 10,
-    fontWeight: 'bold',
-  },
-  drawerDivider: {
-    height: 1,
-    backgroundColor: COLORS.border,
-    marginVertical: 16,
-    marginHorizontal: 12,
-  },
-  drawerFooter: {
-    padding: 20,
-    paddingBottom: Platform.OS === 'ios' ? 40 : 20,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-  },
-  logoutBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-    backgroundColor: COLORS.dangerLight,
-    borderRadius: 10,
-    marginBottom: 12,
-  },
-  logoutBtnText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.danger,
-    fontWeight: 'bold',
-    marginLeft: 8,
-  },
-  appVersion: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textSecondary,
-    textAlign: 'center',
-    fontSize: 10,
-  },
   swipeHint: {
     fontSize: 11,
     color: '#64748B',
@@ -1397,7 +1081,7 @@ heroBannerImage: {
     width: 16,
     backgroundColor: COLORS.primary,
   },
-  journeyCard: {
+journeyCard: {
     backgroundColor: '#F3FBFC',
     marginHorizontal: 16,
     marginTop: 20,
@@ -1407,6 +1091,7 @@ heroBannerImage: {
     paddingVertical: 28,
     borderWidth: 1,
     borderColor: '#E5F3F5',
+    overflow: 'hidden',
   },
 
   journeyTitle: {

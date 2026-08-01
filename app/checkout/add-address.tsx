@@ -13,7 +13,7 @@ import { useRouter, useLocalSearchParams } from 'expo-router';
 import { useDispatch, useSelector } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
-
+import { searchIndianCities, NominatimCity } from '../../src/services/geoService';
 import { RootState } from '../../src/store';
 import { addAddress } from '../../src/store/slices/addressSlice';
 import { apiService } from '../../src/services/api';
@@ -35,7 +35,35 @@ export default function AddAddressScreen() {
   const [name, setName] = useState(user?.name || 'John Doe');
   const [phone, setPhone] = useState(user?.mobile || '+91 9876543210');
   const [addressType, setAddressType] = useState<'Home' | 'Work' | 'Other'>('Home');
-  const [isLocating, setIsLocating] = useState(false);
+const [isLocating, setIsLocating] = useState(false);
+  const [areaSuggestions, setAreaSuggestions] = useState<NominatimCity[]>([]);
+  const [citySuggestions, setCitySuggestions] = useState<NominatimCity[]>([]);
+  const [areaSearchTimer, setAreaSearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+  const [citySearchTimer, setCitySearchTimer] = useState<ReturnType<typeof setTimeout> | null>(null);
+
+const handleAreaChange = (text: string) => {
+    setArea(text);
+    setAreaSuggestions([]);
+    if (areaSearchTimer) clearTimeout(areaSearchTimer);
+    if (text.trim().length < 2) return;
+    const timer = setTimeout(async () => {
+      const results = await searchIndianCities(text);
+      setAreaSuggestions(results);
+    }, 400);
+    setAreaSearchTimer(timer);
+  };
+
+  const handleCityChange = (text: string) => {
+    setCity(text);
+    setCitySuggestions([]);
+    if (citySearchTimer) clearTimeout(citySearchTimer);
+    if (text.trim().length < 2) return;
+    const timer = setTimeout(async () => {
+      const results = await searchIndianCities(text);
+      setCitySuggestions(results);
+    }, 400);
+    setCitySearchTimer(timer);
+  };
 
   const handleDetectLocation = async () => {
     setIsLocating(true);
@@ -133,28 +161,45 @@ const saveButton = (
           onPress={handleDetectLocation}
           disabled={isLocating}
         >
-          {isLocating ? (
-            <ActivityIndicator size="small" color={COLORS.primary} />
-          ) : (
-            <MaterialCommunityIcons name="crosshairs-gps" size={20} color={COLORS.primary} />
-          )}
-          <Text style={styles.locationBtnText}>
-            {isLocating ? 'Detecting...' : 'Detect Current Location'}
-          </Text>
+          <View style={styles.locationBtnIconWrap}>
+            {isLocating ? (
+              <ActivityIndicator size="small" color={COLORS.primary} />
+            ) : (
+              <MaterialCommunityIcons name="crosshairs-gps" size={20} color={COLORS.primary} />
+            )}
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={styles.locationBtnText}>
+              {isLocating ? 'Detecting location...' : 'Detect Current Location'}
+            </Text>
+            <Text style={styles.locationBtnSub}>Uses GPS for precise address fill</Text>
+          </View>
+          <MaterialCommunityIcons name="chevron-right" size={18} color={COLORS.primary} />
         </TouchableOpacity>
 
         <View style={styles.locationDivider}>
           <View style={styles.dividerLine} />
-          <Text style={styles.dividerText}>OR</Text>
+          <View style={styles.dividerOrPill}>
+            <Text style={styles.dividerText}>OR</Text>
+          </View>
           <View style={styles.dividerLine} />
         </View>
 
-        <TouchableOpacity style={[styles.locationBtn, styles.locationBtnSecondary]}>
-          <MaterialCommunityIcons name="pencil-outline" size={20} color="#64748B" />
-          <Text style={[styles.locationBtnText, styles.locationBtnTextSecondary]}>Enter Address Manually</Text>
-        </TouchableOpacity>
+        <View style={styles.manualCard}>
+          <View style={styles.manualCardLeft}>
+            <View style={styles.manualIconWrap}>
+              <MaterialCommunityIcons name="pencil-outline" size={18} color="#64748B" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.manualCardTitle}>Enter Address Manually</Text>
+              <Text style={styles.manualCardSub}>Fill your address details without using GPS</Text>
+            </View>
+          </View>
+          <View style={styles.manualBadge}>
+            <Text style={styles.manualBadgeText}>Below</Text>
+          </View>
+        </View>
       </View>
-
   <ScreenWrapper
         bottomButton={saveButton}
         contentContainerStyle={styles.scrollContent}
@@ -173,14 +218,31 @@ const saveButton = (
           placeholderTextColor="#94A3B8"
         />
 
-        <Text style={styles.label}>ROAD / AREA / COLONY *</Text>
+    <Text style={styles.label}>ROAD / AREA / COLONY *</Text>
         <TextInput
           style={styles.input}
           value={area}
-          onChangeText={setArea}
+          onChangeText={handleAreaChange}
           placeholder="e.g. Sector 56, Golf Course Extension"
           placeholderTextColor="#94A3B8"
         />
+        {areaSuggestions.length > 0 && (
+          <View style={styles.suggestionBox}>
+            {areaSuggestions.map((item, idx) => (
+              <TouchableOpacity
+                key={`area-${idx}`}
+                style={styles.suggestionRow}
+                onPress={() => { setArea(item.name); setAreaSuggestions([]); }}
+              >
+                <MaterialCommunityIcons name="map-marker-outline" size={16} color={COLORS.primary} />
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={styles.suggestionName}>{item.name}</Text>
+                  <Text style={styles.suggestionSub} numberOfLines={1}>{item.displayName}</Text>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
 
         <View style={styles.rowInput}>
           <View style={{ flex: 1, marginRight: 8 }}>
@@ -200,10 +262,27 @@ const saveButton = (
             <TextInput
               style={styles.input}
               value={city}
-              onChangeText={setCity}
+              onChangeText={handleCityChange}
               placeholder="Gurgaon"
               placeholderTextColor="#94A3B8"
             />
+            {citySuggestions.length > 0 && (
+              <View style={styles.suggestionBox}>
+                {citySuggestions.map((item, idx) => (
+                  <TouchableOpacity
+                    key={`city-${idx}`}
+                    style={styles.suggestionRow}
+                    onPress={() => { setCity(item.name); setCitySuggestions([]); }}
+                  >
+                    <MaterialCommunityIcons name="map-marker-outline" size={16} color={COLORS.primary} />
+                    <View style={{ flex: 1, marginLeft: 8 }}>
+                      <Text style={styles.suggestionName}>{item.name}</Text>
+                      <Text style={styles.suggestionSub} numberOfLines={1}>{item.displayName}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            )}
           </View>
         </View>
 
@@ -285,8 +364,13 @@ container: {
     justifyContent: 'space-between',
     zIndex: 10,
   },
-  backBtn: {
-    padding: 8,
+backBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   headerTitle: {
     ...TYPOGRAPHY.h2,
@@ -302,41 +386,110 @@ locationButtonsRow: {
   locationBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
     paddingVertical: 14,
-    borderRadius: 12,
+    paddingHorizontal: 14,
+    borderRadius: 14,
     borderWidth: 1.5,
     borderColor: COLORS.primary,
-    backgroundColor: '#EFF6FF',
-    gap: 8,
+    backgroundColor: '#F0FDFA',
+    gap: 12,
   },
-  locationBtnSecondary: {
-    borderColor: '#CBD5E1',
-    backgroundColor: '#F8FAFC',
+  locationBtnIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: COLORS.surface,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#CCFBF1',
   },
   locationBtnText: {
-    ...TYPOGRAPHY.subtitle,
+    fontSize: 14,
+    fontWeight: '700',
     color: COLORS.primary,
-    fontWeight: '600',
   },
-  locationBtnTextSecondary: {
+  locationBtnSub: {
+    fontSize: 11,
     color: '#64748B',
+    marginTop: 2,
   },
   locationDivider: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: 12,
-    gap: 8,
+    marginVertical: 14,
+    gap: 0,
   },
   dividerLine: {
     flex: 1,
     height: 1,
     backgroundColor: '#E2E8F0',
   },
+  dividerOrPill: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginHorizontal: 8,
+  },
   dividerText: {
-    ...TYPOGRAPHY.caption,
+    fontSize: 11,
+    fontWeight: '800',
     color: '#94A3B8',
-    fontWeight: 'bold',
+    letterSpacing: 1,
+  },
+  manualCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingVertical: 14,
+    paddingHorizontal: 14,
+  },
+  manualCardLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+    gap: 12,
+  },
+  manualIconWrap: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  manualCardTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#334155',
+  },
+  manualCardSub: {
+    fontSize: 11,
+    color: '#94A3B8',
+    marginTop: 2,
+  },
+  manualBadge: {
+    backgroundColor: '#F1F5F9',
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  manualBadgeText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#94A3B8',
+    letterSpacing: 0.5,
   },
 scrollContent: {
     padding: 20,
@@ -412,9 +565,37 @@ scrollContent: {
     alignItems: 'center',
     ...SHADOWS.soft,
   },
-  saveBtnText: {
+ saveBtnText: {
     ...TYPOGRAPHY.subtitle,
     color: COLORS.textLight,
     fontWeight: 'bold',
-  }
+  },
+  suggestionBox: {
+    backgroundColor: COLORS.surface,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    marginTop: 4,
+    marginBottom: 8,
+    overflow: 'hidden',
+    ...SHADOWS.soft,
+  },
+  suggestionRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  suggestionName: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textDark,
+  },
+  suggestionSub: {
+    fontSize: 11,
+    color: COLORS.textSecondary,
+    marginTop: 1,
+  },
 });

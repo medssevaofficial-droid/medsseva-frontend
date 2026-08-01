@@ -10,13 +10,13 @@ import { COLORS, SHADOWS } from '../../src/theme/theme';
 const STATUS_LABELS: Record<string, { label: string; color: string; bg: string }> = {
   PENDING: { label: 'Pending', color: '#D97706', bg: '#FEF3C7' },
   CONFIRMED: { label: 'Confirmed', color: '#2563EB', bg: '#DBEAFE' },
-  ASSIGNED: { label: 'Assigned', color: '#7C3AED', bg: '#EDE9FE' },
+ASSIGNED: { label: 'Assigned', color: COLORS.primary, bg: '#F0FDFA' },
   ACCEPTED: { label: 'Accepted', color: '#0891B2', bg: '#CFFAFE' },
   ON_THE_WAY: { label: 'On The Way', color: '#0891B2', bg: '#CFFAFE' },
   REACHED_LOCATION: { label: 'Reached', color: '#0891B2', bg: '#CFFAFE' },
   SAMPLE_COLLECTED: { label: 'Sample Collected', color: '#059669', bg: '#D1FAE5' },
   DELIVERED_TO_LAB: { label: 'Delivered to Lab', color: '#059669', bg: '#D1FAE5' },
-  PROCESSING: { label: 'Processing', color: '#7C3AED', bg: '#EDE9FE' },
+PROCESSING: { label: 'Processing', color: COLORS.primary, bg: '#F0FDFA' },
   REPORT_READY: { label: 'Report Ready', color: '#059669', bg: '#D1FAE5' },
   COMPLETED: { label: 'Completed', color: '#059669', bg: '#D1FAE5' },
   CANCELLED: { label: 'Cancelled', color: '#EF4444', bg: '#FEE2E2' },
@@ -27,7 +27,7 @@ const PAYMENT_STATUS_LABELS: Record<string, { label: string; color: string }> = 
   PENDING: { label: 'Pending', color: '#D97706' },
   SUCCESS: { label: 'Paid', color: '#059669' },
   FAILED: { label: 'Failed', color: '#EF4444' },
-  REFUNDED: { label: 'Refunded', color: '#7C3AED' },
+REFUNDED: { label: 'Refunded', color: COLORS.primary },
 };
 
 function InfoRow({ icon, label, value, valueColor }: { icon: string; label: string; value: string; valueColor?: string }) {
@@ -98,11 +98,11 @@ useEffect(() => {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+     <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
       <View style={styles.header}>
-   <TouchableOpacity style={styles.backBtn} onPress={() => router.push('/(partner)/history')} activeOpacity={0.7}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
+<TouchableOpacity style={styles.backBtn} onPress={() => router.push('/(partner)/history')} activeOpacity={0.7}>
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Booking Details</Text>
         <View style={{ width: 38 }} />
@@ -154,7 +154,7 @@ useEffect(() => {
             <InfoRow icon="currency-inr" label="Amount Paid" value={`₹${(booking.totalPaid || 0).toFixed(2)}`} valueColor={COLORS.primary} />
             <InfoRow icon="credit-card-outline" label="Payment Status" value={paymentCfg.label} valueColor={paymentCfg.color} />
             {booking.paymentMode && <InfoRow icon="cash-multiple" label="Payment Mode" value={booking.paymentMode} />}
-            {booking.payment?.couponCode && <InfoRow icon="ticket-percent-outline" label="Coupon Used" value={booking.payment.couponCode} valueColor="#7C3AED" />}
+          {booking.payment?.couponCode && <InfoRow icon="ticket-percent-outline" label="Coupon Used" value={booking.payment.couponCode} valueColor={COLORS.primary} />}
             {booking.payment?.couponDiscount > 0 && <InfoRow icon="tag-outline" label="Coupon Discount" value={`-₹${booking.payment.couponDiscount.toFixed(2)}`} valueColor="#059669" />}
           </View>
         </View>
@@ -233,16 +233,17 @@ const styles = StyleSheet.create({
   errorText: { fontSize: 15, color: '#94A3B8', fontWeight: '600' },
   retryBtn: { marginTop: 8, paddingHorizontal: 24, paddingVertical: 10, backgroundColor: COLORS.primary, borderRadius: 12 },
   retryBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
-  header: {
+header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 52, paddingBottom: 16,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    backgroundColor: COLORS.primary, borderBottomWidth: 0,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#F8FAFC',
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0',
+    width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  
   scroll: { padding: 16 },
   section: { marginBottom: 16 },
   sectionTitle: { fontSize: 12, fontWeight: '700', color: '#94A3B8', marginBottom: 8, textTransform: 'uppercase', letterSpacing: 0.5 },

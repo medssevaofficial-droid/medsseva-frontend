@@ -22,9 +22,9 @@ export default function PackageDetailsScreen() {
 const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
   const [isFaqSheetOpen, setFaqSheetOpen] = useState(false);
 
-  const cartItem = useSelector((state: RootState) =>
-    state.cart.items.find(i => i.id === (id as string) && i.itemType === 'package')
-  );
+ const cartItems = useSelector((state: RootState) => state.cart.items);
+  const cartCount = cartItems.length;
+  const cartItem = cartItems.find(i => i.id === (id as string) && i.itemType === 'package');
   const cartQty = cartItem?.quantity ?? 0;
 
   useEffect(() => {
@@ -56,8 +56,11 @@ const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
       </View>
     );
   }
-
 const handleAddToCart = () => {
+    if (cartItem) {
+      showSuccess('This package is already in your cart.', { title: 'Already in Cart' });
+      return;
+    }
     dispatch(addToCart({
       id: pkg.id,
       itemType: 'package',
@@ -65,21 +68,22 @@ const handleAddToCart = () => {
       price: pkg.oldPrice || pkg.price,
       discountedPrice: pkg.price,
       homeCollection: pkg.homeCollection,
-      quantity: 1
+      quantity: 1,
     }));
-    showSuccess('Added to cart successfully');
+    showSuccess(`${pkg.name} has been added to your cart.`, { title: '✓ Added to Cart' });
   };
 const handleBookNow = () => {
-    dispatch(addToCart({
-      id: pkg.id,
-      itemType: 'package',
-      name: pkg.name,
-      price: pkg.oldPrice || pkg.price,
-      discountedPrice: pkg.price,
-      homeCollection: pkg.homeCollection,
-      quantity: 1
-    }));
-    showSuccess('Added to cart successfully');
+    if (!cartItem) {
+      dispatch(addToCart({
+        id: pkg.id,
+        itemType: 'package',
+        name: pkg.name,
+        price: pkg.oldPrice || pkg.price,
+        discountedPrice: pkg.price,
+        homeCollection: pkg.homeCollection,
+        quantity: 1,
+      }));
+    }
     router.push('/checkout/cart');
   };
   return (
@@ -90,8 +94,13 @@ const handleBookNow = () => {
           <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.textLight} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Package Details</Text>
-        <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/checkout/cart')}>
+      <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/checkout/cart')}>
           <MaterialCommunityIcons name="cart-outline" size={24} color={COLORS.textLight} />
+          {cartCount > 0 && (
+            <View style={styles.cartBadge}>
+              <Text style={styles.cartBadgeText}>{cartCount}</Text>
+            </View>
+          )}
         </TouchableOpacity>
       </View>
 
@@ -101,7 +110,7 @@ const handleBookNow = () => {
             <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
               <MaterialCommunityIcons name="cart-plus" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
          <Text style={styles.cartSecondaryButtonText}>
-                {cartQty > 0 ? `Add to Cart (${cartQty})` : 'Add to Cart'}
+             {cartItem ? 'Already in Cart' : 'Add to Cart'}
               </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bookPrimaryButton} onPress={handleBookNow}>
@@ -211,37 +220,92 @@ const handleBookNow = () => {
         </View>
  </ScreenWrapper>
 
-      {/* Preparation Bottom Sheet */}
-      <PremiumBottomSheet visible={isPrepSheetOpen} onClose={() => setPrepSheetOpen(false)} height={400}>
-        <Text style={styles.sheetTitle}>Preparation Instructions</Text>
-        <View style={styles.prepContainer}>
-          <MaterialCommunityIcons name={pkg.fastingRequired ? "food-off" : "food-apple"} size={48} color={COLORS.primary} />
-          <Text style={styles.prepStatusText}>
-            {pkg.fastingRequired ? 'Fasting Required' : 'No Special Preparation'}
-          </Text>
-          <Text style={styles.prepDetailsText}>
-            {pkg.preparation || (pkg.fastingRequired 
-              ? 'Please do not consume any food or beverages (other than water) for 10-12 hours prior to the test for accurate results.' 
-              : 'You can consume your normal diet. Ensure you stay hydrated before your sample collection.')}
-          </Text>
+   <PremiumBottomSheet visible={isPrepSheetOpen} onClose={() => setPrepSheetOpen(false)} height={560}>
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetTitleRow}>
+            <MaterialCommunityIcons name="clipboard-text-outline" size={22} color={COLORS.primary} />
+            <Text style={styles.sheetTitle}>Preparation Instructions</Text>
+          </View>
         </View>
-        <TouchableOpacity style={styles.gotItButton} onPress={() => setPrepSheetOpen(false)}>
-          <Text style={styles.gotItText}>Understood</Text>
-        </TouchableOpacity>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetScrollContent}>
+          {pkg.preparationGuidelines && pkg.preparationGuidelines.length > 0 ? (
+            <>
+              <View style={[styles.prepFastingBadge, { borderColor: pkg.fastingRequired ? '#FDE68A' : '#A7F3D0', backgroundColor: pkg.fastingRequired ? '#FFFBEB' : '#ECFDF5' }]}>
+                <MaterialCommunityIcons
+                  name={pkg.fastingRequired ? 'food-off' : 'food-apple'}
+                  size={20}
+                  color={pkg.fastingRequired ? '#D97706' : COLORS.success}
+                />
+                <Text style={[styles.prepFastingText, { color: pkg.fastingRequired ? '#D97706' : COLORS.success }]}>
+                  {pkg.fastingRequired ? 'Fasting Required' : 'No Fasting Required'}
+                </Text>
+              </View>
+              {pkg.preparationGuidelines.map((g: any, index: number) => (
+                <View key={g.id || index} style={styles.prepGuidelineCard}>
+                  <View style={styles.prepGuidelineCardHeader}>
+                    <View style={styles.prepGuidelineNumber}>
+                      <Text style={styles.prepGuidelineNumberText}>{index + 1}</Text>
+                    </View>
+                    <Text style={styles.prepGuidelineTitle}>{g.title}</Text>
+                  </View>
+                  <Text style={styles.prepGuidelineDesc}>{g.description}</Text>
+                </View>
+              ))}
+            </>
+          ) : (
+            <View style={styles.prepEmptyContainer}>
+              <View style={styles.prepEmptyIconWrap}>
+                <MaterialCommunityIcons name={pkg.fastingRequired ? 'food-off' : 'food-apple'} size={36} color={COLORS.primary} />
+              </View>
+              <Text style={styles.prepStatusText}>
+                {pkg.fastingRequired ? 'Fasting Required' : 'No Special Preparation'}
+              </Text>
+              <Text style={styles.prepDetailsText}>
+                {pkg.preparation || 'No specific preparation instructions available. Contact our support team for guidance.'}
+              </Text>
+            </View>
+          )}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+        <View style={styles.sheetFooter}>
+          <TouchableOpacity style={styles.gotItButton} onPress={() => setPrepSheetOpen(false)}>
+            <Text style={styles.gotItText}>Got It</Text>
+          </TouchableOpacity>
+        </View>
       </PremiumBottomSheet>
 
-      {/* FAQ Bottom Sheet */}
-      <PremiumBottomSheet visible={isFaqSheetOpen} onClose={() => setFaqSheetOpen(false)} height={500}>
-        <Text style={styles.sheetTitle}>Frequently Asked Questions</Text>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>Is home collection safe?</Text>
-            <Text style={styles.faqAnswer}>Yes, our phlebotomists follow strict hygiene and WHO guidelines using sealed, single-use kits.</Text>
+      <PremiumBottomSheet visible={isFaqSheetOpen} onClose={() => setFaqSheetOpen(false)} height={580}>
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetTitleRow}>
+            <MaterialCommunityIcons name="frequently-asked-questions" size={22} color={COLORS.primary} />
+            <Text style={styles.sheetTitle}>Frequently Asked Questions</Text>
           </View>
-          <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>When will I get my reports?</Text>
-            <Text style={styles.faqAnswer}>Your digital reports will be available on the app within {pkg.reportTime} after sample collection.</Text>
-          </View>
+        </View>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetScrollContent}>
+          {pkg.faqs && pkg.faqs.length > 0 ? (
+            pkg.faqs.map((faq: any, index: number) => (
+              <View key={faq.id || index} style={styles.faqCard}>
+                <View style={styles.faqQuestionRow}>
+                  <View style={styles.faqIndexBadge}>
+                    <Text style={styles.faqIndexText}>Q{index + 1}</Text>
+                  </View>
+                  <Text style={styles.faqQuestion}>{faq.question}</Text>
+                </View>
+                <View style={styles.faqAnswerWrap}>
+                  <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.prepEmptyContainer}>
+              <View style={styles.prepEmptyIconWrap}>
+                <MaterialCommunityIcons name="frequently-asked-questions" size={36} color={COLORS.border} />
+              </View>
+              <Text style={styles.prepStatusText}>No FAQs available</Text>
+              <Text style={styles.prepDetailsText}>Contact our support team for any questions about this package.</Text>
+            </View>
+          )}
+          <View style={{ height: 32 }} />
         </ScrollView>
       </PremiumBottomSheet>
     </View>
@@ -258,7 +322,26 @@ const styles = StyleSheet.create({
   },
   backButton: { padding: 4 },
   headerTitle: { ...TYPOGRAPHY.h2, color: COLORS.textLight },
-  cartButton: { padding: 4 },
+cartButton: { padding: 4, position: 'relative' },
+  cartBadge: {
+    position: 'absolute',
+    right: -4,
+    top: -4,
+    backgroundColor: COLORS.danger,
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+  },
+  cartBadgeText: {
+    color: COLORS.textLight,
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
   scrollContent: { paddingBottom: 120, padding: 16 },
   
   // Soft & Accessible Cards
@@ -339,14 +422,102 @@ footerInner: {
   },
   bookPrimaryButtonText: { ...TYPOGRAPHY.subtitle, color: '#FFFFFF', fontWeight: 'bold' },
 
-  // Sheets
-  sheetTitle: { ...TYPOGRAPHY.h2, color: COLORS.textDark, marginBottom: 24 },
-  prepContainer: { alignItems: 'center', paddingVertical: 20 },
-  prepStatusText: { ...TYPOGRAPHY.h3, color: COLORS.textDark, marginTop: 16, marginBottom: 12 },
+sheetHeader: {
+    paddingBottom: 16,
+    paddingHorizontal: 22,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    marginBottom: 4,
+  },
+  sheetTitleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  sheetTitle: { ...TYPOGRAPHY.h2, color: COLORS.textDark },
+  sheetScrollContent: {
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  sheetFooter: {
+    paddingTop: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  prepFastingBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 20,
+    borderWidth: 1,
+  },
+  prepFastingText: { fontSize: 14, fontWeight: '700', flex: 1 },
+  prepGuidelineCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  prepGuidelineCardHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 10,
+  },
+  prepGuidelineNumber: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center',
+    flexShrink: 0,
+  },
+  prepGuidelineNumberText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  prepGuidelineTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textDark, flex: 1 },
+  prepGuidelineDesc: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 21, paddingLeft: 42 },
+  prepEmptyContainer: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
+  prepEmptyIconWrap: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+  },
+  prepStatusText: { ...TYPOGRAPHY.h3, color: COLORS.textDark, marginBottom: 8, textAlign: 'center' },
   prepDetailsText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 24 },
-  gotItButton: { backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 'auto', marginBottom: 40 },
+  gotItButton: { backgroundColor: COLORS.primary, paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginBottom: 8 },
   gotItText: { ...TYPOGRAPHY.subtitle, color: COLORS.textLight, fontWeight: 'bold' },
-  faqItem: { marginBottom: 24 },
-  faqQuestion: { ...TYPOGRAPHY.subtitle, color: COLORS.textDark, fontWeight: 'bold', marginBottom: 8 },
-  faqAnswer: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, lineHeight: 22 }
+  faqCard: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  faqQuestionRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+    marginBottom: 10,
+  },
+  faqIndexBadge: {
+    backgroundColor: COLORS.primary,
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    flexShrink: 0,
+    marginTop: 1,
+  },
+  faqIndexText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  faqQuestion: { ...TYPOGRAPHY.subtitle, color: COLORS.textDark, fontWeight: '700', flex: 1, lineHeight: 22 },
+  faqAnswerWrap: {
+    paddingLeft: 44,
+    paddingTop: 2,
+  },
+  faqAnswer: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, lineHeight: 23 },
 });

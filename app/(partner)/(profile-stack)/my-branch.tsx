@@ -49,12 +49,17 @@ export default function MyBranchScreen() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  return (
+ return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-  
-
-     <ScreenWrapper contentContainerStyle={styles.content}>
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.replace('/(partner)/profile')} style={styles.backBtn}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>My Branch</Text>
+        <View style={{ width: 40 }} />
+      </View>
+      <ScreenWrapper contentContainerStyle={styles.content}>
         {isLoading ? (
           <View style={styles.center}>
             <ActivityIndicator size="large" color={COLORS.primary} />
@@ -122,6 +127,21 @@ export default function MyBranchScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 45,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
 
   content: { padding: 16, paddingBottom: 40 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80, gap: 12 },

@@ -9,7 +9,7 @@ export default function PartnerPendingScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+  <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       <View style={styles.card}>
         <View style={styles.iconCircle}>
           <MaterialCommunityIcons name="clock-outline" size={40} color={COLORS.primary} />

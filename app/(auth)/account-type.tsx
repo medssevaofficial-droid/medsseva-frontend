@@ -77,7 +77,7 @@ export default function AccountTypeScreen() {
                </TouchableOpacity>
              </View>
      <Text style={styles.copyright}>
-  © {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.
+&copy; {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.
 </Text>
     </ScrollView>
   );

@@ -9,7 +9,7 @@ import {
   StatusBar, 
   Platform 
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, TYPOGRAPHY } from '../src/theme/theme';
@@ -39,7 +39,8 @@ const ONBOARDING_DATA = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
-  const [currentIndex, setCurrentIndex] = useState(0);
+const [currentIndex, setCurrentIndex] = useState(0);
+  const insets = useSafeAreaInsets();
 
   const handleNext = () => {
     if (currentIndex < ONBOARDING_DATA.length - 1) {
@@ -106,8 +107,7 @@ export default function OnboardingScreen() {
         <Text style={styles.description}>{currentSlide.description}</Text>
       </View>
 
-      {/* Bottom Controls (Custom Curved Button + Dash indicators retained!) */}
-      <View style={styles.footer} pointerEvents="box-none">
+<View style={[styles.footer, { paddingBottom: insets.bottom }]} pointerEvents="box-none">
         <View style={styles.paginationContainer}>
           {ONBOARDING_DATA.map((_, index) => {
             const isActive = currentIndex === index;
@@ -253,20 +253,19 @@ const styles = StyleSheet.create({
     lineHeight: 23,
     fontSize: 14,
   },
-  footer: {
+footer: {
     position: 'absolute',
-    bottom: 0,
     left: 0,
     right: 0,
-    height: 120,
+    bottom: 0,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-end',
   },
-  paginationContainer: {
+paginationContainer: {
     flexDirection: 'row',
     marginLeft: 36,
-    marginBottom: Platform.OS === 'ios' ? 45 : 35,
+    marginBottom: 35,
     alignItems: 'center',
   },
   dash: {

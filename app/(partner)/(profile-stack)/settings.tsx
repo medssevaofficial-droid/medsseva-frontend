@@ -66,23 +66,17 @@ export default function SettingsScreen() {
     }
   };
 
-const saveButton = (
-    <TouchableOpacity
-      style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-      onPress={handleChangePassword}
-      disabled={isSaving}
-      activeOpacity={0.85}
-    >
-      {isSaving
-        ? <ActivityIndicator color="#fff" size="small" />
-        : <Text style={styles.saveBtnText}>Update Password</Text>
-      }
-    </TouchableOpacity>
-  );
-
-  return (
+const saveButton = null;
+return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.replace('/(partner)/profile')} style={styles.backBtn}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Settings</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <ScreenWrapper bottomButton={saveButton} contentContainerStyle={styles.content}>
         <View style={styles.section}>
           <View style={styles.sectionTitleRow}>
@@ -160,16 +154,44 @@ const saveButton = (
             )}
           </View>
 
-</View>
+<View style={styles.sectionDivider} />
+
+          <TouchableOpacity
+            style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+            onPress={handleChangePassword}
+            disabled={isSaving}
+            activeOpacity={0.85}
+          >
+            {isSaving
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.saveBtnText}>Update Password</Text>
+            }
+          </TouchableOpacity>
+        </View>
       </ScreenWrapper>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+ container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 45,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
  
-  content: { padding: 16, paddingBottom: 40 },
+   content: { padding: 16, paddingBottom: 8 },
   section: {
     backgroundColor: '#fff', borderRadius: 18, padding: 20,
     borderWidth: 1, borderColor: '#E2E8F0', ...SHADOWS.soft,
@@ -192,7 +214,8 @@ const styles = StyleSheet.create({
   strengthRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 8 },
   strengthBar: { flex: 1, height: 4, borderRadius: 2 },
   strengthLabel: { fontSize: 11, fontWeight: '700', minWidth: 40 },
-  errorText: { fontSize: 12, color: '#EF4444', marginTop: 4, fontWeight: '500' },
+ errorText: { fontSize: 12, color: '#EF4444', marginTop: 4, fontWeight: '500' },
+  sectionDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
   saveBtn: {
     backgroundColor: COLORS.primary, borderRadius: 14, height: 50,
     justifyContent: 'center', alignItems: 'center', marginTop: 4,

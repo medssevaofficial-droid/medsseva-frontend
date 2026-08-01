@@ -20,12 +20,15 @@ export default function RatingScreen() {
   const [hovered, setHovered] = useState(0);
   const [review, setReview] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [existingRating, setExistingRating] = useState<any>(null);
+const [existingRating, setExistingRating] = useState<any>(null);
   const [checkingExisting, setCheckingExisting] = useState(true);
 
   useEffect(() => {
-    if (!bookingId) return;
-   apiService.getBookingRating(bookingId)
+    if (!bookingId) {
+      setCheckingExisting(false);
+      return;
+    }
+    apiService.getBookingRating(bookingId)
       .then((r: any) => {
         if (r) {
           setExistingRating(r);
@@ -36,7 +39,6 @@ export default function RatingScreen() {
       .catch(() => {})
       .finally(() => setCheckingExisting(false));
   }, [bookingId]);
-
   const handleSubmit = async () => {
     if (selected === 0) {
       Alert.alert('Select a rating', 'Please select a star rating before submitting.');
@@ -57,22 +59,15 @@ export default function RatingScreen() {
     }
   };
 
-  if (checkingExisting) {
-    return (
-      <View style={styles.centered}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-      </View>
-    );
-  }
 
   const displayStar = hovered || selected;
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+    <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Rate Your Experience</Text>
         <View style={{ width: 38 }} />
@@ -86,7 +81,12 @@ export default function RatingScreen() {
           ) : null}
           <Text style={styles.bookingRef}>Booking #{bookingCode}</Text>
 
-          {existingRating ? (
+      {checkingExisting ? (
+            <View style={styles.checkingBox}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.checkingText}>Loading...</Text>
+            </View>
+          ) : existingRating ? (
             <View style={styles.alreadyRatedBox}>
               <View style={styles.starsRow}>
                 {[1, 2, 3, 4, 5].map(i => (
@@ -162,16 +162,16 @@ export default function RatingScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
+header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 52, paddingBottom: 16,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    backgroundColor: COLORS.primary, borderBottomWidth: 0,
   },
   backBtn: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: '#F8FAFC',
-    justifyContent: 'center', alignItems: 'center', borderWidth: 1, borderColor: '#E2E8F0',
+    width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
 content: { flexGrow: 1, padding: 20, justifyContent: 'center' },
   card: {
     backgroundColor: '#fff', borderRadius: 24, padding: 28, alignItems: 'center',
@@ -196,5 +196,7 @@ content: { flexGrow: 1, padding: 20, justifyContent: 'center' },
   submitBtnText: { fontSize: 16, fontWeight: '800', color: '#fff' },
   alreadyRatedBox: { alignItems: 'center', gap: 8, marginTop: 8 },
   alreadyRatedText: { fontSize: 14, fontWeight: '700', color: '#059669' },
-  alreadyReviewText: { fontSize: 13, color: '#64748B', textAlign: 'center', fontStyle: 'italic', marginTop: 4 },
+alreadyReviewText: { fontSize: 13, color: '#64748B', textAlign: 'center', fontStyle: 'italic', marginTop: 4 },
+  checkingBox: { alignItems: 'center', gap: 8, paddingVertical: 20 },
+  checkingText: { fontSize: 13, color: '#94A3B8' },
 });

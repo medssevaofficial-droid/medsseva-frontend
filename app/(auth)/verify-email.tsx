@@ -122,7 +122,7 @@ const [otpError, setOtpError] = useState('');
 
 return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
+  <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       <ScreenWrapper
         backgroundColor="#E8F0F3"
         contentContainerStyle={styles.scrollContent}
@@ -203,7 +203,7 @@ return (
           </View>
         </View>
 
-        <Text style={styles.copyright}>© {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
+        <Text style={styles.copyright}>&copy; {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
  </ScreenWrapper>
     </View>
   );

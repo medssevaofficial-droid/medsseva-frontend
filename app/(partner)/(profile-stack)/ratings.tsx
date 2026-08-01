@@ -47,12 +47,16 @@ export default function RatingsScreen() {
   }, []);
 
   const maxBreakdown = data ? Math.max(...Object.values(data.breakdown), 1) : 1;
-
-  return (
+return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
- 
-
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.replace('/(partner)/profile')} style={styles.backBtn}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Ratings & Reviews</Text>
+        <View style={{ width: 40 }} />
+      </View>
       {isLoading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={COLORS.primary} />
@@ -147,7 +151,22 @@ export default function RatingsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 45,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
 
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 12 },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: '#0F172A' },

@@ -12,9 +12,6 @@ const testApi = axios.create({
 });
 
 export const testService = {
-  /**
-   * Fetch all tests from the backend
-   */
   getAllTests: async () => {
     try {
       const response = await testApi.get('/');
@@ -25,9 +22,6 @@ export const testService = {
     }
   },
 
-  /**
-   * Fetch a single test by ID
-   */
   getTestById: async (id: string) => {
     try {
       const response = await testApi.get(`/${id}`);
@@ -38,9 +32,6 @@ export const testService = {
     }
   },
 
-  /**
-   * Fetch tests by category ID
-   */
   getTestsByCategory: async (categoryId: string) => {
     try {
       const response = await testApi.get(`/category/${categoryId}`);

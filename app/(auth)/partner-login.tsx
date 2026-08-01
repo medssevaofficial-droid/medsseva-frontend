@@ -68,7 +68,7 @@ export default function PartnerLoginScreen() {
 
 return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+   <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       <ScreenWrapper
         backgroundColor="#F8FAFC"
         contentContainerStyle={styles.content}
@@ -138,7 +138,7 @@ return (
           </View>
 
         </View>
-        <Text style={styles.copyright}>© {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
+        <Text style={styles.copyright}>&copy; {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
         <View style={styles.footerLinks}>
           <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}>
             <Text style={styles.footerLink}>Terms of Service</Text>

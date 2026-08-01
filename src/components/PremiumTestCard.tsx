@@ -13,9 +13,19 @@ interface PremiumTestCardProps {
   test: any;
   onPress: () => void;
   horizontal?: boolean;
+  cartMode?: boolean;
+  isInCart?: boolean;
+  onAddToCart?: () => void;
 }
 
-export const PremiumTestCard: React.FC<PremiumTestCardProps> = ({ test, onPress, horizontal = false }) => {
+export const PremiumTestCard: React.FC<PremiumTestCardProps> = ({
+  test,
+  onPress,
+  horizontal = false,
+  cartMode = false,
+  isInCart = false,
+  onAddToCart,
+}) => {
   const dispatch = useDispatch();
   const router = useRouter();
 
@@ -37,7 +47,6 @@ export const PremiumTestCard: React.FC<PremiumTestCardProps> = ({ test, onPress,
   return (
     <View style={[styles.card, horizontal && styles.horizontalCard]}>
       <TouchableOpacity activeOpacity={0.8} onPress={onPress} style={styles.topSection}>
-        {/* Tag Header: Category & Report Duration */}
         <View style={styles.tagHeader}>
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryText}>
@@ -52,15 +61,12 @@ export const PremiumTestCard: React.FC<PremiumTestCardProps> = ({ test, onPress,
           )}
         </View>
 
-        {/* Test Identity Info */}
         <Text style={styles.testName} numberOfLines={1}>{test.name}</Text>
         <Text style={styles.description} numberOfLines={1}>{test.description}</Text>
       </TouchableOpacity>
 
-      {/* Soft Professional Spacer Divider */}
       <View style={styles.divider} />
 
-      {/* Integrated Bottom Row: Price block (left) + CTA block (right) */}
       <View style={styles.actionsRow}>
         <View style={styles.priceBlock}>
           <View style={styles.amountRow}>
@@ -72,17 +78,34 @@ export const PremiumTestCard: React.FC<PremiumTestCardProps> = ({ test, onPress,
           <Text style={styles.oldPrice}>MRP: ₹{test.price}</Text>
         </View>
 
-        <TouchableOpacity activeOpacity={0.9} onPress={handleBookNow}>
-          <LinearGradient 
-            colors={[COLORS.primary, '#14B8A6']} 
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.bookBtn}
+        {cartMode ? (
+          <TouchableOpacity
+            activeOpacity={isInCart ? 1 : 0.85}
+            onPress={isInCart ? undefined : onAddToCart}
+            style={[styles.addBtn, isInCart && styles.addBtnAdded]}
           >
-            <Text style={styles.bookBtnText}>Book</Text>
-            <MaterialCommunityIcons name="arrow-right" size={14} color="#FFF" style={{ marginLeft: 4 }} />
-          </LinearGradient>
-        </TouchableOpacity>
+            <MaterialCommunityIcons
+              name={isInCart ? 'check' : 'plus'}
+              size={13}
+              color={isInCart ? COLORS.success : COLORS.primary}
+            />
+            <Text style={[styles.addBtnText, isInCart && styles.addBtnTextAdded]}>
+              {isInCart ? 'Added' : 'Add'}
+            </Text>
+          </TouchableOpacity>
+        ) : (
+          <TouchableOpacity activeOpacity={0.9} onPress={handleBookNow}>
+            <LinearGradient
+              colors={[COLORS.primary, '#14B8A6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.bookBtn}
+            >
+              <Text style={styles.bookBtnText}>Book</Text>
+              <MaterialCommunityIcons name="arrow-right" size={14} color="#FFF" style={{ marginLeft: 4 }} />
+            </LinearGradient>
+          </TouchableOpacity>
+        )}
       </View>
     </View>
   );
@@ -210,5 +233,27 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '800',
   },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    gap: 4,
+  },
+  addBtnAdded: {
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.successLight,
+  },
+  addBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  addBtnTextAdded: {
+    color: COLORS.success,
+  },
 });
-

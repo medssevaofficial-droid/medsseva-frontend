@@ -1,11 +1,14 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, Modal, TouchableOpacity, Pressable, TextInput, ScrollView, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View, Text, StyleSheet, Modal, TouchableOpacity,
+  Pressable, TextInput, ScrollView, ActivityIndicator,
+  KeyboardAvoidingView, Platform, Keyboard,
+} from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { COLORS, SHADOWS, TYPOGRAPHY } from '../theme/theme';
 import * as Location from 'expo-location';
-import { apiService } from '../services/api';
-import { useQuery } from '@tanstack/react-query';
+import { searchIndianCities, NominatimCity } from '../services/geoService';
 
 interface Props {
   visible: boolean;
@@ -14,23 +17,41 @@ interface Props {
   currentLocation?: string;
 }
 
-// Dynamic city list will be fetched from the backend
-
-
 export function LocationPickerModal({ visible, onClose, onSelect, currentLocation }: Props) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [results, setResults] = useState<NominatimCity[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const [isLocating, setIsLocating] = useState(false);
+
+  useEffect(() => {
+    if (!searchQuery || searchQuery.trim().length < 2) {
+      setResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setIsSearching(true);
+      const cities = await searchIndianCities(searchQuery);
+      setResults(cities);
+      setIsSearching(false);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (!visible) {
+      setSearchQuery('');
+      setResults([]);
+    }
+  }, [visible]);
 
   const handleUseLiveLocation = async () => {
     setIsLocating(true);
     try {
       const { status } = await Location.requestForegroundPermissionsAsync();
-      if (status !== 'granted') {
-        throw new Error('Location permission not granted');
-      }
+      if (status !== 'granted') return;
       const location = await Location.getCurrentPositionAsync({});
       const reverse = await Location.reverseGeocodeAsync(location.coords);
-      const city = reverse[0]?.city || `${location.coords.latitude.toFixed(2)}, ${location.coords.longitude.toFixed(2)}`;
+      const city = reverse[0]?.city || reverse[0]?.subregion || `${location.coords.latitude.toFixed(2)}, ${location.coords.longitude.toFixed(2)}`;
       onSelect(city);
       onClose();
     } catch (e) {
@@ -40,16 +61,11 @@ export function LocationPickerModal({ visible, onClose, onSelect, currentLocatio
     }
   };
 
-  const handleSelectCity = (city: string) => {
-    onSelect(city);
+  const handleSelectCity = (name: string) => {
+    Keyboard.dismiss();
+    onSelect(name);
     onClose();
   };
-
-  const { data: cities, isLoading: citiesLoading } = useQuery({ queryKey: ['cities'], queryFn: () => apiService.getCities() });
-    const cityList = cities || [];
-    const filteredCities = cityList.filter(c =>
-      c.name.toLowerCase().includes(searchQuery.toLowerCase())
-    );
 
   return (
     <Modal
@@ -57,17 +73,19 @@ export function LocationPickerModal({ visible, onClose, onSelect, currentLocatio
       visible={visible}
       animationType="slide"
       onRequestClose={onClose}
+      statusBarTranslucent
     >
-      <View style={styles.backdrop}>
+      <KeyboardAvoidingView
+        style={styles.backdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
         <Pressable style={styles.dismissArea} onPress={onClose} />
-        
+
         <View style={styles.sheetContent}>
-          {/* Decorative Handle Bar */}
           <View style={styles.handleContainer}>
             <View style={styles.handleBar} />
           </View>
 
-          {/* Bottom Sheet Header */}
           <View style={styles.header}>
             <Text style={styles.title}>Select Location</Text>
             <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
@@ -75,7 +93,6 @@ export function LocationPickerModal({ visible, onClose, onSelect, currentLocatio
             </TouchableOpacity>
           </View>
 
-          {/* City Search Container */}
           <View style={styles.searchBox}>
             <MaterialCommunityIcons name="magnify" size={22} color="#94A3B8" style={{ marginRight: 8 }} />
             <TextInput
@@ -84,6 +101,7 @@ export function LocationPickerModal({ visible, onClose, onSelect, currentLocatio
               onChangeText={setSearchQuery}
               style={styles.searchInput}
               placeholderTextColor="#94A3B8"
+              autoCorrect={false}
             />
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
@@ -92,9 +110,8 @@ export function LocationPickerModal({ visible, onClose, onSelect, currentLocatio
             )}
           </View>
 
-          {/* Live GPS Row */}
-          <TouchableOpacity 
-            activeOpacity={0.85} 
+          <TouchableOpacity
+            activeOpacity={0.85}
             onPress={handleUseLiveLocation}
             disabled={isLocating}
             style={styles.liveBtnContainer}
@@ -122,41 +139,48 @@ export function LocationPickerModal({ visible, onClose, onSelect, currentLocatio
             </LinearGradient>
           </TouchableOpacity>
 
-          <Text style={styles.sectionHeader}>Popular Cities</Text>
-
-          {/* Render Cities in Padded Scroll Tray */}
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.cityList}>
-            <View style={styles.grid}>
-              {filteredCities.map((city) => {
-                const isSelected = currentLocation === city.name;
-                return (
-                  <TouchableOpacity
-                    key={city.id}
-                    style={[styles.cityCard, isSelected && styles.cityCardSelected]}
-                    onPress={() => handleSelectCity(city.name)}
-                  >
-                    <View style={[styles.cityIconBg, isSelected && styles.cityIconBgSelected]}>
-                      <MaterialCommunityIcons 
-                        name={city.icon as any} 
-                        size={24} 
-                        color={isSelected ? '#FFF' : COLORS.primary} 
-                      />
-                    </View>
-                    <Text style={[styles.cityName, isSelected && styles.cityNameSelected]} numberOfLines={1}>
-                      {city.name}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
-              {filteredCities.length === 0 && (
-                <View style={styles.emptyBox}>
-                  <Text style={styles.emptyText}>No cities match "{searchQuery}"</Text>
-                </View>
-              )}
+          {searchQuery.trim().length < 2 ? (
+            <View style={styles.hintBox}>
+              <MaterialCommunityIcons name="map-search-outline" size={32} color="#CBD5E1" />
+              <Text style={styles.hintText}>Type at least 2 characters to search</Text>
             </View>
-          </ScrollView>
+          ) : isSearching ? (
+            <View style={styles.hintBox}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.hintText}>Searching...</Text>
+            </View>
+          ) : (
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.resultsList}
+              keyboardShouldPersistTaps="handled"
+            >
+              {results.length === 0 ? (
+                <View style={styles.emptyBox}>
+                  <Text style={styles.emptyText}>No results for "{searchQuery.trim()}"</Text>
+                </View>
+              ) : (
+                results.map((city, idx) => (
+                  <TouchableOpacity
+                    key={`${city.latitude}-${city.longitude}-${idx}`}
+                    style={styles.resultRow}
+                    onPress={() => handleSelectCity(city.name)}
+                    activeOpacity={0.7}
+                  >
+                    <View style={styles.resultIcon}>
+                      <MaterialCommunityIcons name="map-marker-outline" size={20} color={COLORS.primary} />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.resultName} numberOfLines={1}>{city.name}</Text>
+                      <Text style={styles.resultDisplay} numberOfLines={1}>{city.displayName}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))
+              )}
+            </ScrollView>
+          )}
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -174,8 +198,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 28,
     borderTopRightRadius: 28,
-    paddingBottom: 30,
-    maxHeight: '80%',
+    maxHeight: '85%',
     ...SHADOWS.soft,
   },
   handleContainer: {
@@ -228,7 +251,7 @@ const styles = StyleSheet.create({
   },
   liveBtnContainer: {
     marginHorizontal: 24,
-    marginBottom: 24,
+    marginBottom: 16,
   },
   liveBtn: {
     flexDirection: 'row',
@@ -258,64 +281,52 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: 1,
   },
-  sectionHeader: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: COLORS.textSecondary,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    paddingHorizontal: 24,
-    marginBottom: 14,
-  },
-  cityList: {
-    paddingHorizontal: 20,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-  },
-  cityCard: {
-    width: '25%',
+  hintBox: {
     alignItems: 'center',
-    marginBottom: 16,
-    paddingVertical: 8,
-    borderRadius: 12,
+    paddingVertical: 32,
+    gap: 10,
   },
-  cityCardSelected: {
-    backgroundColor: 'rgba(0,109,111,0.04)',
+  hintText: {
+    fontSize: 13,
+    color: '#94A3B8',
   },
-  cityIconBg: {
-    width: 46,
-    height: 46,
-    borderRadius: 23,
-    backgroundColor: '#F1F5F9',
+  resultsList: {
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+    gap: 12,
+  },
+  resultIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#F0FDFA',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
   },
-  cityIconBgSelected: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
+  resultName: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.textDark,
   },
-  cityName: {
+  resultDisplay: {
     fontSize: 11,
-    fontWeight: '600',
     color: COLORS.textSecondary,
-    textAlign: 'center',
-  },
-  cityNameSelected: {
-    color: COLORS.primary,
-    fontWeight: 'bold',
+    marginTop: 2,
   },
   emptyBox: {
-    width: '100%',
-    padding: 30,
+    paddingVertical: 32,
     alignItems: 'center',
   },
   emptyText: {
     color: COLORS.textSecondary,
     fontStyle: 'italic',
+    fontSize: 13,
   },
 });

@@ -122,11 +122,10 @@ const handleContinue = () => {
       <View style={styles.pickerContainer}>
           <Text style={styles.sectionTitle}>Schedule Appointment</Text>
 
-          {/* Lab mode: show selected branch info */}
-          {collectionMode === 'lab' && selectedBranchName && (
-            <View style={[styles.slotStatusCard, { borderColor: COLORS.primary + '40', backgroundColor: COLORS.primary + '08', marginBottom: 16 }]}>
+     {collectionMode === 'lab' && selectedBranchName && (
+            <View style={styles.branchInfoCard}>
               <MaterialCommunityIcons name="hospital-building" size={20} color={COLORS.primary} />
-              <Text style={[styles.slotStatusText, { color: COLORS.primary, fontWeight: '600' }]}>
+              <Text style={styles.branchInfoText}>
                 {selectedBranchName}
               </Text>
             </View>
@@ -450,7 +449,24 @@ selectValue: {
     fontWeight: '700',
     color: '#FFFFFF',
   },
-  disabledCard: {
+ disabledCard: {
     opacity: 0.5,
+  },
+  branchInfoCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.primary + '12',
+    borderRadius: 16,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary + '30',
+    padding: 16,
+    marginBottom: 16,
+    gap: 10,
+  },
+  branchInfoText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: COLORS.primary,
+    flex: 1,
   },
 });

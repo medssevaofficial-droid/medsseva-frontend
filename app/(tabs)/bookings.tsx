@@ -18,7 +18,7 @@ const router = useRouter();
   const dispatch = useDispatch();
 const [activeFilter, setActiveFilter] = useState<'all' | 'completed' | 'cancelled'>('all');
 
-  const user = useSelector((state: RootState) => state.auth.user);
+const user = useSelector((state: RootState) => state.auth.user);
   
   const { data: rawBookings = [], isLoading, refetch } = useQuery({
     queryKey: ['bookings', user?.mobile],

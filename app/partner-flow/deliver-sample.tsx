@@ -120,19 +120,19 @@ return (
 const styles = StyleSheet.create({
 container: { flex: 1 },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  header: {
+header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 52, paddingBottom: 16,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    backgroundColor: COLORS.primary, borderBottomWidth: 0,
   },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
   content: { flex: 1, padding: 24, alignItems: 'center' },
   iconCircle: {
-    width: 88, height: 88, borderRadius: 44, backgroundColor: '#F0FDFA',
+    width: 88, height: 88, borderRadius: 44, backgroundColor: '#fff',
     justifyContent: 'center', alignItems: 'center',
     borderWidth: 1.5, borderColor: '#CCFBF1', marginBottom: 24, marginTop: 16,
   },
-  title: { fontSize: 22, fontWeight: '900', color: '#0F172A', marginBottom: 10, textAlign: 'center' },
+  title: { fontSize: 22, fontWeight: '900', color: COLORS.primary, marginBottom: 10, textAlign: 'center' },
   subtitle: {
     fontSize: 14, color: '#64748B', textAlign: 'center', lineHeight: 22, marginBottom: 24,
   },

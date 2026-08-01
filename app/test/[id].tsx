@@ -6,7 +6,6 @@ import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { useDispatch, useSelector } from 'react-redux';
 
-
 import { COLORS, TYPOGRAPHY } from '../../src/theme/theme';
 import { showSuccess } from '../../src/store/toastStore';
 import { RootState } from '../../src/store';
@@ -18,15 +17,15 @@ export default function TestDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const dispatch = useDispatch();
-  
+
   const [test, setTest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
+  const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
   const [isFaqSheetOpen, setFaqSheetOpen] = useState(false);
 
-  const cartItem = useSelector((state: RootState) =>
-    state.cart.items.find(i => i.id === (id as string) && i.itemType === 'test')
-  );
+const cartItems = useSelector((state: RootState) => state.cart.items);
+  const cartCount = cartItems.length;
+  const cartItem = cartItems.find(i => i.id === (id as string) && i.itemType === 'test');
   const cartQty = cartItem?.quantity ?? 0;
 
   useEffect(() => {
@@ -35,7 +34,7 @@ const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
         const data = await testService.getTestById(id as string);
         setTest(data);
       } catch (error) {
-        console.error("Failed to load test details", error);
+        console.error('Failed to load test details', error);
       } finally {
         setLoading(false);
       }
@@ -43,7 +42,7 @@ const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
     fetchTest();
   }, [id]);
 
-if (loading) {
+  if (loading) {
     return (
       <View style={[styles.container, styles.centerAll]}>
         <ActivityIndicator size="large" color={COLORS.primary} />
@@ -58,9 +57,15 @@ if (loading) {
       </View>
     );
   }
+
   const discountPercent = Math.round(((test.price - test.discountedPrice) / test.price) * 100);
 
+const filteredPrep = test.preparationGuidelines ?? [];
 const handleAddToCart = () => {
+    if (cartItem) {
+      showSuccess('This test is already in your cart.', { title: 'Already in Cart' });
+      return;
+    }
     dispatch(addToCart({
       id: test.id,
       itemType: 'test',
@@ -68,11 +73,12 @@ const handleAddToCart = () => {
       price: test.price,
       discountedPrice: test.discountedPrice,
       homeCollection: test.homeCollection,
-      quantity: 1
+      quantity: 1,
     }));
-    showSuccess('Added to cart successfully');
+    showSuccess(`${test.name} has been added to your cart.`, { title: '✓ Added to Cart' });
   };
-const handleBookNow = () => {
+
+  const handleBookNow = () => {
     dispatch(addToCart({
       id: test.id,
       itemType: 'test',
@@ -80,11 +86,12 @@ const handleBookNow = () => {
       price: test.price,
       discountedPrice: test.discountedPrice,
       homeCollection: test.homeCollection,
-      quantity: 1
+      quantity: 1,
     }));
     router.push('/checkout/cart');
   };
- return (
+
+  return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
         <View style={styles.header}>
@@ -92,8 +99,13 @@ const handleBookNow = () => {
             <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
           <Text style={styles.headerTitle}>Test Details</Text>
-          <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/checkout/cart')}>
+         <TouchableOpacity style={styles.cartButton} onPress={() => router.push('/checkout/cart')}>
             <MaterialCommunityIcons name="cart-outline" size={24} color={COLORS.textLight} />
+            {cartCount > 0 && (
+              <View style={styles.cartBadge}>
+                <Text style={styles.cartBadgeText}>{cartCount}</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
       </SafeAreaView>
@@ -103,7 +115,7 @@ const handleBookNow = () => {
         contentContainerStyle={styles.scrollContent}
         bottomButton={
           <View style={styles.footerRow}>
-         <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
+            <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
               <MaterialCommunityIcons name="cart-plus" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
               <Text style={styles.cartSecondaryButtonText}>
                 {cartQty > 0 ? `Add to Cart (${cartQty})` : 'Add to Cart'}
@@ -115,22 +127,23 @@ const handleBookNow = () => {
           </View>
         }
       >
-        {/* Banner Card - Soft & Accessible Theme */}
         <View style={styles.mainCard}>
           <View style={styles.badgeRow}>
             {test.homeCollection && (
               <View style={styles.badge}>
                 <MaterialCommunityIcons name="home-plus-outline" size={14} color={COLORS.success} />
-                <Text style={styles.badgeText}> Home Collection Available</Text>
+                <Text style={styles.badgeText}> Home Collection</Text>
               </View>
             )}
             <View style={styles.categoryBadge}>
-              <Text style={styles.categoryBadgeText}>{typeof test.category === 'object' ? test.category.name : test.category}</Text>
+              <Text style={styles.categoryBadgeText}>
+                {typeof test.category === 'object' ? test.category.name : test.category}
+              </Text>
             </View>
           </View>
 
           <Text style={styles.testName}>{test.name}</Text>
-          
+
           <View style={styles.priceContainer}>
             <Text style={styles.offerPrice}>₹{test.discountedPrice}</Text>
             <Text style={styles.mrpPrice}>₹{test.price}</Text>
@@ -144,7 +157,6 @@ const handleBookNow = () => {
 
           <View style={styles.divider} />
 
-          {/* Key Indicators Grid */}
           <View style={styles.indicatorsGrid}>
             <View style={styles.indicatorBox}>
               <MaterialCommunityIcons name="food-apple-outline" size={20} color={COLORS.primary} />
@@ -158,32 +170,27 @@ const handleBookNow = () => {
             </View>
             <View style={styles.indicatorBox}>
               <MaterialCommunityIcons name="test-tube" size={20} color={COLORS.primary} />
-              <Text style={styles.indicatorLabel}>Sample</Text>
-              <Text style={styles.indicatorValue}>Blood/Urine</Text>
+              <Text style={styles.indicatorLabel}>Parameters</Text>
+              <Text style={styles.indicatorValue}>{test.parameters?.length ?? 0}</Text>
             </View>
           </View>
         </View>
 
-        {/* Parameters Section */}
-        <View style={styles.sectionCard}>
-        <Text style={styles.sectionTitle}>Parameters Included ({test.parameters?.length ?? 0})</Text>
-          <Text style={styles.sectionSubtitle}>Names of the specific metrics tested</Text>
-          
-          <View style={styles.parametersList}>
-             {/* We mock parameter names if not strictly available in the object for visual purposes */}
-             {['Hemoglobin', 'RBC Count', 'WBC Count', 'Platelet Count', 'MCV', 'MCH'].map((param, index) => (
-               <View key={index} style={styles.parameterItem}>
-                 <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.success} />
-                 <Text style={styles.parameterText}>{param}</Text>
-               </View>
-             ))}
-             {test.parameters > 6 && (
-               <Text style={styles.andMoreText}>+ {test.parameters - 6} more parameters...</Text>
-             )}
+        {test.parameters && test.parameters.length > 0 && (
+          <View style={styles.sectionCard}>
+            <Text style={styles.sectionTitle}>Parameters Included ({test.parameters.length})</Text>
+            <Text style={styles.sectionSubtitle}>Specific metrics tested in this panel</Text>
+            <View style={styles.parametersList}>
+              {test.parameters.map((param: any, index: number) => (
+                <View key={param.id || index} style={styles.parameterItem}>
+                  <MaterialCommunityIcons name="check-circle" size={16} color={COLORS.success} />
+                  <Text style={styles.parameterText}>{param.name}</Text>
+                </View>
+              ))}
+            </View>
           </View>
-        </View>
+        )}
 
-        {/* Action List Items */}
         <View style={styles.sectionCard}>
           <TouchableOpacity style={styles.actionListItem} onPress={() => setPrepSheetOpen(true)}>
             <View style={styles.actionListLeft}>
@@ -201,39 +208,102 @@ const handleBookNow = () => {
             <MaterialCommunityIcons name="chevron-right" size={24} color={COLORS.textSecondary} />
           </TouchableOpacity>
         </View>
-</ScreenWrapper>
+      </ScreenWrapper>
 
-      {/* Preparation Bottom Sheet */}
-      <PremiumBottomSheet visible={isPrepSheetOpen} onClose={() => setPrepSheetOpen(false)} height={400}>
-        <Text style={styles.sheetTitle}>Preparation Instructions</Text>
-        <View style={styles.prepContainer}>
-          <MaterialCommunityIcons name={test.fastingRequired ? "food-off" : "food-apple"} size={48} color={COLORS.primary} />
-          <Text style={styles.prepStatusText}>
-            {test.fastingRequired ? 'Fasting Required' : 'No Special Preparation'}
-          </Text>
-          <Text style={styles.prepDetailsText}>
-            {test.fastingRequired 
-              ? 'Please do not consume any food or beverages (other than water) for 10-12 hours prior to the test for accurate results.' 
-              : 'You can consume your normal diet. Ensure you stay hydrated before your sample collection.'}
-          </Text>
+      <PremiumBottomSheet visible={isPrepSheetOpen} onClose={() => setPrepSheetOpen(false)} height={580}>
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetTitleRow}>
+            <MaterialCommunityIcons name="clipboard-text-outline" size={22} color={COLORS.primary} />
+            <Text style={styles.sheetTitle}>Preparation Instructions</Text>
+          </View>
         </View>
-        <TouchableOpacity style={styles.gotItButton} onPress={() => setPrepSheetOpen(false)}>
-          <Text style={styles.gotItText}>Understood</Text>
-        </TouchableOpacity>
+
+
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetScrollContent}>
+          {filteredPrep.length > 0 ? (
+            <>
+              <View style={[styles.prepFastingBadge, {
+                borderColor: test.fastingRequired ? '#FDE68A' : '#A7F3D0',
+                backgroundColor: test.fastingRequired ? '#FFFBEB' : '#ECFDF5',
+              }]}>
+                <MaterialCommunityIcons
+                  name={test.fastingRequired ? 'food-off' : 'food-apple'}
+                  size={20}
+                  color={test.fastingRequired ? '#D97706' : COLORS.success}
+                />
+                <Text style={[styles.prepFastingText, { color: test.fastingRequired ? '#D97706' : COLORS.success }]}>
+                  {test.fastingRequired ? 'Fasting Required' : 'No Fasting Required'}
+                </Text>
+              </View>
+              {filteredPrep.map((g: any, index: number) => (
+                <View key={g.id || index} style={styles.prepGuidelineCard}>
+                  <View style={styles.prepGuidelineCardHeader}>
+                    <View style={styles.prepGuidelineNumber}>
+                      <Text style={styles.prepGuidelineNumberText}>{index + 1}</Text>
+                    </View>
+                    <Text style={styles.prepGuidelineTitle}>{g.title}</Text>
+                  </View>
+                  <Text style={styles.prepGuidelineDesc}>{g.description}</Text>
+                </View>
+              ))}
+            </>
+          ) : (
+            <View style={styles.prepEmptyContainer}>
+              <View style={styles.prepEmptyIconWrap}>
+                <MaterialCommunityIcons name="information-outline" size={36} color={COLORS.primary} />
+              </View>
+              <Text style={styles.prepStatusText}>No Instructions Available</Text>
+              <Text style={styles.prepDetailsText}>
+                No specific preparation instructions for this mode. Contact our support team for guidance.
+              </Text>
+            </View>
+          )}
+          <View style={{ height: 32 }} />
+        </ScrollView>
+
+        <View style={styles.sheetFooter}>
+          <TouchableOpacity style={styles.gotItButton} onPress={() => setPrepSheetOpen(false)}>
+            <Text style={styles.gotItText}>Got It</Text>
+          </TouchableOpacity>
+        </View>
       </PremiumBottomSheet>
 
-    
-      <PremiumBottomSheet visible={isFaqSheetOpen} onClose={() => setFaqSheetOpen(false)} height={500}>
-        <Text style={styles.sheetTitle}>Frequently Asked Questions</Text>
-        <ScrollView showsVerticalScrollIndicator={false}>
-          <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>Is home collection safe?</Text>
-            <Text style={styles.faqAnswer}>Yes, our phlebotomists follow strict hygiene and WHO guidelines using sealed, single-use kits.</Text>
+      <PremiumBottomSheet visible={isFaqSheetOpen} onClose={() => setFaqSheetOpen(false)} height={580}>
+        <View style={styles.sheetHeader}>
+          <View style={styles.sheetTitleRow}>
+            <MaterialCommunityIcons name="frequently-asked-questions" size={22} color={COLORS.primary} />
+            <Text style={styles.sheetTitle}>Frequently Asked Questions</Text>
           </View>
-          <View style={styles.faqItem}>
-            <Text style={styles.faqQuestion}>When will I get my reports?</Text>
-            <Text style={styles.faqAnswer}>Your digital reports will be available on the app within {test.reportTime} after sample collection.</Text>
-          </View>
+        </View>
+
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.sheetScrollContent}>
+          {test.faqs && test.faqs.length > 0 ? (
+            test.faqs.map((faq: any, index: number) => (
+              <View key={faq.id || index} style={styles.faqCard}>
+                <View style={styles.faqQuestionRow}>
+                  <View style={styles.faqIndexBadge}>
+                    <Text style={styles.faqIndexText}>Q{index + 1}</Text>
+                  </View>
+                  <Text style={styles.faqQuestion}>{faq.question}</Text>
+                </View>
+                <View style={styles.faqAnswerWrap}>
+                  <Text style={styles.faqAnswer}>{faq.answer}</Text>
+                </View>
+              </View>
+            ))
+          ) : (
+            <View style={styles.prepEmptyContainer}>
+              <View style={styles.prepEmptyIconWrap}>
+                <MaterialCommunityIcons name="frequently-asked-questions" size={36} color={COLORS.border} />
+              </View>
+              <Text style={styles.prepStatusText}>No FAQs Available</Text>
+              <Text style={styles.prepDetailsText}>
+                Contact our support team for any questions about this test.
+              </Text>
+            </View>
+          )}
+          <View style={{ height: 32 }} />
         </ScrollView>
       </PremiumBottomSheet>
     </View>
@@ -241,7 +311,7 @@ const handleBookNow = () => {
 }
 
 const styles = StyleSheet.create({
-container: { flex: 1, backgroundColor: '#F8FAFC' },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
   centerAll: { justifyContent: 'center', alignItems: 'center' },
   headerSafeArea: { backgroundColor: COLORS.primary },
   header: {
@@ -251,31 +321,35 @@ container: { flex: 1, backgroundColor: '#F8FAFC' },
   },
   backButton: { padding: 4 },
   headerTitle: { ...TYPOGRAPHY.h2, color: COLORS.textLight },
-  cartButton: { padding: 4 },
-scrollContent: { padding: 16 },
-  
-  // Soft & Accessible Cards
+cartButton: { padding: 4, position: 'relative' },
+  cartBadge: {
+    position: 'absolute',
+    right: -4,
+    top: -4,
+    backgroundColor: COLORS.danger,
+    borderRadius: 9,
+    minWidth: 18,
+    height: 18,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+  },
+  cartBadgeText: {
+    color: COLORS.textLight,
+    fontSize: 9,
+    fontWeight: 'bold',
+  },
+  scrollContent: { padding: 16 },
+
   mainCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
   sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    backgroundColor: '#FFFFFF', borderRadius: 20, padding: 20, marginBottom: 16,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
   },
 
   badgeRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 16 },
@@ -283,9 +357,9 @@ scrollContent: { padding: 16 },
   badgeText: { ...TYPOGRAPHY.caption, color: COLORS.success, fontWeight: 'bold' },
   categoryBadge: { backgroundColor: '#E0F2FE', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 12 },
   categoryBadgeText: { ...TYPOGRAPHY.caption, color: COLORS.primary, fontWeight: 'bold', textTransform: 'uppercase' },
-  
+
   testName: { ...TYPOGRAPHY.h1, color: COLORS.textDark, marginBottom: 12 },
-  
+
   priceContainer: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
   offerPrice: { ...TYPOGRAPHY.h1, color: COLORS.textDark, marginRight: 12 },
   mrpPrice: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textDecorationLine: 'line-through', marginRight: 12 },
@@ -304,20 +378,16 @@ scrollContent: { padding: 16 },
 
   sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.textDark, marginBottom: 4 },
   sectionSubtitle: { ...TYPOGRAPHY.caption, color: COLORS.textSecondary, marginBottom: 16 },
-  
+
   parametersList: { marginTop: 8 },
   parameterItem: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
   parameterText: { ...TYPOGRAPHY.body, color: COLORS.textDark, marginLeft: 12 },
-  andMoreText: { ...TYPOGRAPHY.caption, color: COLORS.primary, marginTop: 8, fontStyle: 'italic' },
 
   actionListItem: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingVertical: 16, borderBottomWidth: 1, borderBottomColor: COLORS.border },
   actionListLeft: { flexDirection: 'row', alignItems: 'center' },
   actionListTitle: { ...TYPOGRAPHY.body, color: COLORS.textDark, fontWeight: '600', marginLeft: 16 },
 
-footerRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
+  footerRow: { flexDirection: 'row', justifyContent: 'space-between' },
   cartSecondaryButton: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
     backgroundColor: '#FFFFFF', borderWidth: 1.5, borderColor: COLORS.primary,
@@ -330,14 +400,58 @@ footerRow: {
   },
   bookPrimaryButtonText: { ...TYPOGRAPHY.subtitle, color: '#FFFFFF', fontWeight: 'bold' },
 
-  // Sheets
-  sheetTitle: { ...TYPOGRAPHY.h2, color: COLORS.textDark, marginBottom: 24 },
-  prepContainer: { alignItems: 'center', paddingVertical: 20 },
-  prepStatusText: { ...TYPOGRAPHY.h3, color: COLORS.textDark, marginTop: 16, marginBottom: 12 },
+  sheetHeader: {
+    paddingBottom: 16, paddingHorizontal: 22,
+    borderBottomWidth: 1, borderBottomColor: '#F1F5F9', marginBottom: 4,
+  },
+  sheetTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  sheetTitle: { ...TYPOGRAPHY.h2, color: COLORS.textDark },
+  sheetScrollContent: { paddingTop: 16, paddingBottom: 8 },
+  sheetFooter: { paddingTop: 12, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+
+
+
+  prepFastingBadge: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    borderRadius: 14, paddingHorizontal: 16, paddingVertical: 14, marginBottom: 16,
+    borderWidth: 1,
+  },
+  prepFastingText: { fontSize: 14, fontWeight: '700', flex: 1 },
+  prepGuidelineCard: {
+    backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  prepGuidelineCardHeader: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: 10 },
+  prepGuidelineNumber: {
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center', flexShrink: 0,
+  },
+  prepGuidelineNumberText: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  prepGuidelineTitle: { fontSize: 14, fontWeight: '700', color: COLORS.textDark, flex: 1 },
+  prepGuidelineDesc: { fontSize: 13, color: COLORS.textSecondary, lineHeight: 21, paddingLeft: 42 },
+  prepEmptyContainer: { alignItems: 'center', paddingVertical: 32, paddingHorizontal: 20 },
+  prepEmptyIconWrap: {
+    width: 72, height: 72, borderRadius: 36,
+    backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center', marginBottom: 16,
+  },
+  prepStatusText: { ...TYPOGRAPHY.h3, color: COLORS.textDark, marginBottom: 8, textAlign: 'center' },
   prepDetailsText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center', lineHeight: 24 },
-  gotItButton: { backgroundColor: COLORS.primary, paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 'auto', marginBottom: 40 },
+  gotItButton: { backgroundColor: COLORS.primary, paddingVertical: 15, borderRadius: 14, alignItems: 'center', marginBottom: 8 },
   gotItText: { ...TYPOGRAPHY.subtitle, color: COLORS.textLight, fontWeight: 'bold' },
-  faqItem: { marginBottom: 24 },
-  faqQuestion: { ...TYPOGRAPHY.subtitle, color: COLORS.textDark, fontWeight: 'bold', marginBottom: 8 },
-  faqAnswer: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, lineHeight: 22 }
+
+  faqCard: {
+    backgroundColor: '#F8FAFC', borderRadius: 16, padding: 16, marginBottom: 12,
+    borderWidth: 1, borderColor: '#E2E8F0',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.04, shadowRadius: 4, elevation: 1,
+  },
+  faqQuestionRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 10 },
+  faqIndexBadge: {
+    backgroundColor: COLORS.primary, borderRadius: 8,
+    paddingHorizontal: 8, paddingVertical: 3, flexShrink: 0, marginTop: 1,
+  },
+  faqIndexText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  faqQuestion: { ...TYPOGRAPHY.subtitle, color: COLORS.textDark, fontWeight: '700', flex: 1, lineHeight: 22 },
+  faqAnswerWrap: { paddingLeft: 44, paddingTop: 2 },
+  faqAnswer: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, lineHeight: 23 },
 });

@@ -383,8 +383,8 @@ if (step === 'sample_collected') {
         </View>
 
         <ScreenWrapper contentContainerStyle={styles.scrollContent}>
-          <View style={[styles.iconCircle, { backgroundColor: '#EDE9FE' }]}>
-            <MaterialCommunityIcons name="test-tube" size={40} color="#7C3AED" />
+         <View style={[styles.iconCircle, { backgroundColor: '#F0FDFA' }]}>
+            <MaterialCommunityIcons name="test-tube" size={40} color={COLORS.primary} />
           </View>
           <Text style={styles.stepTitle}>Sample Collected</Text>
        <Text style={styles.stepSubtitle}>
@@ -411,13 +411,13 @@ if (step === 'sample_collected') {
           </View>
 
           <View style={styles.doneCard}>
-            <MaterialCommunityIcons name="information-outline" size={20} color="#7C3AED" />
-            <Text style={[styles.doneCardText, { color: '#7C3AED' }]}>
+            <MaterialCommunityIcons name="information-outline" size={20} color={COLORS.primary} />
+            <Text style={styles.doneCardText}>
               Once you have delivered the sample to the lab, tap the button below to complete this booking.
             </Text>
           </View>
 
-<TouchableOpacity style={[styles.primaryBtn, { backgroundColor: '#7C3AED' }]} onPress={handleDeliverToLab}>
+<TouchableOpacity style={styles.primaryBtn} onPress={handleDeliverToLab}>
             <MaterialCommunityIcons name="hospital-building" size={20} color="#fff" style={{ marginRight: 8 }} />
             <Text style={styles.primaryBtnText}>Select Delivery Branch</Text>
           </TouchableOpacity>
@@ -552,10 +552,10 @@ qrAmountRow: { alignItems: 'center', marginBottom: 4, marginTop: 8 },
     width: 24, height: 24, borderRadius: 12, backgroundColor: '#E2E8F0',
     justifyContent: 'center', alignItems: 'center',
   },
-  progressDotDone: { backgroundColor: '#7C3AED' },
+progressDotDone: { backgroundColor: COLORS.primary },
   progressDotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#94A3B8' },
   progressLabel: { fontSize: 10, fontWeight: '600', color: '#94A3B8' },
-  progressLabelDone: { color: '#7C3AED' },
+progressLabelDone: { color: COLORS.primary },
   progressLine: { flex: 1, height: 2, backgroundColor: '#E2E8F0', marginBottom: 16 },
-  progressLineDone: { backgroundColor: '#7C3AED' },
+  progressLineDone: { backgroundColor: COLORS.primary },
 });

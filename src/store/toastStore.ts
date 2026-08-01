@@ -4,16 +4,15 @@ interface ToastAction {
   label: string;
   onPress: () => void;
 }
-
 interface ToastState {
   visible: boolean;
   message: string;
+  title?: string;
   type: ToastType;
   action?: ToastAction;
   duration: number;
   toastId: number;
 }
-
 let state: ToastState = {
   visible: false,
   message: '',
@@ -37,14 +36,15 @@ export const toastStore = {
     listeners.add(listener);
     return () => listeners.delete(listener);
   },
-  showToast: (
+showToast: (
     message: string,
     type: ToastType = 'info',
-    options?: { action?: ToastAction; duration?: number }
+    options?: { title?: string; action?: ToastAction; duration?: number }
   ) =>
     setState({
       visible: true,
       message,
+      title: options?.title,
       type,
       action: options?.action,
       duration: options?.duration ?? 3000,
@@ -53,11 +53,11 @@ export const toastStore = {
   hideToast: () => setState({ visible: false }),
 };
 
-export const showSuccess = (message: string, options?: { action?: ToastAction; duration?: number }) =>
+export const showSuccess = (message: string, options?: { title?: string; action?: ToastAction; duration?: number }) =>
   toastStore.showToast(message, 'success', options);
 
-export const showError = (message: string, options?: { action?: ToastAction; duration?: number }) =>
+export const showError = (message: string, options?: { title?: string; action?: ToastAction; duration?: number }) =>
   toastStore.showToast(message, 'error', options);
 
-export const showInfo = (message: string, options?: { action?: ToastAction; duration?: number }) =>
+export const showInfo = (message: string, options?: { title?: string; action?: ToastAction; duration?: number }) =>
   toastStore.showToast(message, 'info', options);

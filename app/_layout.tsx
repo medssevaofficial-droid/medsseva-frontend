@@ -24,7 +24,7 @@ import {
   getDeepLinkRoute,
 } from '../src/services/notificationService';
 
-import { GlobalSchedulerOverlay } from '../src/components/GlobalSchedulerOverlay';
+
 import { ToastHost } from '../src/components/ToastHost';
 import { initLogout } from '../src/utils/logout';
 
@@ -147,7 +147,6 @@ const restoreSession = async () => {
 <Stack.Screen name="(partner)" options={{ headerShown: false }} />
         <Stack.Screen name="support" options={{ headerShown: false }} />
       </Stack>
-  <GlobalSchedulerOverlay />
       <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, zIndex: 99999, elevation: 99999, pointerEvents: 'box-none' }}>
         <ToastHost />
       </View>

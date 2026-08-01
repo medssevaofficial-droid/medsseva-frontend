@@ -82,23 +82,17 @@ export default function AvailabilityScreen() {
     );
   }
 
- const saveButton = (
-    <TouchableOpacity
-      style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-      onPress={handleSave}
-      disabled={isSaving}
-      activeOpacity={0.85}
-    >
-      {isSaving
-        ? <ActivityIndicator color="#fff" size="small" />
-        : <Text style={styles.saveBtnText}>Save Availability</Text>
-      }
-    </TouchableOpacity>
-  );
-
+const saveButton = null;
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.replace('/(partner)/profile')} style={styles.backBtn}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Availability</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <ScreenWrapper bottomButton={saveButton} contentContainerStyle={styles.content}>
         <View style={styles.card}>
           <View style={styles.toggleRow}>
@@ -214,7 +208,7 @@ export default function AvailabilityScreen() {
           </View>
         </View>
 
-        <View style={styles.card}>
+  <View style={styles.card}>
           <Text style={styles.cardTitle}>Maximum Daily Bookings</Text>
           <View style={styles.maxRow}>
             {MAX_BOOKINGS.map(n => (
@@ -227,6 +221,20 @@ export default function AvailabilityScreen() {
               </TouchableOpacity>
             ))}
           </View>
+
+          <View style={styles.sectionDivider} />
+
+          <TouchableOpacity
+            style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+            onPress={handleSave}
+            disabled={isSaving}
+            activeOpacity={0.85}
+          >
+            {isSaving
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.saveBtnText}>Save Availability</Text>
+            }
+          </TouchableOpacity>
         </View>
 
 </ScreenWrapper>
@@ -235,8 +243,23 @@ export default function AvailabilityScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+container: { flex: 1, backgroundColor: '#F8FAFC' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 45,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
 
   content: { padding: 16, paddingBottom: 40 },
   card: {
@@ -275,8 +298,9 @@ const styles = StyleSheet.create({
   },
   maxChipSelected: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
   maxChipText: { fontSize: 15, fontWeight: '800', color: '#64748B' },
-  maxChipTextSelected: { color: '#fff' },
-  saveBtn: {
+ maxChipTextSelected: { color: '#fff' },
+  sectionDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 16 },
+  saveBtn:{
     backgroundColor: COLORS.primary, borderRadius: 16, height: 52,
     justifyContent: 'center', alignItems: 'center', marginTop: 4,
   },

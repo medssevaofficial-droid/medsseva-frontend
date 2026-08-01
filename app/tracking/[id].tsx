@@ -156,7 +156,7 @@ const [downloading, setDownloading] = useState(false);
           const bannerColor =
             s === 'WAITING_FOR_PARTNER' ? '#F59E0B' :
             s === 'ASSIGNED' || s === 'ACCEPTED' ? COLORS.primary :
-            s === 'ON_THE_WAY' ? '#7C3AED' :
+           s === 'ON_THE_WAY' ? COLORS.primaryLight :
             s === 'REACHED_LOCATION' ? '#059669' :
             s === 'SAMPLE_COLLECTED' ? '#0284C7' :
             s === 'DELIVERED_TO_LAB' || s === 'PROCESSING' ? '#0F172A' :

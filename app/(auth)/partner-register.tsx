@@ -116,7 +116,7 @@ const validateAndSendOtp = () => {
 if (otpStep) {
     return (
       <View style={styles.container}>
-        <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+    <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
         <ScreenWrapper
           backgroundColor="#F8FAFC"
           contentContainerStyle={styles.content}
@@ -163,7 +163,7 @@ if (otpStep) {
   }
 return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+    <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
       <ScreenWrapper
         backgroundColor="#F8FAFC"
         contentContainerStyle={styles.content}

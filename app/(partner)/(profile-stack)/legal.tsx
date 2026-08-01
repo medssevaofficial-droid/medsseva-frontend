@@ -31,11 +31,16 @@ const LEGAL_ITEMS = [
 export default function LegalScreen() {
   const router = useRouter();
 
-  return (
+return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-   
-
+      <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+      <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.replace('/(partner)/profile')} style={styles.backBtn}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Legal</Text>
+        <View style={{ width: 40 }} />
+      </View>
       <View style={styles.content}>
         <View style={styles.card}>
           {LEGAL_ITEMS.map((item, idx) => (
@@ -64,7 +69,22 @@ export default function LegalScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+ container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 45,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
 
   content: { padding: 16 },
   card: {

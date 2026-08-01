@@ -6,6 +6,8 @@ import { useDispatch } from 'react-redux';
 import { LinearGradient } from 'expo-linear-gradient';
 
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../theme/theme';
+import { addToCart } from '../store/slices/cartSlice';
+
 interface HealthPackage {
   id: string;
   name: string;
@@ -20,7 +22,6 @@ interface HealthPackage {
   homeCollection: boolean;
   testsIncluded: { test: { name: string } }[];
 }
-import { addToCart } from '../store/slices/cartSlice';
 
 const { width } = Dimensions.get('window');
 
@@ -28,9 +29,19 @@ interface Props {
   packageData: HealthPackage;
   horizontal?: boolean;
   onPress?: () => void;
+  cartMode?: boolean;
+  isInCart?: boolean;
+  onAddToCart?: () => void;
 }
 
-export function PremiumPackageCard({ packageData, horizontal = false, onPress }: Props) {
+export function PremiumPackageCard({
+  packageData,
+  horizontal = false,
+  onPress,
+  cartMode = false,
+  isInCart = false,
+  onAddToCart,
+}: Props) {
   const router = useRouter();
   const dispatch = useDispatch();
 
@@ -49,8 +60,6 @@ export function PremiumPackageCard({ packageData, horizontal = false, onPress }:
 
   return (
     <View style={[styles.card, horizontal && styles.horizontalCard]}>
-      
-      {/* Header Row: Category & Badge */}
       <View style={styles.headerRow}>
         <View style={styles.categoryBadge}>
           <Text style={styles.categoryBadgeText}>
@@ -58,9 +67,9 @@ export function PremiumPackageCard({ packageData, horizontal = false, onPress }:
           </Text>
         </View>
         {packageData.badge && (
-          <LinearGradient 
-            colors={['#F59E0B', '#D97706']} 
-            start={{ x: 0, y: 0 }} 
+          <LinearGradient
+            colors={['#F59E0B', '#D97706']}
+            start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}
             style={styles.accentBadge}
           >
@@ -69,17 +78,15 @@ export function PremiumPackageCard({ packageData, horizontal = false, onPress }:
         )}
       </View>
 
-      {/* Package Title and Subtitle */}
       <View style={styles.infoContainer}>
         <Text style={styles.packageName} numberOfLines={1}>{packageData.name}</Text>
         <Text style={styles.packageSubtitle}>{packageData.subtitle}</Text>
       </View>
 
-      {/* Parameters Count and Collection Status */}
       <View style={styles.statsRow}>
         <View style={styles.statTag}>
           <MaterialCommunityIcons name="flask-empty-outline" size={14} color={COLORS.primary} />
-        <Text style={styles.statTagText}>{packageData.parametersCount} Parameters</Text>
+          <Text style={styles.statTagText}>{packageData.parametersCount} Parameters</Text>
         </View>
         {packageData.homeCollection && (
           <View style={[styles.statTag, { backgroundColor: '#ECFDF5' }]}>
@@ -89,7 +96,6 @@ export function PremiumPackageCard({ packageData, horizontal = false, onPress }:
         )}
       </View>
 
-      {/* Included Tests Scrolling Tray */}
       <View style={styles.trayContainer}>
         <Text style={styles.trayLabel}>Includes:</Text>
         <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.testTray} nestedScrollEnabled>
@@ -104,10 +110,8 @@ export function PremiumPackageCard({ packageData, horizontal = false, onPress }:
         </ScrollView>
       </View>
 
-      {/* Horizontal Divider */}
       <View style={styles.divider} />
 
-      {/* Footer Segment: Pricing and CTAs */}
       <View style={styles.footer}>
         <View style={styles.priceBlock}>
           <View style={styles.row}>
@@ -120,24 +124,42 @@ export function PremiumPackageCard({ packageData, horizontal = false, onPress }:
         </View>
 
         <View style={styles.ctaGroup}>
-          <TouchableOpacity 
-            style={styles.detailButton} 
-            onPress={onPress || (() => router.push(`/package/${packageData.id}`))}
-          >
-            <Text style={styles.detailBtnText}>Details</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity activeOpacity={0.9} onPress={handleBookNow}>
-            <LinearGradient 
-              colors={[COLORS.primary, '#14B8A6']} 
-              start={{ x: 0, y: 0 }} 
-              end={{ x: 1, y: 1 }}
-              style={styles.bookButton}
+          {cartMode ? (
+            <TouchableOpacity
+              activeOpacity={isInCart ? 1 : 0.85}
+              onPress={isInCart ? undefined : onAddToCart}
+              style={[styles.addBtn, isInCart && styles.addBtnAdded]}
             >
-              <Text style={styles.bookBtnText}>Book</Text>
-              <MaterialCommunityIcons name="arrow-right" size={14} color="#FFF" style={{ marginLeft: 4 }} />
-            </LinearGradient>
-          </TouchableOpacity>
+              <MaterialCommunityIcons
+                name={isInCart ? 'check' : 'plus'}
+                size={13}
+                color={isInCart ? COLORS.success : COLORS.primary}
+              />
+              <Text style={[styles.addBtnText, isInCart && styles.addBtnTextAdded]}>
+                {isInCart ? 'Added' : 'Add'}
+              </Text>
+            </TouchableOpacity>
+          ) : (
+            <>
+              <TouchableOpacity
+                style={styles.detailButton}
+                onPress={onPress || (() => router.push(`/package/${packageData.id}`))}
+              >
+                <Text style={styles.detailBtnText}>Details</Text>
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.9} onPress={handleBookNow}>
+                <LinearGradient
+                  colors={[COLORS.primary, '#14B8A6']}
+                  start={{ x: 0, y: 0 }}
+                  end={{ x: 1, y: 1 }}
+                  style={styles.bookButton}
+                >
+                  <Text style={styles.bookBtnText}>Book</Text>
+                  <MaterialCommunityIcons name="arrow-right" size={14} color="#FFF" style={{ marginLeft: 4 }} />
+                </LinearGradient>
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
     </View>
@@ -322,5 +344,28 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: 'bold',
     color: '#FFF',
+  },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.surface,
+    gap: 4,
+  },
+  addBtnAdded: {
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.successLight,
+  },
+  addBtnText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: COLORS.primary,
+  },
+  addBtnTextAdded: {
+    color: COLORS.success,
   },
 });

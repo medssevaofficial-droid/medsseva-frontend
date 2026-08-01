@@ -120,11 +120,11 @@ return (
         </TouchableOpacity>
       }
     >
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
+ <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
 
       <View style={styles.header}>
         <TouchableOpacity style={styles.backBtn} onPress={() => router.back()}>
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#0F172A" />
+          <MaterialCommunityIcons name="arrow-left" size={22} color="#fff" />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>Select Delivery Branch</Text>
         <View style={{ width: 36 }} />
@@ -180,16 +180,16 @@ return (
 
 const styles = StyleSheet.create({
 container: { flex: 1 },
-  header: {
+header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: 16, paddingTop: 52, paddingBottom: 16,
-    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F1F5F9',
+    backgroundColor: COLORS.primary, borderBottomWidth: 0,
   },
   backBtn: {
-    width: 36, height: 36, borderRadius: 18, backgroundColor: '#F1F5F9',
+    width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)',
     justifyContent: 'center', alignItems: 'center',
   },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#0F172A' },
+  headerTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
   infoBar: {
     flexDirection: 'row', alignItems: 'flex-start', gap: 8,
     backgroundColor: '#F0FDFA', borderBottomWidth: 1, borderBottomColor: '#CCFBF1',

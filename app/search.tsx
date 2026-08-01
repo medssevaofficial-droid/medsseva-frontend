@@ -1,8 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { COLORS, TYPOGRAPHY } from '../src/theme/theme';
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../src/store';
+import { addToCart } from '../src/store/slices/cartSlice';
+import { showSuccess } from '../src/store/toastStore';
 
 import { PremiumTestCard } from '../src/components/PremiumTestCard';
 import { PremiumPackageCard } from '../src/components/PremiumPackageCard';
@@ -12,7 +16,20 @@ import { apiService } from '../src/services/api';
 
 export default function SearchScreen() {
   const router = useRouter();
-  // Fetch dynamic categories and tests from DB
+  const dispatch = useDispatch();
+  const { mode } = useLocalSearchParams<{ mode?: string }>();
+  const isCartMode = mode === 'cart';
+
+  const cartItems = useSelector((state: RootState) => state.cart.items);
+  const cartItemIds = useMemo(
+    () => new Set(cartItems.filter(i => i.itemType === 'test').map(i => i.id)),
+    [cartItems]
+  );
+
+  const [localAddedIds, setLocalAddedIds] = useState<Set<string>>(() =>
+    new Set(cartItems.filter(i => i.itemType === 'test').map(i => i.id))
+  );
+
   const { data: tests = [] } = useQuery({
     queryKey: ['tests'],
     queryFn: apiService.getAllTests,
@@ -32,67 +49,84 @@ export default function SearchScreen() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [isFilterSheetOpen, setFilterSheetOpen] = useState(false);
 
-  // Active state applied to dataset computation
   const [filterTestType, setFilterTestType] = useState<'all' | 'packages' | 'profiles'>('all');
   const [filterCollection, setFilterCollection] = useState<'all' | 'home' | 'lab'>('all');
 
-  // Temporary values modified inside sheet, committed only on Apply
   const [tempFilterTestType, setTempFilterTestType] = useState<'all' | 'packages' | 'profiles'>('all');
   const [tempFilterCollection, setTempFilterCollection] = useState<'all' | 'home' | 'lab'>('all');
 
-  // Combine tests and packages with identifying field
-  const allItems = [
-    ...tests.map((t: any) => ({ ...t, searchItemType: 'test' })),
-    ...packages.map((p: any) => ({ ...p, searchItemType: 'package' }))
-  ];
+  const allItems = useMemo(() => {
+    const testItems = tests.map((t: any) => ({ ...t, searchItemType: 'test' }));
+    if (isCartMode) return testItems;
+    return [
+      ...testItems,
+      ...packages.map((p: any) => ({ ...p, searchItemType: 'package' })),
+    ];
+  }, [tests, packages, isCartMode]);
 
-  const filteredResults = allItems.filter(item => {
-    // 1. Match search queries
+  const filteredResults = useMemo(() => allItems.filter((item: any) => {
     const nameMatches = item.name.toLowerCase().includes(searchQuery.toLowerCase());
-    const descMatches = ('description' in item && typeof item.description === 'string') 
-      ? item.description.toLowerCase().includes(searchQuery.toLowerCase()) 
+    const descMatches = ('description' in item && typeof item.description === 'string')
+      ? item.description.toLowerCase().includes(searchQuery.toLowerCase())
       : false;
-    const categoryName = typeof item.category === 'object' ? item.category.name : item.category;
+    const categoryName = typeof item.category === 'object' ? item.category?.name : item.category;
     const categoryMatches = categoryName ? categoryName.toLowerCase().includes(searchQuery.toLowerCase()) : false;
-    
     const matchesQuery = nameMatches || descMatches || categoryMatches;
 
-    // 2. Category Chip Restriction
-    const catId = item.searchItemType === 'package' ? (item as any).categoryId : (item as any).categoryId;
+    const catId = item.categoryId;
     const matchesCategory = selectedCategory === 'all' ? true : catId === selectedCategory;
 
-    // 3. Bottom Sheet Test Type logic
     let matchesType = true;
-    if (filterTestType === 'packages') {
-      matchesType = item.searchItemType === 'package';
-    } else if (filterTestType === 'profiles') {
-      matchesType = item.searchItemType === 'test' && (
-        item.name.toLowerCase().includes('profile') || 
-        item.name.toLowerCase().includes('package') || 
-        item.name.toLowerCase().includes('care')
-      );
+    if (!isCartMode) {
+      if (filterTestType === 'packages') {
+        matchesType = item.searchItemType === 'package';
+      } else if (filterTestType === 'profiles') {
+        matchesType = item.searchItemType === 'test' && (
+          item.name.toLowerCase().includes('profile') ||
+          item.name.toLowerCase().includes('package') ||
+          item.name.toLowerCase().includes('care')
+        );
+      }
     }
 
-    // 4. Collection Method Filter logic
     let matchesCollection = true;
     if (filterCollection === 'home') {
       matchesCollection = item.homeCollection === true;
     }
 
     return matchesQuery && matchesCategory && matchesType && matchesCollection;
-  });
+  }), [allItems, searchQuery, selectedCategory, filterTestType, filterCollection, isCartMode]);
+
+  const handleAddToCart = (test: any) => {
+    const alreadyIn = localAddedIds.has(test.id);
+    if (alreadyIn) {
+      showSuccess('This test is already in your cart.', { title: 'Already in Cart' });
+      return;
+    }
+    dispatch(addToCart({
+      id: test.id,
+      itemType: 'test',
+      name: test.name,
+      price: test.price,
+      discountedPrice: test.discountedPrice,
+      homeCollection: test.homeCollection ?? true,
+      quantity: 1,
+    }));
+    setLocalAddedIds(prev => new Set(prev).add(test.id));
+    showSuccess(`${test.name} has been added to your cart.`, { title: '✓ Added to Cart' });
+  };
 
   const renderCategoryChips = () => (
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipScroll}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.chip, selectedCategory === 'all' && styles.activeChip]}
         onPress={() => setSelectedCategory('all')}
       >
         <Text style={[styles.chipText, selectedCategory === 'all' && styles.activeChipText]}>All Tests</Text>
       </TouchableOpacity>
       {categories.map((cat: any) => (
-        <TouchableOpacity 
-          key={cat.id} 
+        <TouchableOpacity
+          key={cat.id}
           style={[styles.chip, selectedCategory === cat.id && styles.activeChip]}
           onPress={() => setSelectedCategory(cat.id)}
         >
@@ -106,16 +140,15 @@ export default function SearchScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Sticky Top Header */}
       <View style={styles.topHeaderBg}>
         <View style={styles.headerTopRow}>
           <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
             <MaterialCommunityIcons name="arrow-left" size={24} color={COLORS.textLight} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Browse Tests</Text>
+          <Text style={styles.headerTitle}>{isCartMode ? 'Add to Cart' : 'Browse Tests'}</Text>
           <View style={{ width: 24 }} />
         </View>
-        
+
         <View style={styles.searchRow}>
           <View style={styles.searchBar}>
             <MaterialCommunityIcons name="magnify" size={22} color={COLORS.textLight} style={{ opacity: 0.7 }} />
@@ -132,43 +165,46 @@ export default function SearchScreen() {
               </TouchableOpacity>
             )}
           </View>
-          <TouchableOpacity 
-            style={styles.filterBtn} 
-            onPress={() => {
-              setTempFilterTestType(filterTestType);
-              setTempFilterCollection(filterCollection);
-              setFilterSheetOpen(true);
-            }}
-          >
-            <MaterialCommunityIcons name="tune" size={24} color={COLORS.primary} />
-          </TouchableOpacity>
+          {!isCartMode && (
+            <TouchableOpacity
+              style={styles.filterBtn}
+              onPress={() => {
+                setTempFilterTestType(filterTestType);
+                setTempFilterCollection(filterCollection);
+                setFilterSheetOpen(true);
+              }}
+            >
+              <MaterialCommunityIcons name="tune" size={24} color={COLORS.primary} />
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
-      {/* Category Chips */}
       <View style={styles.chipsContainer}>
         {renderCategoryChips()}
       </View>
 
-      {/* Results List */}
       <View style={styles.resultsContainer}>
-        <Text style={styles.resultsCount}>{filteredResults.length} items available</Text>
+        <Text style={styles.resultsCount}>{filteredResults.length} {isCartMode ? 'tests available' : 'items available'}</Text>
         <FlatList
           data={filteredResults}
           keyExtractor={(item) => `${item.id}-${item.searchItemType}`}
           renderItem={({ item }) => {
             if (item.searchItemType === 'package') {
               return (
-                <PremiumPackageCard 
-                  packageData={item as any} 
-                  onPress={() => router.push(`/package/${item.id}`)} 
+                <PremiumPackageCard
+                  packageData={item as any}
+                  onPress={() => router.push(`/package/${item.id}`)}
                 />
               );
             }
             return (
-              <PremiumTestCard 
-                test={item as any} 
-                onPress={() => router.push(`/test/${item.id}`)} 
+              <PremiumTestCard
+                test={item as any}
+                onPress={() => router.push(`/test/${item.id}`)}
+                cartMode={isCartMode}
+                isInCart={localAddedIds.has(item.id)}
+                onAddToCart={() => handleAddToCart(item)}
               />
             );
           }}
@@ -184,73 +220,67 @@ export default function SearchScreen() {
         />
       </View>
 
-      {/* Filter Bottom Sheet */}
-      <PremiumBottomSheet visible={isFilterSheetOpen} onClose={() => setFilterSheetOpen(false)}>
-        <Text style={styles.sheetTitle}>Filter Options</Text>
-        
-        <Text style={styles.filterSectionTitle}>Test Type</Text>
-        <View style={styles.filterRow}>
-          <TouchableOpacity 
-            style={[styles.filterChip, tempFilterTestType === 'all' && styles.filterChipActive]}
-            onPress={() => setTempFilterTestType('all')}
-          >
-            <Text style={tempFilterTestType === 'all' ? styles.filterChipTextActive : styles.filterChipText}>All</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterChip, tempFilterTestType === 'packages' && styles.filterChipActive]}
-            onPress={() => setTempFilterTestType('packages')}
-          >
-            <Text style={tempFilterTestType === 'packages' ? styles.filterChipTextActive : styles.filterChipText}>Packages</Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterChip, tempFilterTestType === 'profiles' && styles.filterChipActive]}
-            onPress={() => setTempFilterTestType('profiles')}
-          >
-            <Text style={tempFilterTestType === 'profiles' ? styles.filterChipTextActive : styles.filterChipText}>Profiles</Text>
-          </TouchableOpacity>
-        </View>
+      {!isCartMode && (
+        <PremiumBottomSheet visible={isFilterSheetOpen} onClose={() => setFilterSheetOpen(false)}>
+          <Text style={styles.sheetTitle}>Filter Options</Text>
 
-        <Text style={styles.filterSectionTitle}>Collection Method</Text>
-        <View style={styles.filterRow}>
-          <TouchableOpacity 
-            style={[styles.filterChip, tempFilterCollection === 'home' && styles.filterChipActive]}
-            onPress={() => setTempFilterCollection('home')}
-          >
-            <MaterialCommunityIcons 
-              name="home-plus-outline" 
-              size={16} 
-              color={tempFilterCollection === 'home' ? COLORS.textLight : COLORS.textSecondary} 
-            />
-            <Text style={[tempFilterCollection === 'home' ? styles.filterChipTextActive : styles.filterChipText, { marginLeft: 4 }]}>
-              Home Visit
-            </Text>
-          </TouchableOpacity>
-          <TouchableOpacity 
-            style={[styles.filterChip, tempFilterCollection === 'lab' && styles.filterChipActive]}
-            onPress={() => setTempFilterCollection('lab')}
-          >
-            <MaterialCommunityIcons 
-              name="hospital-building" 
-              size={16} 
-              color={tempFilterCollection === 'lab' ? COLORS.textLight : COLORS.textSecondary} 
-            />
-            <Text style={[tempFilterCollection === 'lab' ? styles.filterChipTextActive : styles.filterChipText, { marginLeft: 4 }]}>
-              Lab Visit
-            </Text>
-          </TouchableOpacity>
-        </View>
+          <Text style={styles.filterSectionTitle}>Test Type</Text>
+          <View style={styles.filterRow}>
+            {(['all', 'packages', 'profiles'] as const).map(type => (
+              <TouchableOpacity
+                key={type}
+                style={[styles.filterChip, tempFilterTestType === type && styles.filterChipActive]}
+                onPress={() => setTempFilterTestType(type)}
+              >
+                <Text style={tempFilterTestType === type ? styles.filterChipTextActive : styles.filterChipText}>
+                  {type.charAt(0).toUpperCase() + type.slice(1)}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
 
-        <TouchableOpacity 
-          style={styles.applyFilterBtn} 
-          onPress={() => {
-            setFilterTestType(tempFilterTestType);
-            setFilterCollection(tempFilterCollection);
-            setFilterSheetOpen(false);
-          }}
-        >
-          <Text style={styles.applyFilterText}>Apply Filters</Text>
-        </TouchableOpacity>
-      </PremiumBottomSheet>
+          <Text style={styles.filterSectionTitle}>Collection Method</Text>
+          <View style={styles.filterRow}>
+            <TouchableOpacity
+              style={[styles.filterChip, tempFilterCollection === 'home' && styles.filterChipActive]}
+              onPress={() => setTempFilterCollection('home')}
+            >
+              <MaterialCommunityIcons
+                name="home-plus-outline"
+                size={16}
+                color={tempFilterCollection === 'home' ? COLORS.textLight : COLORS.textSecondary}
+              />
+              <Text style={[tempFilterCollection === 'home' ? styles.filterChipTextActive : styles.filterChipText, { marginLeft: 4 }]}>
+                Home Visit
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.filterChip, tempFilterCollection === 'lab' && styles.filterChipActive]}
+              onPress={() => setTempFilterCollection('lab')}
+            >
+              <MaterialCommunityIcons
+                name="hospital-building"
+                size={16}
+                color={tempFilterCollection === 'lab' ? COLORS.textLight : COLORS.textSecondary}
+              />
+              <Text style={[tempFilterCollection === 'lab' ? styles.filterChipTextActive : styles.filterChipText, { marginLeft: 4 }]}>
+                Lab Visit
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            style={styles.applyFilterBtn}
+            onPress={() => {
+              setFilterTestType(tempFilterTestType);
+              setFilterCollection(tempFilterCollection);
+              setFilterSheetOpen(false);
+            }}
+          >
+            <Text style={styles.applyFilterText}>Apply Filters</Text>
+          </TouchableOpacity>
+        </PremiumBottomSheet>
+      )}
     </View>
   );
 }
@@ -415,5 +445,5 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.subtitle,
     color: COLORS.textLight,
     fontWeight: 'bold',
-  }
+  },
 });

@@ -18,7 +18,7 @@ const PRIMARY = COLORS.primary;
 
 export default function OTPScreen() {
   const router = useRouter();
-  const dispatch = useDispatch();
+  const dispatch = useDispatch(); 
 
   const [step, setStep] = useState<'mobile' | 'otp'>('mobile');
   const [mobileNumber, setMobileNumber] = useState('');

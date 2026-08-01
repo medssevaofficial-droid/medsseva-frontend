@@ -89,24 +89,19 @@ export default function EditProfileScreen() {
     );
   }
 
-const saveButton = (
-    <TouchableOpacity
-      style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
-      onPress={handleSave}
-      disabled={isSaving}
-      activeOpacity={0.85}
-    >
-      {isSaving
-        ? <ActivityIndicator color="#fff" size="small" />
-        : <Text style={styles.saveBtnText}>Save Changes</Text>
-      }
-    </TouchableOpacity>
-  );
+const saveButton = null;
 
-  return (
+return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#fff" />
-      <ScreenWrapper bottomButton={saveButton} contentContainerStyle={styles.content}>
+       <StatusBar barStyle="light-content" backgroundColor={COLORS.primary} />
+       <View style={styles.header}>
+        <TouchableOpacity onPress={() => router.replace('/(partner)/profile')} style={styles.backBtn}>
+          <MaterialCommunityIcons name="arrow-left" size={24} color="#fff" />
+        </TouchableOpacity>
+        <Text style={styles.headerTitle}>Edit Profile</Text>
+        <View style={{ width: 40 }} />
+      </View>
+       <ScreenWrapper bottomButton={saveButton} contentContainerStyle={styles.content} extraScrollHeight={20}>
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Personal Information</Text>
 
@@ -144,9 +139,9 @@ const saveButton = (
               )}
             </View>
           </View>
-        </View>
 
-        <View style={styles.section}>
+          <View style={styles.sectionDivider} />
+
           <View style={styles.sectionHeader}>
             <Text style={styles.sectionTitle}>Address</Text>
             <TouchableOpacity
@@ -202,7 +197,7 @@ const saveButton = (
             </View>
           </View>
 
-          <View style={styles.fieldGroup}>
+        <View style={[styles.fieldGroup, { marginBottom: 0 }]}>
             <Text style={styles.label}>State</Text>
             <TextInput
               style={styles.input}
@@ -212,24 +207,53 @@ const saveButton = (
               placeholderTextColor="#94A3B8"
             />
           </View>
-        </View>
 
+          <View style={styles.sectionDivider} />
+
+          <TouchableOpacity
+            style={[styles.saveBtn, isSaving && styles.saveBtnDisabled]}
+            onPress={handleSave}
+            disabled={isSaving}
+            activeOpacity={0.85}
+          >
+            {isSaving
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={styles.saveBtnText}>Save Changes</Text>
+            }
+          </TouchableOpacity>
+        </View>
 </ScreenWrapper>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F8FAFC' },
+ container: { flex: 1, backgroundColor: '#F8FAFC' },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
- 
-  content: { padding: 16, paddingBottom: 40 },
+  header: {
+    backgroundColor: COLORS.primary,
+    paddingTop: 45,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  backBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  headerTitle: { fontSize: 18, fontWeight: '700', color: '#fff' },
+  
+  content: { padding: 16, paddingBottom: 8 },
   section: {
     backgroundColor: '#fff', borderRadius: 18, padding: 20,
     borderWidth: 1, borderColor: '#E2E8F0', marginBottom: 16, ...SHADOWS.soft,
   },
-  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
+sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 16 },
   sectionTitle: { fontSize: 15, fontWeight: '800', color: '#0F172A', marginBottom: 16 },
+  sectionDivider: { height: 1, backgroundColor: '#F1F5F9', marginVertical: 20 },
   detectBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: '#F0FDFA', paddingHorizontal: 12, paddingVertical: 7,
@@ -254,7 +278,7 @@ const styles = StyleSheet.create({
   row: { flexDirection: 'row' },
   saveBtn: {
     backgroundColor: COLORS.primary, borderRadius: 16, height: 52,
-    justifyContent: 'center', alignItems: 'center', marginTop: 4,
+    justifyContent: 'center', alignItems: 'center',
   },
   saveBtnDisabled: { opacity: 0.6 },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '800' },

@@ -361,9 +361,14 @@ const calculatedFinalAmount = parseFloat(((pricing?.finalAmount ?? 0) + customPa
           </View>
         ))}
 
-        <TouchableOpacity style={styles.addMoreBtn} onPress={() => router.push('/search')}>
+<TouchableOpacity style={styles.addMoreBtn} onPress={() => router.push('/search?mode=cart' as any)}>
           <MaterialCommunityIcons name="plus" size={20} color={COLORS.primary} />
           <Text style={styles.addMoreText}>Add More Tests</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity style={[styles.addMoreBtn, { marginTop: -12 }]} onPress={() => router.push('/package?mode=cart' as any)}>
+          <MaterialCommunityIcons name="plus" size={20} color={COLORS.primary} />
+          <Text style={styles.addMoreText}>Add More Packages</Text>
         </TouchableOpacity>
 
         <TouchableOpacity

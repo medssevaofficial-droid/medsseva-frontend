@@ -6,21 +6,23 @@ import {
 import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { showError } from '../../src/store/toastStore';
 import { apiService } from '../../src/services/api';
 import { COLORS } from '../../src/theme/theme';
 
 const { width } = Dimensions.get('window');
 const PRIMARY = COLORS.primary;
 
-type Step = 'email' | 'otp' | 'reset' | 'done';
+type Method = 'email' | 'mobile';
+type Step = 'method' | 'input' | 'otp' | 'reset' | 'done';
 
 export default function ForgotPasswordScreen() {
   const router = useRouter();
 
-  const [step, setStep] = useState<Step>('email');
+  const [method, setMethod] = useState<Method>('email');
+  const [step, setStep] = useState<Step>('method');
   const [email, setEmail] = useState('');
-  const [otp, setOtp] = useState(['', '', '', '', '', '']);
+  const [mobile, setMobile] = useState('');
+  const [otp, setOtp] = useState<string[]>([]);
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showNew, setShowNew] = useState(false);
@@ -29,11 +31,16 @@ export default function ForgotPasswordScreen() {
   const [isSending, setIsSending] = useState(false);
   const [countdown, setCountdown] = useState(30);
   const [canResend, setCanResend] = useState(false);
-const [otpError, setOtpError] = useState('');
+  const [otpError, setOtpError] = useState('');
   const [serverError, setServerError] = useState<string | null>(null);
 
+  const otpLength = method === 'email' ? 6 : 4;
   const inputRefs = useRef<Array<TextInput | null>>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  useEffect(() => {
+    setOtp(Array(otpLength).fill(''));
+  }, [method, otpLength]);
 
   useEffect(() => {
     if (step === 'otp') startCountdown();
@@ -51,23 +58,32 @@ const [otpError, setOtpError] = useState('');
     }, 1000);
   };
 
-  const maskedEmail = email.replace(/(.{2})(.*)(@.*)/, (_, a, b, c) => a + '*'.repeat(Math.max(0, b.length)) + c);
+  const maskedIdentifier = method === 'email'
+    ? email.replace(/(.{2})(.*)(@.*)/, (_, a, b, c) => a + '*'.repeat(Math.max(0, b.length)) + c)
+    : mobile.replace(/(\d{2})(\d{6})(\d{2})/, (_, a, b, c) => a + '*'.repeat(6) + c);
 
   const handleSendOtp = async () => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      showError('Please enter a valid email address.');
-      return;
-    }
-setIsSending(true);
     setServerError(null);
-    try {
-      await apiService.sendForgotPasswordOtp(email);
-      setStep('otp');
-    } catch (error: any) {
-      setServerError(error.response?.data?.error || 'Failed to send reset code. Please try again.');
-    } finally {
-      setIsSending(false);
+    if (method === 'email') {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(email)) { setServerError('Please enter a valid email address.'); return; }
+      setIsSending(true);
+      try {
+        await apiService.sendForgotPasswordOtp(email);
+        setStep('otp');
+      } catch (error: any) {
+        setServerError(error.response?.data?.error || 'Failed to send reset code. Please try again.');
+      } finally { setIsSending(false); }
+    } else {
+      const mobileRegex = /^[6-9]\d{9}$/;
+      if (!mobileRegex.test(mobile)) { setServerError('Enter a valid 10-digit Indian mobile number.'); return; }
+      setIsSending(true);
+      try {
+        await apiService.sendForgotPasswordOtpMobile(mobile);
+        setStep('otp');
+      } catch (error: any) {
+        setServerError(error.response?.data?.error || 'Failed to send reset code. Please try again.');
+      } finally { setIsSending(false); }
     }
   };
 
@@ -76,7 +92,7 @@ setIsSending(true);
     newOtp[index] = value;
     setOtp(newOtp);
     setOtpError('');
-    if (value && index < 5) inputRefs.current[index + 1]?.focus();
+    if (value && index < otpLength - 1) inputRefs.current[index + 1]?.focus();
   };
 
   const handleKeyPress = (e: any, index: number) => {
@@ -87,88 +103,155 @@ setIsSending(true);
 
   const handleVerifyOtp = async () => {
     const otpValue = otp.join('');
-    if (otpValue.length !== 6) return;
+    if (otpValue.length !== otpLength) return;
     setOtpError('');
     setIsLoading(true);
     try {
-      await apiService.verifyForgotPasswordOtp(email, otpValue);
+      if (method === 'email') {
+        await apiService.verifyForgotPasswordOtp(email, otpValue);
+      } else {
+        await apiService.verifyForgotPasswordOtpMobile(mobile, otpValue);
+      }
       setStep('reset');
     } catch (error: any) {
       setOtpError(error.response?.data?.error || 'Incorrect code. Please try again.');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
   const handleResetPassword = async () => {
- if (!newPassword || newPassword.length < 6) {
-      setServerError('Password must be at least 6 characters.');
-      return;
-    }
-    if (newPassword !== confirmPassword) {
-      setServerError('Passwords do not match.');
-      return;
-    }
+    if (!newPassword || newPassword.length < 6) { setServerError('Password must be at least 6 characters.'); return; }
+    if (newPassword !== confirmPassword) { setServerError('Passwords do not match.'); return; }
     setIsLoading(true);
     setServerError(null);
     try {
-      await apiService.resetPassword(email, newPassword);
+      if (method === 'email') {
+        await apiService.resetPassword(email, newPassword);
+      } else {
+        await apiService.resetPasswordMobile(mobile, newPassword);
+      }
       setStep('done');
     } catch (error: any) {
       setServerError(error.response?.data?.error || 'Failed to reset password.');
-    } finally {
-      setIsLoading(false);
-    }
+    } finally { setIsLoading(false); }
   };
 
-  const otpFilled = otp.join('').length === 6;
-  const BOX_SIZE = (width - 48 - 40 - 50) / 6;
+  const otpFilled = otp.join('').length === otpLength;
+  const BOX_SIZE = (width - 48 - 40 - 50) / otpLength;
 
-return (
+  const handleBack = () => {
+    setServerError(null);
+    setOtpError('');
+    if (step === 'input') setStep('method');
+    else if (step === 'otp') { setStep('input'); setOtp(Array(otpLength).fill('')); }
+    else if (step === 'reset') setStep('otp');
+    else router.back();
+  };
+
+  return (
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#E8F0F3" />
-      <ScreenWrapper
-        backgroundColor="#E8F0F3"
-        contentContainerStyle={styles.scrollContent}
-        disableKeyboardDismiss
-      >
+      <ScreenWrapper backgroundColor="#E8F0F3" contentContainerStyle={styles.scrollContent} disableKeyboardDismiss>
 
-        <TouchableOpacity
-          style={styles.backBtn}
-          onPress={() => {
-            if (step === 'otp') { setStep('email'); setOtp(['', '', '', '', '', '']); }
-            else if (step === 'reset') setStep('otp');
-            else router.back();
-          }}
-          activeOpacity={0.7}
-        >
-          <MaterialCommunityIcons name="arrow-left" size={22} color="#334155" />
-        </TouchableOpacity>
+        {step !== 'done' && (
+          <TouchableOpacity style={styles.backBtn} onPress={handleBack} activeOpacity={0.7}>
+            <MaterialCommunityIcons name="arrow-left" size={22} color="#334155" />
+          </TouchableOpacity>
+        )}
 
         <View style={styles.card}>
-          {step === 'email' && (
+
+          {/* STEP: METHOD SELECTOR */}
+          {step === 'method' && (
             <>
               <View style={styles.iconCircle}>
                 <MaterialCommunityIcons name="lock-reset" size={30} color={PRIMARY} />
               </View>
-              <Text style={styles.title}>Forgot Password</Text>
-              <Text style={styles.subtitle}>Enter your registered email address. We'll send a verification code.</Text>
+              <Text style={styles.title}>Reset Password</Text>
+              <Text style={styles.subtitle}>Choose how you'd like to verify your identity.</Text>
 
-              <Text style={styles.fieldLabel}>Email Address</Text>
+              <TouchableOpacity
+                style={[styles.methodCard, method === 'email' && styles.methodCardSelected]}
+                onPress={() => setMethod('email')}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.methodIconBox, method === 'email' && styles.methodIconBoxSelected]}>
+                  <MaterialCommunityIcons name="email-outline" size={22} color={method === 'email' ? '#fff' : '#64748B'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.methodTitle, method === 'email' && styles.methodTitleSelected]}>Reset via Email</Text>
+                  <Text style={styles.methodDesc}>We'll send a 6-digit code to your registered email</Text>
+                </View>
+                <View style={[styles.radio, method === 'email' && styles.radioSelected]}>
+                  {method === 'email' && <View style={styles.radioDot} />}
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.methodCard, method === 'mobile' && styles.methodCardSelected]}
+                onPress={() => setMethod('mobile')}
+                activeOpacity={0.85}
+              >
+                <View style={[styles.methodIconBox, method === 'mobile' && styles.methodIconBoxSelected]}>
+                  <MaterialCommunityIcons name="phone-outline" size={22} color={method === 'mobile' ? '#fff' : '#64748B'} />
+                </View>
+                <View style={{ flex: 1 }}>
+                  <Text style={[styles.methodTitle, method === 'mobile' && styles.methodTitleSelected]}>Reset via Mobile</Text>
+                  <Text style={styles.methodDesc}>We'll send a 4-digit code to your registered mobile</Text>
+                </View>
+                <View style={[styles.radio, method === 'mobile' && styles.radioSelected]}>
+                  {method === 'mobile' && <View style={styles.radioDot} />}
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.primaryBtn} onPress={() => { setServerError(null); setStep('input'); }} activeOpacity={0.85}>
+                <Text style={styles.primaryBtnText}>Continue</Text>
+              </TouchableOpacity>
+            </>
+          )}
+
+          {/* STEP: INPUT (email or mobile) */}
+          {step === 'input' && (
+            <>
+              <View style={styles.iconCircle}>
+                <MaterialCommunityIcons name={method === 'email' ? 'email-outline' : 'phone-outline'} size={30} color={PRIMARY} />
+              </View>
+              <Text style={styles.title}>{method === 'email' ? 'Enter Email' : 'Enter Mobile'}</Text>
+              <Text style={styles.subtitle}>
+                {method === 'email'
+                  ? 'Enter your registered email address. We\'ll send a verification code.'
+                  : 'Enter your registered mobile number. We\'ll send a 4-digit code.'}
+              </Text>
+
+              <Text style={styles.fieldLabel}>{method === 'email' ? 'Email Address' : 'Mobile Number'}</Text>
               <View style={styles.inputWrap}>
-                <MaterialCommunityIcons name="email-outline" size={18} color="#94A3B8" style={{ marginRight: 10 }} />
-                <TextInput
-                  style={styles.input}
-                  placeholder="Enter your email address"
-                  placeholderTextColor="#94A3B8"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  value={email}
-                  onChangeText={setEmail}
+                <MaterialCommunityIcons
+                  name={method === 'email' ? 'email-outline' : 'phone-outline'}
+                  size={18} color="#94A3B8" style={{ marginRight: 10 }}
                 />
+                {method === 'email' ? (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter your email address"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={email}
+                    onChangeText={setEmail}
+                  />
+                ) : (
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Enter 10-digit mobile number"
+                    placeholderTextColor="#94A3B8"
+                    keyboardType="number-pad"
+                    maxLength={10}
+                    value={mobile}
+                    onChangeText={setMobile}
+                  />
+                )}
               </View>
 
-          {serverError && (
+              {serverError && (
                 <View style={styles.serverErrorBox}>
                   <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#EF4444" />
                   <Text style={styles.serverErrorText}>{serverError}</Text>
@@ -176,9 +259,9 @@ return (
               )}
 
               <TouchableOpacity
-                style={[styles.primaryBtn, (isSending || !email) && styles.btnDisabled]}
+                style={[styles.primaryBtn, (isSending || (method === 'email' ? !email : !mobile)) && styles.btnDisabled]}
                 onPress={handleSendOtp}
-                disabled={isSending || !email}
+                disabled={isSending || (method === 'email' ? !email : !mobile)}
                 activeOpacity={0.85}
               >
                 {isSending ? <ActivityIndicator color="#fff" /> : <Text style={styles.primaryBtnText}>Send Reset Code</Text>}
@@ -191,6 +274,7 @@ return (
             </>
           )}
 
+          {/* STEP: OTP */}
           {step === 'otp' && (
             <>
               <View style={styles.iconCircle}>
@@ -198,9 +282,9 @@ return (
               </View>
               <Text style={styles.title}>Enter Code</Text>
               <Text style={styles.subtitleOtp}>
-                Enter the 6-digit code sent to{'\n'}
-                <Text style={styles.maskedEmail}>{maskedEmail} </Text>
-                <Text style={styles.changeLink} onPress={() => { setStep('email'); setOtp(['', '', '', '', '', '']); }}>Change</Text>
+                Enter the {otpLength}-digit code sent to{'\n'}
+                <Text style={styles.maskedEmail}>{maskedIdentifier} </Text>
+                <Text style={styles.changeLink} onPress={() => { setStep('input'); setOtp(Array(otpLength).fill('')); }}>Change</Text>
               </Text>
 
               <View style={styles.otpRow}>
@@ -208,7 +292,12 @@ return (
                   <TextInput
                     key={index}
                     ref={ref => { inputRefs.current[index] = ref; }}
-                    style={[styles.otpBox, { width: BOX_SIZE, height: 54 }, digit ? styles.otpBoxFilled : null, otpError ? styles.otpBoxError : null]}
+                    style={[
+                      styles.otpBox,
+                      { width: BOX_SIZE, height: 54 },
+                      digit ? styles.otpBoxFilled : null,
+                      otpError ? styles.otpBoxError : null,
+                    ]}
                     maxLength={1}
                     keyboardType="number-pad"
                     value={digit}
@@ -223,7 +312,7 @@ return (
               <View style={styles.resendRow}>
                 <Text style={styles.resendText}>Didn't receive the code? </Text>
                 {canResend ? (
-                  <TouchableOpacity onPress={() => { setOtp(['', '', '', '', '', '']); handleSendOtp(); }}>
+                  <TouchableOpacity onPress={() => { setOtp(Array(otpLength).fill('')); handleSendOtp(); }}>
                     <Text style={styles.resendLink}>Resend</Text>
                   </TouchableOpacity>
                 ) : (
@@ -242,6 +331,7 @@ return (
             </>
           )}
 
+          {/* STEP: RESET PASSWORD */}
           {step === 'reset' && (
             <>
               <View style={styles.iconCircle}>
@@ -280,7 +370,7 @@ return (
                 </TouchableOpacity>
               </View>
 
-          {serverError && (
+              {serverError && (
                 <View style={styles.serverErrorBox}>
                   <MaterialCommunityIcons name="alert-circle-outline" size={16} color="#EF4444" />
                   <Text style={styles.serverErrorText}>{serverError}</Text>
@@ -298,6 +388,7 @@ return (
             </>
           )}
 
+          {/* STEP: DONE */}
           {step === 'done' && (
             <>
               <View style={[styles.iconCircle, { backgroundColor: '#DCFCE7', borderColor: '#A7F3D0' }]}>
@@ -310,8 +401,9 @@ return (
               </TouchableOpacity>
             </>
           )}
+
         </View>
-</ScreenWrapper>
+      </ScreenWrapper>
     </View>
   );
 }
@@ -335,6 +427,27 @@ const styles = StyleSheet.create({
   subtitleOtp: { fontSize: 14, color: '#64748B', lineHeight: 22, marginBottom: 32, textAlign: 'center' },
   maskedEmail: { color: '#0F172A', fontWeight: '600' },
   changeLink: { color: PRIMARY, fontWeight: '700', fontSize: 14 },
+  methodCard: {
+    flexDirection: 'row', alignItems: 'center', width: '100%',
+    backgroundColor: '#F8FAFC', borderRadius: 14, padding: 16,
+    borderWidth: 1.5, borderColor: '#E2E8F0', marginBottom: 12, gap: 12,
+  },
+  methodCardSelected: { backgroundColor: '#F0FDFA', borderColor: PRIMARY },
+  methodIconBox: {
+    width: 44, height: 44, borderRadius: 12,
+    backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center',
+  },
+  methodIconBoxSelected: { backgroundColor: PRIMARY },
+  methodTitle: { fontSize: 14, fontWeight: '700', color: '#0F172A', marginBottom: 2 },
+  methodTitleSelected: { color: PRIMARY },
+  methodDesc: { fontSize: 12, color: '#64748B', lineHeight: 17 },
+  radio: {
+    width: 20, height: 20, borderRadius: 10,
+    borderWidth: 2, borderColor: '#CBD5E1',
+    justifyContent: 'center', alignItems: 'center',
+  },
+  radioSelected: { borderColor: PRIMARY },
+  radioDot: { width: 9, height: 9, borderRadius: 5, backgroundColor: PRIMARY },
   fieldLabel: { fontSize: 13, fontWeight: '700', color: '#475569', marginBottom: 6, alignSelf: 'flex-start' },
   inputWrap: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC',
@@ -353,7 +466,7 @@ const styles = StyleSheet.create({
   resendText: { fontSize: 13, color: '#64748B' },
   resendLink: { fontSize: 13, fontWeight: '700', color: PRIMARY },
   countdownText: { fontSize: 13, fontWeight: '700', color: PRIMARY },
-otpError: { fontSize: 13, color: '#EF4444', marginBottom: 12, alignSelf: 'flex-start' },
+  otpError: { fontSize: 13, color: '#EF4444', marginBottom: 12, alignSelf: 'flex-start' },
   serverErrorBox: {
     flexDirection: 'row', alignItems: 'center', gap: 8,
     backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12,

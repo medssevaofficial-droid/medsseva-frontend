@@ -204,13 +204,40 @@ export default function CustomPackageScreen() {
         </ScrollView>
       </View>
 
-  <ScreenWrapper
+<ScreenWrapper
         scrollViewStyle={styles.mainScroll}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: 16 }}
         disableKeyboardDismiss
+        bottomButton={
+          totals.count > 0 ? (
+            <Animated.View style={{ transform: [{ translateY: slideAnim }] }}>
+              <LinearGradient
+                colors={['#005254', '#006D6F']}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={styles.gradientBar}
+              >
+                <View style={styles.barLeft}>
+                  <Text style={styles.barCountText}>{totals.count} {totals.count === 1 ? 'Test' : 'Tests'} Selected</Text>
+                  <View style={styles.barPriceRow}>
+                    <Text style={styles.barPriceLabel}>Total: </Text>
+                    <Text style={styles.barPriceValue}>₹{totals.final}</Text>
+                    <Text style={styles.barSavingText}>(Saved ₹{totals.raw - totals.final})</Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={styles.barBtn}
+                  activeOpacity={0.9}
+                  onPress={handleAddToCart}
+                >
+                  <Text style={styles.barBtnText}>Build & Proceed</Text>
+                  <MaterialCommunityIcons name="arrow-right" size={16} color={COLORS.primary} />
+                </TouchableOpacity>
+              </LinearGradient>
+            </Animated.View>
+          ) : undefined
+        }
       >
-
-        {/* 4. Recommended Tests Listing Card Wrapper */}
         <View style={styles.listSection}>
           <Text style={styles.sectionTitle}>Recommended Tests</Text>
           
@@ -264,33 +291,7 @@ export default function CustomPackageScreen() {
         </View>
      </ScreenWrapper>
 
-      {/* 5. Floating Premium Bottom Action Bar */}
-      <Animated.View style={[styles.floatingBar, { transform: [{ translateY: slideAnim }] }]}>
-        <LinearGradient 
-          colors={['#005254', '#006D6F']} 
-          start={{ x: 0, y: 0 }} 
-          end={{ x: 1, y: 0 }} 
-          style={styles.gradientBar}
-        >
-          <View style={styles.barLeft}>
-            <Text style={styles.barCountText}>{totals.count} {totals.count === 1 ? 'Test' : 'Tests'} Selected</Text>
-            <View style={styles.barPriceRow}>
-              <Text style={styles.barPriceLabel}>Total: </Text>
-              <Text style={styles.barPriceValue}>₹{totals.final}</Text>
-              <Text style={styles.barSavingText}>(Saved ₹{totals.raw - totals.final})</Text>
-            </View>
-          </View>
-
-          <TouchableOpacity 
-            style={styles.barBtn} 
-            activeOpacity={0.9}
-            onPress={handleAddToCart}
-          >
-            <Text style={styles.barBtnText}>Build & Proceed</Text>
-            <MaterialCommunityIcons name="arrow-right" size={16} color={COLORS.primary} />
-          </TouchableOpacity>
-        </LinearGradient>
-      </Animated.View>
+      
     </View>
   );
 }
@@ -479,36 +480,29 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontWeight: '500',
   },
-  floatingBar: {
-    position: 'absolute',
-    bottom: Platform.OS === 'ios' ? 34 : 20,
-    left: 16,
-    right: 16,
-    height: 72,
-    borderRadius: 20,
-    overflow: 'hidden',
-    ...SHADOWS.glow,
-    elevation: 10,
-  },
-  gradientBar: {
-    flex: 1,
+
+ gradientBar: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 20,
+    paddingVertical: 18,
+    borderRadius: 16,
     justifyContent: 'space-between',
   },
   barLeft: {
     flex: 1,
+    paddingRight: 12,
   },
   barCountText: {
     color: '#FFFFFF',
     fontSize: 14,
     fontWeight: '700',
   },
-  barPriceRow: {
+barPriceRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 2,
+    marginTop: 4,
+    flexWrap: 'wrap',
   },
   barPriceLabel: {
     color: 'rgba(255,255,255,0.7)',
@@ -519,11 +513,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '900',
   },
-  barSavingText: {
+ barSavingText: {
     color: '#34D399',
     fontSize: 10,
     fontWeight: '700',
-    marginLeft: 6,
+    marginLeft: 4,
+    flexShrink: 1,
   },
   barBtn: {
     backgroundColor: '#FFFFFF',

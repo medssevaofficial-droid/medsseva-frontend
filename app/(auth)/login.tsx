@@ -190,7 +190,7 @@ return (
         </View>
 
        
-      <Text style={[styles.copyright, { marginTop: 24 }]}>© {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
+      <Text style={[styles.copyright, { marginTop: 24 }]}>&copy; {new Date().getFullYear()} MedsSeva Healthcare. All rights reserved.</Text>
    <View style={styles.footerLinks}>
           <TouchableOpacity onPress={() => router.push({ pathname: '/legal/LegalWebView', params: { type: 'terms' } })}>
             <Text style={styles.footerLink}>Terms of Service</Text>

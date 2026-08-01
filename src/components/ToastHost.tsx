@@ -56,10 +56,15 @@ useEffect(() => {
       style={[styles.wrapper, { bottom: insets.bottom + 16, opacity, transform: [{ translateY }] }]}
     >
       <View style={[styles.toast, { backgroundColor: '#FFFFFF', borderColor: border }]}>
-        <View style={[styles.iconWrap, { backgroundColor: bg }]}>
+ <View style={[styles.iconWrap, { backgroundColor: bg }]}>
           <Icon size={16} color={color} />
         </View>
-        <Text style={styles.message} numberOfLines={2}>{toast.message}</Text>
+        <View style={styles.textBlock}>
+          {toast.title ? (
+            <Text style={[styles.title, { color }]} numberOfLines={1}>{toast.title}</Text>
+          ) : null}
+          <Text style={styles.message} numberOfLines={2}>{toast.message}</Text>
+        </View>
         {toast.action ? (
           <Pressable onPress={() => { toast.action!.onPress(); dismiss(); }} hitSlop={8}>
             <Text style={[styles.actionLabel, { color }]}>{toast.action.label}</Text>
@@ -102,8 +107,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  message: {
+textBlock: {
     flex: 1,
+  },
+  title: {
+    fontSize: 12,
+    fontWeight: '700',
+    marginBottom: 2,
+  },
+  message: {
     color: '#1E293B',
     fontSize: 13,
     fontWeight: '600',
