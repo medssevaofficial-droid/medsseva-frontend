@@ -144,12 +144,13 @@ const restoreSession = async () => {
         <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" options={{ headerShown: false }} />
         <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-  <Stack.Screen name="(partner)" options={{ headerShown: false }} />
-        <Stack.Screen name="partner-flow" options={{ headerShown: false }} />
+<Stack.Screen name="(partner)" options={{ headerShown: false }} />
         <Stack.Screen name="support" options={{ headerShown: false }} />
       </Stack>
-    <GlobalSchedulerOverlay />
-      <ToastHost />
+  <GlobalSchedulerOverlay />
+      <View style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, zIndex: 99999, elevation: 99999, pointerEvents: 'box-none' }}>
+        <ToastHost />
+      </View>
       <Modal visible={isLoggingOut} transparent animationType="fade">
         <View style={styles.logoutOverlay}>
           <ActivityIndicator size="large" color="#fff" />

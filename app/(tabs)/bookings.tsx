@@ -1,23 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, FlatList, DeviceEventEmitter, ActivityIndicator } from 'react-native';
-import { showInfo } from '../../src/store/toastStore';
 import { useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, QueryClient } from '@tanstack/react-query';
 import { useSelector } from 'react-redux';
-import messaging from '@react-native-firebase/messaging';
+import { getMessaging, onMessage } from '@react-native-firebase/messaging';
 
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { apiService } from '../../src/services/api';
 import { RootState } from '../../src/store';
+import { useDispatch } from 'react-redux';
+import { clearCart, addToCart } from '../../src/store/slices/cartSlice';
 
 
 export default function BookingsScreen() {
-  const router = useRouter();
-  const [activeTab, setActiveTab] = useState('upcoming');
+const router = useRouter();
+  const dispatch = useDispatch();
+const [activeFilter, setActiveFilter] = useState<'all' | 'completed' | 'cancelled'>('all');
 
-
-const user = useSelector((state: RootState) => state.auth.user);
+  const user = useSelector((state: RootState) => state.auth.user);
   
   const { data: rawBookings = [], isLoading, refetch } = useQuery({
     queryKey: ['bookings', user?.mobile],
@@ -27,6 +28,13 @@ const user = useSelector((state: RootState) => state.auth.user);
 
 const queryClient = useQueryClient();
 
+  const prefetchBookingDetail = (bookingId: string) => {
+    const raw = rawBookings.find((b: any) => b.id === bookingId);
+    if (raw) {
+      queryClient.setQueryData(['bookingDetail', bookingId], raw);
+    }
+  };
+
   useEffect(() => {
     const sub = DeviceEventEmitter.addListener('bookingCreated', () => {
       refetch();
@@ -34,8 +42,8 @@ const queryClient = useQueryClient();
     return () => sub.remove();
   }, [refetch]);
 
-  useEffect(() => {
-    const unsub = messaging().onMessage(async (msg) => {
+useEffect(() => {
+    const unsub = onMessage(getMessaging(), async (msg) => {
       const type = msg.data?.type;
       if (
         type === 'BOOKING_CREATED' ||
@@ -63,11 +71,11 @@ const queryClient = useQueryClient();
      const scheduledDate = b.scheduledDate ? new Date(b.scheduledDate) : null;
     const isPast = scheduledDate ? scheduledDate < new Date() : false;
 
-  let mappedStatus = 'Upcoming';
+ let mappedStatus = 'Upcoming';
     if (b.status === 'COMPLETED') mappedStatus = 'Completed';
     else if (b.status === 'CANCELLED') mappedStatus = 'Cancelled';
-    else if (b.status === 'REJECTED') mappedStatus = 'Rejected';
-    else if (b.status === 'PENDING' && isPast) mappedStatus = 'Completed';
+    else if (b.status === 'REJECTED') mappedStatus = 'Cancelled';
+    else if (b.status === 'PENDING' && isPast) mappedStatus = 'Upcoming';
     else if (b.status === 'WAITING_FOR_PARTNER') mappedStatus = 'Upcoming';
       
       const slotDate = b.scheduledDate ? new Date(b.scheduledDate).toLocaleDateString('en-IN', {
@@ -90,11 +98,26 @@ const queryClient = useQueryClient();
     });
   }, [rawBookings, user]);
 
-const filteredBookings = bookings.filter((b: any) =>
-    activeTab === 'upcoming'
-      ? b.status === 'Upcoming'
-      : b.status === 'Completed' || b.status === 'Cancelled' || b.status === 'Rejected'
-  );
+const FILTER_CHIPS: { key: 'all' | 'completed' | 'cancelled'; label: string }[] = [
+  { key: 'all', label: 'All' },
+  { key: 'completed', label: 'Completed' },
+  { key: 'cancelled', label: 'Cancelled' },
+];
+
+const EMPTY_STATE: Record<string, { icon: string; title: string; subtitle: string; showBook: boolean }> = {
+  all: { icon: 'calendar-blank-outline', title: 'No Bookings Yet', subtitle: 'You have not made any bookings yet.', showBook: true },
+  completed: { icon: 'calendar-check-outline', title: 'No completed bookings yet.', subtitle: 'Once your tests are done, your completed bookings will show up here.', showBook: true },
+  cancelled: { icon: 'calendar-remove-outline', title: 'No cancelled bookings yet.', subtitle: 'Cancelled appointments will appear here if any booking is cancelled.', showBook: false },
+};
+
+const filteredBookings = React.useMemo(() => {
+  if (activeFilter === 'all') return bookings;
+  if (activeFilter === 'completed') return bookings.filter((b: any) => b.status === 'Completed');
+  if (activeFilter === 'cancelled') return bookings.filter((b: any) => b.status === 'Cancelled');
+  return [] as typeof bookings;
+}, [bookings, activeFilter]);
+
+const emptyState = EMPTY_STATE[activeFilter] ?? EMPTY_STATE['all'];
 const renderBookingCard = ({ item }: { item: any }) => (
     <View style={styles.bookingCard}>
       <View style={styles.cardHeader}>
@@ -111,7 +134,7 @@ const renderBookingCard = ({ item }: { item: any }) => (
               item.status === 'Completed' ? styles.statusTextCompleted :
               item.status === 'Rejected' ? styles.statusTextRejected : styles.statusTextCancelled
             ]}>
-              {item.status}
+            {item.status === 'Upcoming' ? 'PENDING' : item.status}
             </Text>
           </View>
           <Text style={styles.bookingId}>#{item.id}</Text>
@@ -144,29 +167,78 @@ const renderBookingCard = ({ item }: { item: any }) => (
         )}
       </View>
 
-      <View style={styles.actionRow}>
-        {item.status === 'Upcoming' ? (
+<View style={styles.actionRow}>
+<TouchableOpacity
+          style={styles.actionButtonDetails}
+          onPress={() => {
+            prefetchBookingDetail(item.realId);
+            router.push(`/booking/${item.realId}` as any);
+          }}
+        >
+          <MaterialCommunityIcons name="clipboard-text-outline" size={14} color={COLORS.primary} />
+          <Text style={styles.actionButtonTextDetails}>Details</Text>
+        </TouchableOpacity>
+       {item.status === 'Upcoming' ? (
           <>
-            <TouchableOpacity 
-              style={styles.actionButtonSecondary} 
-              onPress={() => DeviceEventEmitter.emit('openGlobalScheduler')}
+            <TouchableOpacity
+              style={styles.actionButtonSecondary}
+              onPress={() => {
+                const raw = rawBookings.find((b: any) => b.id === item.realId);
+                if (!raw) {
+                  router.push('/search');
+                  return;
+                }
+
+                const hasTests = (raw.tests || []).some((t: any) => !!t.test);
+                const hasPackages = (raw.packages || []).some((p: any) => !!p.package);
+
+                if (!hasTests && !hasPackages) {
+                  router.push('/search');
+                  return;
+                }
+
+                dispatch(clearCart());
+
+                (raw.tests || []).forEach((t: any) => {
+                  if (t.test) {
+                    dispatch(addToCart({
+                      id: t.test.id,
+                      itemType: 'test',
+                      name: t.test.name,
+                      price: t.test.price,
+                      discountedPrice: t.test.discountedPrice,
+                      homeCollection: t.test.homeCollection ?? true,
+                      quantity: 1,
+                    }));
+                  }
+                });
+
+                (raw.packages || []).forEach((p: any) => {
+                  if (p.package) {
+                    dispatch(addToCart({
+                      id: p.package.id,
+                      itemType: 'package',
+                      name: p.package.name,
+                      price: p.package.oldPrice ?? p.package.price,
+                      discountedPrice: p.package.price,
+                      homeCollection: p.package.homeCollection ?? true,
+                      quantity: 1,
+                    }));
+                  }
+                });
+
+                router.push('/checkout/cart');
+              }}
             >
               <Text style={styles.actionButtonTextSecondary}>Reschedule</Text>
             </TouchableOpacity>
-        {item.homeCollection ? (
+    {item.homeCollection ? (
               <TouchableOpacity
-                style={[
-                  styles.actionButtonPrimary,
-                  (item as any).rawStatus === 'WAITING_FOR_PARTNER' && { backgroundColor: '#94A3B8' }
-                ]}
-                onPress={() => {
-                  if ((item as any).rawStatus !== 'WAITING_FOR_PARTNER') {
-                    router.push(`/tracking/${(item as any).realId}` as any);
-                  }
-                }}
+                style={styles.actionButtonPrimary}
+                onPress={() => router.push(`/tracking/${(item as any).realId}` as any)}
               >
                 <Text style={styles.actionButtonTextPrimary}>
-                  {(item as any).rawStatus === 'WAITING_FOR_PARTNER' ? 'Searching...' : 'Track Tech'}
+                  {(item as any).rawStatus === 'WAITING_FOR_PARTNER' ? 'Live Track' : 'Track Tech'}
                 </Text>
               </TouchableOpacity>
       ) : (
@@ -178,22 +250,39 @@ const renderBookingCard = ({ item }: { item: any }) => (
               </TouchableOpacity>
             )}
           </>
-        ) : item.status === 'Completed' ? (
+) : item.status === 'Completed' ? (
           <>
-            <TouchableOpacity style={styles.actionButtonSecondary} onPress={() => router.push('/search')}>
-              <Text style={styles.actionButtonTextSecondary}>Rebook</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.actionButtonPrimary} onPress={() => router.push('/(tabs)/reports')}>
+            {(item as any).homeCollection && (item as any).rawStatus !== 'CANCELLED' && (() => {
+              const raw = rawBookings.find((b: any) => b.id === (item as any).realId);
+              const rateableStatuses = ['DELIVERED_TO_LAB', 'PROCESSING', 'REPORT_READY', 'COMPLETED'];
+              const canRate = raw && rateableStatuses.includes(raw.status) && raw.collectionMode === 'HOME' && raw.assignedPartnerId;
+              if (!canRate) return null;
+              return (
+                <TouchableOpacity
+                  style={styles.rateButton}
+                  onPress={() => router.push({
+                    pathname: `/rating/${(item as any).realId}`,
+                    params: {
+                      bookingCode: raw.bookingCode,
+                      partnerName: raw.assignedPartner?.user?.name || '',
+                    },
+                  } as any)}
+                >
+                  <MaterialCommunityIcons name="star-outline" size={14} color="#F59E0B" />
+                  <Text style={styles.rateButtonText}>Rate</Text>
+                </TouchableOpacity>
+              );
+            })()}
+            <TouchableOpacity
+              style={styles.actionButtonPrimary}
+              onPress={() => router.push('/(tabs)/reports')}
+            >
               <Text style={styles.actionButtonTextPrimary}>View Report</Text>
             </TouchableOpacity>
           </>
-        ) : (
-          <TouchableOpacity style={styles.actionButtonSecondary} onPress={() => router.push('/search')}>
-            <Text style={styles.actionButtonTextSecondary}>Book Again</Text>
-          </TouchableOpacity>
-        )}
+        ) : null}
       </View>
-    </View>
+</View>
   );
 
   return (
@@ -205,20 +294,25 @@ const renderBookingCard = ({ item }: { item: any }) => (
         </TouchableOpacity>
       </View>
 
-      {/* Tabs */}
-      <View style={styles.tabsContainer}>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'upcoming' && styles.activeTab]}
-          onPress={() => setActiveTab('upcoming')}
+<View style={styles.filtersWrapper}>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.filtersContent}
         >
-          <Text style={[styles.tabText, activeTab === 'upcoming' && styles.activeTabText]}>Upcoming</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.tab, activeTab === 'past' && styles.activeTab]}
-          onPress={() => setActiveTab('past')}
-        >
-          <Text style={[styles.tabText, activeTab === 'past' && styles.activeTabText]}>Past Bookings</Text>
-        </TouchableOpacity>
+         {FILTER_CHIPS.map(chip => (
+            <TouchableOpacity
+              key={chip.key}
+              style={[styles.chip, activeFilter === chip.key && styles.chipActive]}
+              onPress={() => setActiveFilter(chip.key as 'all' | 'completed' | 'cancelled')}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.chipText, activeFilter === chip.key && styles.chipTextActive]}>
+                {chip.label}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       {/* Bookings List */}
@@ -236,14 +330,20 @@ const renderBookingCard = ({ item }: { item: any }) => (
           showsVerticalScrollIndicator={false}
           refreshing={isLoading}
           onRefresh={refetch}
-          ListEmptyComponent={
+ ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialCommunityIcons name="calendar-blank" size={64} color={COLORS.border} />
-              <Text style={styles.emptyTitle}>No {activeTab} bookings</Text>
-              <Text style={styles.emptySubtitle}>You don't have any {activeTab} diagnostic appointments.</Text>
-              <TouchableOpacity style={styles.browseButton} onPress={() => router.push('/search')}>
-                <Text style={styles.browseButtonText}>Book a Test</Text>
-              </TouchableOpacity>
+              <MaterialCommunityIcons
+                name={emptyState.icon as any}
+                size={72}
+                color={COLORS.border}
+              />
+              <Text style={styles.emptyTitle}>{emptyState.title}</Text>
+              <Text style={styles.emptySubtitle}>{emptyState.subtitle}</Text>
+              {emptyState.showBook && (
+                <TouchableOpacity style={styles.browseButton} onPress={() => router.push('/search')}>
+                  <Text style={styles.browseButtonText}>Book a Test</Text>
+                </TouchableOpacity>
+              )}
             </View>
           }
         />
@@ -279,29 +379,37 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  tabsContainer: {
-    flexDirection: 'row',
-    paddingHorizontal: 20,
+filtersWrapper: {
     backgroundColor: COLORS.surface,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.border,
+    paddingVertical: 14,
   },
-  tab: {
-    flex: 1,
-    paddingVertical: 16,
+  filtersContent: {
+    paddingHorizontal: 16,
+    gap: 10,
+    flexDirection: 'row',
     alignItems: 'center',
   },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: COLORS.accent,
+  chip: {
+    paddingHorizontal: 18,
+    paddingVertical: 8,
+    borderRadius: 50,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
   },
-  tabText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
+  chipActive: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  chipText: {
+    fontSize: 13,
     fontWeight: '600',
+    color: COLORS.textSecondary,
   },
-  activeTabText: {
-    color: COLORS.accent,
+  chipTextActive: {
+    color: '#FFFFFF',
   },
   listContent: {
     padding: 20,
@@ -391,6 +499,23 @@ statusTextCancelled: {
     paddingTop: 16,
     marginTop: 8,
   },
+actionButtonDetails: {
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    flexDirection: 'row',
+    gap: 4,
+    borderRadius: 30,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
+    marginRight: 8,
+  },
+  actionButtonTextDetails: {
+    ...TYPOGRAPHY.caption,
+    color: COLORS.primary,
+    fontWeight: 'bold',
+    fontSize: 11,
+  },
   actionButtonSecondary: {
     flex: 1,
     paddingVertical: 12,
@@ -438,9 +563,27 @@ statusTextCancelled: {
     paddingVertical: 12,
     borderRadius: 30,
   },
-  browseButtonText: {
+browseButtonText: {
     ...TYPOGRAPHY.subtitle,
     color: COLORS.textLight,
     fontWeight: 'bold',
+  },
+  rateButton: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 12,
+    borderRadius: 30,
+    backgroundColor: '#FFFBEB',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    marginRight: 10,
+  },
+  rateButtonText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#F59E0B',
   },
 });

@@ -116,7 +116,6 @@ getPartnerNotifications: () => api.get('/partner/notifications').then(res => res
   getBookingOtp: (bookingId: string) => api.get(`/bookings/${bookingId}/collection-otp`).then(res => res.data),
   verifyBookingOtp: (bookingId: string, otp: string) => api.post(`/bookings/${bookingId}/verify-otp`, { otp }).then(res => res.data),
 getBookingDetails: (bookingId: string) => api.get(`/bookings?id=${bookingId}`).then(res => {
-    // Backend returns array from the list endpoint; extract the single booking
     const data = res.data;
     return Array.isArray(data) ? data[0] ?? null : data;
   }),
@@ -181,9 +180,15 @@ getPartnerRatings: () => api.get('/partner/ratings').then(res => res.data),
   confirmBranchDelivery: (bookingId: string) =>
     api.post(`/partner/bookings/${bookingId}/confirm-delivery`).then(res => res.data),
 
+submitRating: (data: { bookingId: string; rating: number; review?: string }) =>
+    api.post('/ratings', data).then(res => res.data),
+  getBookingRating: (bookingId: string) =>
+    api.get(`/ratings/booking/${bookingId}`).then(res => res.data),
+
   getOrCreateConversation: () => api.get('/chat/conversation').then(res => res.data),
   getChatMessages: (conversationId: string, cursor?: string) =>
     api.get(`/chat/conversation/${conversationId}/messages`, { params: cursor ? { cursor } : {} }).then(res => res.data),
   getChatUnreadCount: () => api.get('/chat/conversation/unread').then(res => res.data),
 };
 export default api;
+  

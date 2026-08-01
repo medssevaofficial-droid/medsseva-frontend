@@ -19,6 +19,7 @@ interface ScreenWrapperProps {
   scrollViewStyle?: ViewStyle;
   disableKeyboardDismiss?: boolean;
   refreshControl?: React.ReactElement;
+  extraScrollHeight?: number;
 }
 
 export default function ScreenWrapper({
@@ -30,6 +31,7 @@ export default function ScreenWrapper({
   scrollViewStyle,
   disableKeyboardDismiss = false,
   refreshControl,
+extraScrollHeight = 80,
 }: ScreenWrapperProps) {
   const insets = useSafeAreaInsets();
   const bottomInset = insets.bottom;
@@ -72,8 +74,8 @@ export default function ScreenWrapper({
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="interactive"
         onScrollBeginDrag={handleScrollBeginDrag}
-        extraScrollHeight={Platform.OS === 'ios' ? 32 : 16}
-        extraHeight={Platform.OS === 'android' ? 80 : 0}
+extraScrollHeight={extraScrollHeight}
+        extraHeight={0}
         enableResetScrollToCoords={false}
         enableAutomaticScroll
         showsVerticalScrollIndicator={false}
@@ -106,8 +108,8 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
-  scrollContent: {
-    flexGrow: 0,
+scrollContent: {
+    flexGrow: 1,
   },
   nonScrollContent: {
     flex: 1,

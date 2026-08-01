@@ -17,9 +17,8 @@ interface RatingsData {
   collectionSuccessRate: number;
   averageArrivalTime: string;
   breakdown: Record<number, number>;
-  reviews: { id: string; customerName: string; rating: number; comment?: string; createdAt: string }[];
+  reviews: { id: string; customerName: string; rating: number; comment?: string; bookingCode?: string; createdAt: string }[];
 }
-
 function StarRow({ rating }: { rating: number }) {
   return (
     <View style={{ flexDirection: 'row', gap: 2 }}>
@@ -40,8 +39,8 @@ export default function RatingsScreen() {
   const [data, setData] = useState<RatingsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    (apiService as any).getPartnerRatings()
+ useEffect(() => {
+    apiService.getPartnerRatings()
       .then(setData)
       .catch(() => {})
       .finally(() => setIsLoading(false));
@@ -132,6 +131,9 @@ export default function RatingsScreen() {
                         {new Date(review.createdAt).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' })}
                       </Text>
                     </View>
+             {review.bookingCode && (
+                      <Text style={[styles.reviewDate, { marginTop: 2 }]}>#{review.bookingCode}</Text>
+                    )}
                     {review.comment && <Text style={styles.reviewComment}>{review.comment}</Text>}
                   </View>
                 </View>

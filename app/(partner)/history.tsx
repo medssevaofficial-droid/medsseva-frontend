@@ -8,7 +8,7 @@ import { useRouter } from 'expo-router';
 import { apiService } from '../../src/services/api';
 import { COLORS, SHADOWS } from '../../src/theme/theme';
 
-type TabType = 'Completed' | 'Reports Delivered' | 'Cancelled' | 'Rejected';
+type TabType = 'Completed' | 'Rejected';
 
 interface HistoryBooking {
   id: string;
@@ -39,15 +39,12 @@ export default function PartnerHistoryScreen() {
   const [isLoading, setIsLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
- const TABS: TabType[] = ['Completed', 'Reports Delivered', 'Cancelled', 'Rejected'];
+const TABS: TabType[] = ['Completed', 'Rejected'];
 
-  const statusMap: Record<TabType, string[]> = {
-    'Completed': ['COMPLETED', 'DELIVERED_TO_LAB', 'PROCESSING'],
-    'Reports Delivered': ['REPORT_READY'],
-    'Cancelled': ['CANCELLED'],
+const statusMap: Record<TabType, string[]> = {
+    'Completed': ['DELIVERED_TO_LAB', 'PROCESSING', 'REPORT_READY', 'COMPLETED'],
     'Rejected': ['REJECTED_BY_PARTNER'],
   };
-
   const loadHistory = useCallback(async () => {
     try {
       const data = await apiService.getPartnerHistory();

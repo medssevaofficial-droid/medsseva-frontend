@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, Platform, AppState } from 'react-native';
 import { useRouter, useLocalSearchParams } from 'expo-router';
 import { View as RNView } from 'react-native';
@@ -61,20 +61,22 @@ export default function TrackScreen() {
   const { bookingId } = useLocalSearchParams<{ bookingId?: string }>();
   const user = useSelector((s: RootState) => s.auth.user);
 
-  const [booking, setBooking] = useState<any>(null);
+const [booking, setBooking] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const bookingIdRef = useRef<string | null>(null);
+  const pollRef2 = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const fetchBooking = useCallback(async (id: string) => {
     try {
       const data = await apiService.getBookingDetails(id);
       setBooking(data);
+      bookingIdRef.current = data?.id || id;
     } catch (e) {
       console.warn('Failed to fetch booking for tracking', e);
     } finally {
       setIsLoading(false);
     }
   }, []);
-
   const loadLatestActiveBooking = useCallback(async () => {
     try {
       const bookings = await apiService.getBookings(user?.mobile || '');
@@ -93,17 +95,28 @@ export default function TrackScreen() {
     }
   }, [user?.mobile]);
 
-  useEffect(() => {
+useEffect(() => {
     if (bookingId) {
       fetchBooking(bookingId);
     } else {
       loadLatestActiveBooking();
     }
+
+    pollRef2.current = setInterval(() => {
+      const id = bookingId || bookingIdRef.current;
+      if (id) {
+        fetchBooking(id);
+      } else {
+        loadLatestActiveBooking();
+      }
+    }, 5000);
+
+    return () => {
+      if (pollRef2.current) clearInterval(pollRef2.current);
+    };
   }, [bookingId]);
 
-  useEffect(() => {
-    if (!booking?.id) return;
-
+useEffect(() => {
     const unsubscribe = messaging().onMessage(async (remoteMessage) => {
       const type = remoteMessage?.data?.type;
       const trackingTypes = [
@@ -116,27 +129,25 @@ export default function TrackScreen() {
         'REPORT_READY',
         'BOOKING_CANCELLED',
       ];
-     if (trackingTypes.includes(String(type || ''))) {
-        const id = bookingId || booking.id;
+      if (trackingTypes.includes(String(type || ''))) {
+        const id = bookingId || bookingIdRef.current;
         if (id) fetchBooking(id);
       }
     });
 
     return () => unsubscribe();
-  }, [booking?.id, bookingId, fetchBooking]);
+  }, []);
 
   useEffect(() => {
-    if (!booking?.id) return;
-    const id = bookingId || booking.id;
-
     const sub = AppState.addEventListener('change', (state) => {
-      if (state === 'active' && id) {
-        fetchBooking(id);
+      if (state === 'active') {
+        const id = bookingId || bookingIdRef.current;
+        if (id) fetchBooking(id);
       }
     });
 
     return () => sub.remove();
-  }, [booking?.id, bookingId, fetchBooking]);
+  }, []);
 
   const currentStatusIndex = booking ? (STATUS_ORDER[booking.status] ?? 0) : 0;
   const partner = booking?.assignedPartner;

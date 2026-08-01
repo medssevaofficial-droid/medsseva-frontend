@@ -201,7 +201,8 @@ return (
               <Text style={styles.continueBtnText}>Proceed to Payment</Text>
             </TouchableOpacity>
           }
-          contentContainerStyle={styles.scrollContent}
+   contentContainerStyle={styles.scrollContent}
+          extraScrollHeight={120}
         >
 
           {profileError && (
@@ -297,7 +298,7 @@ return (
               onBlur={() => setFocusedInput(null)}
             />
 
-            <Text style={styles.label}>Symptoms / Notes (Optional)</Text>
+      <Text style={styles.label}>Symptoms / Notes (Optional)</Text>
             <TextInput
               style={[styles.input, styles.textArea, { borderColor: getBorderColor('symptoms') }]}
               placeholder="Any specific symptoms or instructions for the technician?"
@@ -309,8 +310,8 @@ return (
               onFocus={() => setFocusedInput('symptoms')}
               onBlur={() => setFocusedInput(null)}
               textAlignVertical="top"
+              scrollEnabled={false}
             />
-
           </View>
  </ScreenWrapper>
       )}
@@ -500,9 +501,9 @@ lockedBadge: {
     ...TYPOGRAPHY.h2,
     color: COLORS.textLight,
   },
-  scrollContent: {
+scrollContent: {
     padding: 16,
-    paddingBottom: 100,
+    paddingBottom: 24,
   },
   formCard: {
     backgroundColor: COLORS.surface,

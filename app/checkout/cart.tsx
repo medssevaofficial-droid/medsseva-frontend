@@ -24,6 +24,7 @@ import { setCollectionMode, setAppliedCouponCode } from '../../src/store/slices/
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { PremiumBottomSheet } from '../../src/components/PremiumBottomSheet';
 import { couponApiService, apiService } from '../../src/services/api';
+import { formatCurrency } from '../../src/utils/currency';
 
 interface BackendCoupon {
   id: string;
@@ -64,11 +65,22 @@ export default function CartScreen() {
 
   const inputRef = useRef<TextInput>(null);
 
-  const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
-  const packageIds = cart.items.filter(i => i.itemType === 'package').map(i => i.id);
+const testIds = cart.items.filter(i => i.itemType === 'test').map(i => i.id);
+  const packageIds = cart.items
+    .filter(i => i.itemType === 'package' && !i.id.startsWith('custom_package_'))
+    .map(i => i.id);
+  const customPackageTotal = cart.items
+    .filter(i => i.id.startsWith('custom_package_'))
+    .reduce((sum, i) => sum + (Number(i.discountedPrice) || 0), 0);
 
-  const fetchPricing = useCallback(async (coupon?: string) => {
+const fetchPricing = useCallback(async (coupon?: string) => {
     if (cart.items.length === 0) return;
+    const hasNonCustomItems = cart.items.some(i => !i.id.startsWith('custom_package_'));
+    if (!hasNonCustomItems) {
+      setPricing(null);
+      setPricingLoading(false);
+      return;
+    }
     setPricingLoading(true);
     try {
       const result = await apiService.getPricingPreview({
@@ -157,7 +169,7 @@ export default function CartScreen() {
     fetchPricing(undefined);
   }, [fetchPricing, dispatch]);
 
-  const calculatedFinalAmount = pricing?.finalAmount ?? 0;
+const calculatedFinalAmount = parseFloat(((pricing?.finalAmount ?? 0) + customPackageTotal).toFixed(2));
 
   const getBadgeLabel = (coupon: BackendCoupon): string => {
     const now = new Date();
@@ -278,7 +290,7 @@ export default function CartScreen() {
           <View style={styles.footerInner}>
             <View style={styles.footerLeft}>
               <Text style={styles.footerTotalLabel}>Total Amount</Text>
-             <Text style={styles.footerTotalAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>₹{calculatedFinalAmount}</Text>
+           <Text style={styles.footerTotalAmount} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{formatCurrency(calculatedFinalAmount)}</Text>
             </View>
             <TouchableOpacity
               style={styles.continueBtn}
@@ -383,36 +395,36 @@ export default function CartScreen() {
             <ActivityIndicator size="small" color={COLORS.primary} style={{ marginVertical: 12 }} />
           ) : pricing ? (
             <>
-              <View style={styles.billRow}>
+       <View style={styles.billRow}>
                 <Text style={styles.billLabel}>Item Total</Text>
-                <Text style={styles.billValue}>₹{pricing.subtotal}</Text>
+                <Text style={styles.billValue}>{formatCurrency(pricing.subtotal)}</Text>
               </View>
               <View style={styles.billRow}>
                 <Text style={styles.billLabel}>Discount</Text>
-                <Text style={[styles.billValue, { color: COLORS.success }]}>- ₹{pricing.testDiscount}</Text>
+                <Text style={[styles.billValue, { color: COLORS.success }]}>- {formatCurrency(pricing.testDiscount)}</Text>
               </View>
               {pricing.couponDiscount > 0 && (
                 <View style={styles.billRow}>
                   <Text style={styles.billLabel}>Coupon ({pricing.couponCode})</Text>
-                  <Text style={[styles.billValue, { color: COLORS.success }]}>- ₹{pricing.couponDiscount}</Text>
+                  <Text style={[styles.billValue, { color: COLORS.success }]}>- {formatCurrency(pricing.couponDiscount)}</Text>
                 </View>
               )}
               {pricing.collectionCharge > 0 && (
                 <View style={styles.billRow}>
                   <Text style={styles.billLabel}>Home Collection Charge</Text>
-                  <Text style={styles.billValue}>₹{pricing.collectionCharge}</Text>
+                  <Text style={styles.billValue}>{formatCurrency(pricing.collectionCharge)}</Text>
                 </View>
               )}
               <View style={styles.billRow}>
                 <Text style={styles.billLabel}>Taxes (18% GST)</Text>
-                <Text style={styles.billValue}>₹{pricing.gst}</Text>
+                <Text style={styles.billValue}>{formatCurrency(pricing.gst)}</Text>
               </View>
             </>
           ) : null}
           <View style={styles.divider} />
-          <View style={styles.billRow}>
+        <View style={styles.billRow}>
             <Text style={styles.billTotalLabel}>To Pay</Text>
-            <Text style={styles.billTotalValue}>₹{calculatedFinalAmount}</Text>
+            <Text style={styles.billTotalValue}>{formatCurrency(calculatedFinalAmount)}</Text>
           </View>
         </View>
       </ScreenWrapper>

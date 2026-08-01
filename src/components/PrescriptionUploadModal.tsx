@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import {
-View,
+  View,
   Text,
   StyleSheet,
   Modal,
@@ -11,6 +11,8 @@ View,
   ActivityIndicator,
   Image,
   Platform,
+  KeyboardAvoidingView,
+  StatusBar,
 } from 'react-native';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -93,11 +95,11 @@ export function PrescriptionUploadModal({ visible, onClose, onUploadSuccess }: P
 
   const handleCamera = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
- if (status !== 'granted') {
+    if (status !== 'granted') {
       showError('Camera access is needed to capture prescriptions.');
       return;
     }
-const result = await ImagePicker.launchCameraAsync({
+    const result = await ImagePicker.launchCameraAsync({
       mediaTypes: ['images'],
       quality: 0.85,
       allowsEditing: false,
@@ -114,11 +116,11 @@ const result = await ImagePicker.launchCameraAsync({
 
   const handleGallery = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
+    if (status !== 'granted') {
       showError('Gallery access is needed to pick prescriptions.');
       return;
     }
-const result = await ImagePicker.launchImageLibraryAsync({
+    const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ['images', 'livePhotos'],
       quality: 0.85,
       allowsEditing: false,
@@ -129,12 +131,12 @@ const result = await ImagePicker.launchImageLibraryAsync({
     const name = asset.fileName || `prescription_${Date.now()}.${ext}`;
     const mimeType = asset.mimeType || `image/${ext}`;
     const size = asset.fileSize || 0;
-   const error = validateFile(name, mimeType, size);
+    const error = validateFile(name, mimeType, size);
     if (error) { showError(error); return; }
     setSelectedFile({ uri: asset.uri, name, size, mimeType, source: 'gallery', isImage: true });
   };
 
-const handleDocumentPicker = async () => {
+  const handleDocumentPicker = async () => {
     const result = await DocumentPicker.getDocumentAsync({
       type: '*/*',
       copyToCacheDirectory: true,
@@ -144,7 +146,7 @@ const handleDocumentPicker = async () => {
     const name = asset.name;
     const mimeType = asset.mimeType || 'application/octet-stream';
     const size = asset.size || 0;
-  const error = validateFile(name, mimeType, size);
+    const error = validateFile(name, mimeType, size);
     if (error) { showError(error); return; }
     const isImage = mimeType.startsWith('image/');
     setSelectedFile({ uri: asset.uri, name, size, mimeType, source: 'files', isImage });
@@ -155,7 +157,7 @@ const handleDocumentPicker = async () => {
   };
 
   const handleUpload = async () => {
-if (!selectedFile) {
+    if (!selectedFile) {
       showError('Please select a prescription file before uploading.');
       return;
     }
@@ -170,7 +172,7 @@ if (!selectedFile) {
       if (notes.trim()) {
         formData.append('notes', notes.trim());
       }
- await apiService.uploadPrescription(formData);
+      await apiService.uploadPrescription(formData);
       setSelectedFile(null);
       setNotes('');
       if (onUploadSuccess) onUploadSuccess();
@@ -192,164 +194,159 @@ if (!selectedFile) {
   };
 
   return (
-    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose}>
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={handleClose} statusBarTranslucent>
       <View style={styles.overlay}>
-        <View style={styles.sheet}>
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent} keyboardShouldPersistTaps="handled">
-
-            <View style={styles.header}>
-              <View style={styles.headerLeft}>
-                <View style={styles.headerIconBox}>
-                  <MaterialCommunityIcons name="file-document-edit-outline" size={20} color={COLORS.primary} />
-                </View>
-                <Text style={styles.headerTitle}>Upload Prescription</Text>
-              </View>
-              <TouchableOpacity style={styles.closeBtn} onPress={handleClose} disabled={isUploading}>
-                <MaterialCommunityIcons name="close" size={20} color="#64748B" />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.headerSubtitle}>
-              Upload your prescription and our team will identify the required tests and assist with booking.
-            </Text>
-
-            {/* <View style={styles.stepsRow}>
-              {[
-                { icon: 'file-upload-outline', label: 'Upload File' },
-                { icon: 'magnify-scan', label: 'We Review' },
-                { icon: 'calendar-check-outline', label: 'Tests Booked' },
-              ].map((step, i) => (
-                <View key={i} style={styles.stepItem}>
-                  <View style={styles.stepIconBox}>
-                    <MaterialCommunityIcons name={step.icon as any} size={20} color={COLORS.primary} />
-                  </View>
-                  <Text style={styles.stepLabel}>{step.label}</Text>
-                </View>
-              ))}
-            </View> */}
-
-            {!selectedFile ? (
-              <View style={styles.uploadOptionsSection}>
-                {/* <Text style={styles.uploadLabel}>Select Source</Text> */}
-                <View style={styles.uploadOptionsRow}>
-                  <TouchableOpacity style={styles.uploadOption} onPress={handleCamera} activeOpacity={0.8}>
-                    <View style={[styles.uploadOptionIcon, { backgroundColor: '#EFF6FF' }]}>
-                      <MaterialCommunityIcons name="camera-outline" size={26} color="#2563EB" />
-                    </View>
-                    <Text style={styles.uploadOptionText}>Camera</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.uploadOption} onPress={handleGallery} activeOpacity={0.8}>
-                    <View style={[styles.uploadOptionIcon, { backgroundColor: '#F0FDF4' }]}>
-                      <MaterialCommunityIcons name="image-outline" size={26} color="#16A34A" />
-                    </View>
-                    <Text style={styles.uploadOptionText}>Gallery</Text>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={styles.uploadOption} onPress={handleDocumentPicker} activeOpacity={0.8}>
-                    <View style={[styles.uploadOptionIcon, { backgroundColor: '#FEF3C7' }]}>
-                      <MaterialCommunityIcons name="folder-open-outline" size={26} color="#D97706" />
-                    </View>
-                    <Text style={styles.uploadOptionText}>Files</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.formatHint}>
-                  Supported: JPG, PNG, WEBP, PDF, DOC, DOCX - Max 20 MB
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.previewSection}>
-                <View style={styles.previewHeader}>
-                  <Text style={styles.uploadLabel}>Selected File</Text>
-                  <View style={styles.previewActions}>
-                    <TouchableOpacity style={styles.replaceBtn} onPress={handleDocumentPicker}>
-                      <MaterialCommunityIcons name="swap-horizontal" size={14} color={COLORS.primary} />
-                      <Text style={styles.replaceBtnText}>Replace</Text>
-                    </TouchableOpacity>
-                    <TouchableOpacity style={styles.removeBtn} onPress={handleRemoveFile}>
-                      <MaterialCommunityIcons name="trash-can-outline" size={14} color="#EF4444" />
-                      <Text style={styles.removeBtnText}>Remove</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-
-                <View style={styles.previewCard}>
-                  {selectedFile.isImage ? (
-                    <Image source={{ uri: selectedFile.uri }} style={styles.imagePreview} resizeMode="cover" />
-                  ) : (
-                    <View style={styles.docPreview}>
-                      <MaterialCommunityIcons
-                        name={getFileIcon(selectedFile.mimeType) as any}
-                        size={48}
-                        color={getFileIconColor(selectedFile.mimeType)}
-                      />
-                    </View>
-                  )}
-                  <View style={styles.previewMeta}>
-                    <Text style={styles.previewFileName} numberOfLines={2}>{selectedFile.name}</Text>
-                    <View style={styles.previewMetaRow}>
-                      <View style={styles.metaTag}>
-                        <MaterialCommunityIcons name="database-outline" size={12} color="#64748B" />
-                        <Text style={styles.metaTagText}>{formatFileSize(selectedFile.size)}</Text>
-                      </View>
-                      <View style={styles.metaTag}>
-                        <MaterialCommunityIcons
-                          name={selectedFile.source === 'camera' ? 'camera' : selectedFile.source === 'gallery' ? 'image' : 'folder'}
-                          size={12}
-                          color="#64748B"
-                        />
-                        <Text style={styles.metaTagText}>
-                          {selectedFile.source.charAt(0).toUpperCase() + selectedFile.source.slice(1)}
-                        </Text>
-                      </View>
-                    </View>
-                  </View>
-                </View>
-              </View>
-            )}
-
-            <View style={styles.formGroup}>
-              <Text style={styles.label}>
-                Prescription Notes <Text style={styles.optionalText}>(optional)</Text>
-              </Text>
-              <TextInput
-                style={styles.textArea}
-                placeholder="Add any notes for our team, e.g. preferred test timing, doctor instructions..."
-                placeholderTextColor="#94A3B8"
-                multiline
-                numberOfLines={3}
-                value={notes}
-                onChangeText={setNotes}
-                textAlignVertical="top"
-              />
-            </View>
-
-            <TouchableOpacity
-              style={[styles.submitBtn, (!selectedFile || isUploading) && styles.submitBtnDisabled]}
-              activeOpacity={0.9}
-              onPress={handleUpload}
-              disabled={!selectedFile || isUploading}
+        <KeyboardAvoidingView
+          style={styles.kavWrapper}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : StatusBar.currentHeight ?? 0}
+        >
+          <View style={styles.sheet}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={styles.scrollContent}
+              keyboardShouldPersistTaps="handled"
+              keyboardDismissMode="on-drag"
+              bounces={false}
             >
-              <LinearGradient
-                colors={(!selectedFile || isUploading) ? ['#94A3B8', '#94A3B8'] : [COLORS.primary, '#14B8A6']}
-                style={styles.gradientBtn}
+              <View style={styles.header}>
+                <View style={styles.headerLeft}>
+                  <View style={styles.headerIconBox}>
+                    <MaterialCommunityIcons name="file-document-edit-outline" size={20} color={COLORS.primary} />
+                  </View>
+                  <Text style={styles.headerTitle}>Upload Prescription</Text>
+                </View>
+                <TouchableOpacity style={styles.closeBtn} onPress={handleClose} disabled={isUploading}>
+                  <MaterialCommunityIcons name="close" size={20} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <Text style={styles.headerSubtitle}>
+                Upload your prescription and our team will identify the required tests and assist with booking.
+              </Text>
+
+              {!selectedFile ? (
+                <View style={styles.uploadOptionsSection}>
+                  <View style={styles.uploadOptionsRow}>
+                    <TouchableOpacity style={styles.uploadOption} onPress={handleCamera} activeOpacity={0.8}>
+                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#EFF6FF' }]}>
+                        <MaterialCommunityIcons name="camera-outline" size={26} color="#2563EB" />
+                      </View>
+                      <Text style={styles.uploadOptionText}>Camera</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.uploadOption} onPress={handleGallery} activeOpacity={0.8}>
+                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#F0FDF4' }]}>
+                        <MaterialCommunityIcons name="image-outline" size={26} color="#16A34A" />
+                      </View>
+                      <Text style={styles.uploadOptionText}>Gallery</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity style={styles.uploadOption} onPress={handleDocumentPicker} activeOpacity={0.8}>
+                      <View style={[styles.uploadOptionIcon, { backgroundColor: '#FEF3C7' }]}>
+                        <MaterialCommunityIcons name="folder-open-outline" size={26} color="#D97706" />
+                      </View>
+                      <Text style={styles.uploadOptionText}>Files</Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={styles.formatHint}>
+                    Supported: JPG, PNG, WEBP, PDF, DOC, DOCX - Max 20 MB
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.previewSection}>
+                  <View style={styles.previewHeader}>
+                    <Text style={styles.uploadLabel}>Selected File</Text>
+                    <View style={styles.previewActions}>
+                      <TouchableOpacity style={styles.replaceBtn} onPress={handleDocumentPicker}>
+                        <MaterialCommunityIcons name="swap-horizontal" size={14} color={COLORS.primary} />
+                        <Text style={styles.replaceBtnText}>Replace</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity style={styles.removeBtn} onPress={handleRemoveFile}>
+                        <MaterialCommunityIcons name="trash-can-outline" size={14} color="#EF4444" />
+                        <Text style={styles.removeBtnText}>Remove</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+
+                  <View style={styles.previewCard}>
+                    {selectedFile.isImage ? (
+                      <Image source={{ uri: selectedFile.uri }} style={styles.imagePreview} resizeMode="cover" />
+                    ) : (
+                      <View style={styles.docPreview}>
+                        <MaterialCommunityIcons
+                          name={getFileIcon(selectedFile.mimeType) as any}
+                          size={48}
+                          color={getFileIconColor(selectedFile.mimeType)}
+                        />
+                      </View>
+                    )}
+                    <View style={styles.previewMeta}>
+                      <Text style={styles.previewFileName} numberOfLines={2}>{selectedFile.name}</Text>
+                      <View style={styles.previewMetaRow}>
+                        <View style={styles.metaTag}>
+                          <MaterialCommunityIcons name="database-outline" size={12} color="#64748B" />
+                          <Text style={styles.metaTagText}>{formatFileSize(selectedFile.size)}</Text>
+                        </View>
+                        <View style={styles.metaTag}>
+                          <MaterialCommunityIcons
+                            name={selectedFile.source === 'camera' ? 'camera' : selectedFile.source === 'gallery' ? 'image' : 'folder'}
+                            size={12}
+                            color="#64748B"
+                          />
+                          <Text style={styles.metaTagText}>
+                            {selectedFile.source.charAt(0).toUpperCase() + selectedFile.source.slice(1)}
+                          </Text>
+                        </View>
+                      </View>
+                    </View>
+                  </View>
+                </View>
+              )}
+
+              <View style={styles.formGroup}>
+                <Text style={styles.label}>
+                  Prescription Notes <Text style={styles.optionalText}>(optional)</Text>
+                </Text>
+                <TextInput
+                  style={styles.textArea}
+                  placeholder="Add any notes for our team, e.g. preferred test timing, doctor instructions..."
+                  placeholderTextColor="#94A3B8"
+                  multiline
+                  numberOfLines={3}
+                  value={notes}
+                  onChangeText={setNotes}
+                  textAlignVertical="top"
+                  scrollEnabled={false}
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitBtn, (!selectedFile || isUploading) && styles.submitBtnDisabled]}
+                activeOpacity={0.9}
+                onPress={handleUpload}
+                disabled={!selectedFile || isUploading}
               >
-                {isUploading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <>
-                    <MaterialCommunityIcons name="cloud-upload-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.submitBtnText}>Upload Prescription</Text>
-                  </>
-                )}
-              </LinearGradient>
-            </TouchableOpacity>
+                <LinearGradient
+                  colors={(!selectedFile || isUploading) ? ['#94A3B8', '#94A3B8'] : [COLORS.primary, '#14B8A6']}
+                  style={styles.gradientBtn}
+                >
+                  {isUploading ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <>
+                      <MaterialCommunityIcons name="cloud-upload-outline" size={20} color="#FFF" style={{ marginRight: 8 }} />
+                      <Text style={styles.submitBtnText}>Upload Prescription</Text>
+                    </>
+                  )}
+                </LinearGradient>
+              </TouchableOpacity>
 
-            <View style={styles.secureRow}>
-              <MaterialCommunityIcons name="shield-lock-outline" size={13} color="#64748B" />
-              <Text style={styles.secureText}>Your prescription is encrypted and stored securely.</Text>
-            </View>
-
-          </ScrollView>
-        </View>
+              <View style={styles.secureRow}>
+                <MaterialCommunityIcons name="shield-lock-outline" size={13} color="#64748B" />
+                <Text style={styles.secureText}>Your prescription is encrypted and stored securely.</Text>
+              </View>
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </Modal>
   );
@@ -361,11 +358,14 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(0, 51, 53, 0.7)',
     justifyContent: 'flex-end',
   },
+  kavWrapper: {
+    width: '100%',
+    maxHeight: height * 0.9,
+  },
   sheet: {
     backgroundColor: '#FFF',
     borderTopLeftRadius: 32,
     borderTopRightRadius: 32,
-    maxHeight: height * 0.9,
     ...SHADOWS.soft,
     elevation: 10,
   },
@@ -407,30 +407,6 @@ const styles = StyleSheet.create({
     color: '#64748B',
     lineHeight: 18,
     marginBottom: 20,
-  },
-  stepsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 24,
-  },
-  stepItem: {
-    flex: 1,
-    alignItems: 'center',
-    backgroundColor: '#F0FDFA',
-    borderRadius: 12,
-    paddingVertical: 12,
-    marginHorizontal: 4,
-    borderWidth: 1,
-    borderColor: '#CCFBF1',
-  },
-  stepIconBox: {
-    marginBottom: 6,
-  },
-  stepLabel: {
-    fontSize: 9,
-    fontWeight: '700',
-    color: COLORS.primary,
-    textAlign: 'center',
   },
   uploadLabel: {
     fontSize: 13,

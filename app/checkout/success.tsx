@@ -12,7 +12,7 @@ export default function SuccessScreen() {
   const booking = useSelector((state: RootState) => state.booking);
   
 const recentBooking = booking.pastBookings?.[0] || { id: '', bookingCode: '', date: 'TBD', time: 'TBD', paymentMethod: null, status: 'PENDING', collectionMode: 'HOME' };
-  const isLabVisit = recentBooking.collectionMode === 'LAB';
+const isLabVisit = recentBooking.collectionMode === 'LAB' || recentBooking.collectionMode === 'lab';
   const isPending = !recentBooking.status || recentBooking.status === 'PENDING';
   const isCashAtHome = recentBooking.paymentMethod === 'cash';
 

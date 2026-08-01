@@ -4,10 +4,12 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useDispatch } from 'react-redux';
-import { DeviceEventEmitter } from 'react-native';
+import { useDispatch, useSelector } from 'react-redux';
+
 
 import { COLORS, TYPOGRAPHY } from '../../src/theme/theme';
+import { showSuccess } from '../../src/store/toastStore';
+import { RootState } from '../../src/store';
 import { addToCart } from '../../src/store/slices/cartSlice';
 import { PremiumBottomSheet } from '../../src/components/PremiumBottomSheet';
 import { testService } from '../../src/services/testService';
@@ -19,8 +21,13 @@ export default function TestDetailsScreen() {
   
   const [test, setTest] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
+const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
   const [isFaqSheetOpen, setFaqSheetOpen] = useState(false);
+
+  const cartItem = useSelector((state: RootState) =>
+    state.cart.items.find(i => i.id === (id as string) && i.itemType === 'test')
+  );
+  const cartQty = cartItem?.quantity ?? 0;
 
   useEffect(() => {
     const fetchTest = async () => {
@@ -63,12 +70,20 @@ const handleAddToCart = () => {
       homeCollection: test.homeCollection,
       quantity: 1
     }));
+    showSuccess('Added to cart successfully');
   };
-
-  const handleBookNow = () => {
-    DeviceEventEmitter.emit('openGlobalScheduler', { testName: test.name });
-  };  
-
+const handleBookNow = () => {
+    dispatch(addToCart({
+      id: test.id,
+      itemType: 'test',
+      name: test.name,
+      price: test.price,
+      discountedPrice: test.discountedPrice,
+      homeCollection: test.homeCollection,
+      quantity: 1
+    }));
+    router.push('/checkout/cart');
+  };
  return (
     <View style={styles.container}>
       <SafeAreaView edges={['top']} style={styles.headerSafeArea}>
@@ -88,9 +103,11 @@ const handleAddToCart = () => {
         contentContainerStyle={styles.scrollContent}
         bottomButton={
           <View style={styles.footerRow}>
-            <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
+         <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
               <MaterialCommunityIcons name="cart-plus" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
-              <Text style={styles.cartSecondaryButtonText}>Add to Cart</Text>
+              <Text style={styles.cartSecondaryButtonText}>
+                {cartQty > 0 ? `Add to Cart (${cartQty})` : 'Add to Cart'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bookPrimaryButton} onPress={handleBookNow}>
               <Text style={styles.bookPrimaryButtonText}>Book Now</Text>
@@ -149,7 +166,7 @@ const handleAddToCart = () => {
 
         {/* Parameters Section */}
         <View style={styles.sectionCard}>
-          <Text style={styles.sectionTitle}>Parameters Included ({test.parameters})</Text>
+        <Text style={styles.sectionTitle}>Parameters Included ({test.parameters?.length ?? 0})</Text>
           <Text style={styles.sectionSubtitle}>Names of the specific metrics tested</Text>
           
           <View style={styles.parametersList}>

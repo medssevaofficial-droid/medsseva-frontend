@@ -3,9 +3,11 @@ import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, ScrollView
 import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
-import { useDispatch } from 'react-redux';
+import { useDispatch, useSelector } from 'react-redux';
 
 import { COLORS, TYPOGRAPHY } from '../../src/theme/theme';
+import { showSuccess } from '../../src/store/toastStore';
+import { RootState } from '../../src/store';
 import { addToCart } from '../../src/store/slices/cartSlice';
 import { PremiumBottomSheet } from '../../src/components/PremiumBottomSheet';
 import { packageService } from '../../src/services/packageService';
@@ -17,8 +19,13 @@ export default function PackageDetailsScreen() {
   
   const [pkg, setPkg] = useState<any>(null);
   const [loading, setLoading] = useState(true);
-  const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
+const [isPrepSheetOpen, setPrepSheetOpen] = useState(false);
   const [isFaqSheetOpen, setFaqSheetOpen] = useState(false);
+
+  const cartItem = useSelector((state: RootState) =>
+    state.cart.items.find(i => i.id === (id as string) && i.itemType === 'package')
+  );
+  const cartQty = cartItem?.quantity ?? 0;
 
   useEffect(() => {
     const fetchPackage = async () => {
@@ -50,7 +57,7 @@ export default function PackageDetailsScreen() {
     );
   }
 
-  const handleAddToCart = () => {
+const handleAddToCart = () => {
     dispatch(addToCart({
       id: pkg.id,
       itemType: 'package',
@@ -60,14 +67,21 @@ export default function PackageDetailsScreen() {
       homeCollection: pkg.homeCollection,
       quantity: 1
     }));
-    // Could add a toast notification here
+    showSuccess('Added to cart successfully');
   };
-
-  const handleBookNow = () => {
-    handleAddToCart();
+const handleBookNow = () => {
+    dispatch(addToCart({
+      id: pkg.id,
+      itemType: 'package',
+      name: pkg.name,
+      price: pkg.oldPrice || pkg.price,
+      discountedPrice: pkg.price,
+      homeCollection: pkg.homeCollection,
+      quantity: 1
+    }));
+    showSuccess('Added to cart successfully');
     router.push('/checkout/cart');
   };
-
   return (
     <View style={styles.container}>
       {/* Top Header */}
@@ -86,7 +100,9 @@ export default function PackageDetailsScreen() {
           <View style={styles.footerInner}>
             <TouchableOpacity style={styles.cartSecondaryButton} onPress={handleAddToCart}>
               <MaterialCommunityIcons name="cart-plus" size={20} color={COLORS.primary} style={{ marginRight: 8 }} />
-              <Text style={styles.cartSecondaryButtonText}>Add to Cart</Text>
+         <Text style={styles.cartSecondaryButtonText}>
+                {cartQty > 0 ? `Add to Cart (${cartQty})` : 'Add to Cart'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity style={styles.bookPrimaryButton} onPress={handleBookNow}>
               <Text style={styles.bookPrimaryButtonText}>Book Now</Text>
@@ -148,10 +164,10 @@ export default function PackageDetailsScreen() {
         {/* Tests Included Section */}
         <View style={styles.sectionCard}>
           <Text style={styles.sectionTitle}>Tests Included</Text>
-          <View style={styles.testsGrid}>
-            {pkg.testsIncluded?.map((testName: string, index: number) => (
+       <View style={styles.testsGrid}>
+            {pkg.testsIncluded?.map((item: any, index: number) => (
               <View key={index} style={styles.testChip}>
-                <Text style={styles.testChipText}>{testName}</Text>
+                <Text style={styles.testChipText}>{item?.test?.name ?? item}</Text>
               </View>
             ))}
           </View>

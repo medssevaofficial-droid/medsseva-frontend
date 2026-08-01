@@ -15,37 +15,38 @@ import { showSuccess, showError } from '../../src/store/toastStore';
 import { COLORS, TYPOGRAPHY, SHADOWS } from '../../src/theme/theme';
 import { apiService } from '../../src/services/api';
 const STATUS_ORDER = [
-  'PENDING',           // rank 0
-  'WAITING_FOR_PARTNER', // rank 1
-  'ASSIGNED',          // rank 2
-  'ACCEPTED',          // rank 3
-  'ON_THE_WAY',        // rank 4
-  'REACHED_LOCATION',  // rank 5
-  'SAMPLE_COLLECTED',  // rank 6
-  'DELIVERED_TO_LAB',  // rank 7
-  'PROCESSING',        // rank 8
-  'REPORT_READY',      // rank 9
-  'COMPLETED',         // rank 10
+  'PENDING',
+  'WAITING_FOR_PARTNER',
+  'ASSIGNED',
+  'ACCEPTED',
+  'ON_THE_WAY',
+  'REACHED_LOCATION',
+  'SAMPLE_COLLECTED',
+  'DELIVERING_TO_BRANCH',
+  'DELIVERED_TO_LAB',
+  'PROCESSING',
+  'REPORT_READY',
+  'COMPLETED',
 ];
 
 
 const TRACKING_STEPS = [
-  { id: 1, title: 'Booking Requested', icon: 'clock-outline',      doneAtRank: 0  }, // PENDING and above = done
-  { id: 2, title: 'Partner Assigned',  icon: 'account-check',      doneAtRank: 2  }, // ASSIGNED and above
-  { id: 3, title: 'On The Way',        icon: 'motorbike',           doneAtRank: 4  }, // ON_THE_WAY and above
-  { id: 4, title: 'Arrived',           icon: 'map-marker-check',   doneAtRank: 5  }, // REACHED_LOCATION and above
-  { id: 5, title: 'Sample Collected',  icon: 'test-tube',           doneAtRank: 6  }, // SAMPLE_COLLECTED and above
-  { id: 6, title: 'Reached Lab',       icon: 'hospital-building',  doneAtRank: 7  }, // DELIVERED_TO_LAB and above
-  { id: 7, title: 'Report Ready',      icon: 'file-document-check', doneAtRank: 9  }, // REPORT_READY and above
+  { id: 1, title: 'Booking Requested', icon: 'clock-outline',        doneAtRank: 0  },
+  { id: 2, title: 'Partner Assigned',  icon: 'account-check',        doneAtRank: 2  },
+  { id: 3, title: 'On The Way',        icon: 'motorbike',             doneAtRank: 4  },
+  { id: 4, title: 'Arrived',           icon: 'map-marker-check',     doneAtRank: 5  },
+  { id: 5, title: 'Sample Collected',  icon: 'test-tube',             doneAtRank: 6  },
+  { id: 6, title: 'Heading to Lab',    icon: 'truck-delivery-outline', doneAtRank: 7 },
+  { id: 7, title: 'Reached Lab',       icon: 'hospital-building',    doneAtRank: 8  },
+  { id: 8, title: 'Report Ready',      icon: 'file-document-check',  doneAtRank: 10 },
 ];
-
 const MINI_STEPS = [
-  { label: 'Booking Requested', icon: 'clock-outline',     doneAtRank: 0  },
-  { label: 'Partner Assigned',  icon: 'account-check',     doneAtRank: 2  },
-  { label: 'On The Way',        icon: 'motorbike',          doneAtRank: 4  },
-  { label: 'Arrived',           icon: 'map-marker-check',  doneAtRank: 5  },
-  { label: 'Sample Collected',  icon: 'test-tube',          doneAtRank: 6  },
-  { label: 'Reached Lab',       icon: 'hospital-building', doneAtRank: 7  },
+  { label: 'Booking\nRequested', icon: 'clock-outline',          doneAtRank: 0  },
+  { label: 'Partner\nAssigned',  icon: 'account-check',          doneAtRank: 2  },
+  { label: 'On The\nWay',        icon: 'motorbike',               doneAtRank: 4  },
+  { label: 'Sample\nCollected',  icon: 'test-tube',               doneAtRank: 6  },
+  { label: 'To\nLab',            icon: 'truck-delivery-outline',  doneAtRank: 7  },
+  { label: 'Reached\nLab',       icon: 'hospital-building',       doneAtRank: 8  },
 ];
 const getStatusRank = (status: string): number => {
   const rank = STATUS_ORDER.indexOf(status);
@@ -162,18 +163,19 @@ const [downloading, setDownloading] = useState(false);
             s === 'REPORT_READY' || s === 'COMPLETED' ? '#059669' :
             '#F59E0B';
 
-          const bannerConfig: { icon: string; text: string } =
-            s === 'WAITING_FOR_PARTNER' ? { icon: 'radar',                  text: 'Searching for a nearby partner...' } :
-            s === 'ASSIGNED'            ? { icon: 'account-search',          text: 'Partner found, Confirming assignment...' } :
-            s === 'ACCEPTED'            ? { icon: 'account-check',           text: 'Partner Assigned, Preparing to visit' } :
-            s === 'ON_THE_WAY'          ? { icon: 'motorbike',               text: `On The Way, ${partnerName || 'Partner'} is heading to you` } :
-            s === 'REACHED_LOCATION'    ? { icon: 'map-marker-check',        text: `Arrived: ${partnerName || 'Partner'} is at your location` } :
-            s === 'SAMPLE_COLLECTED'    ? { icon: 'test-tube',               text: 'Sample Collected - Heading to lab' } :
-            s === 'DELIVERED_TO_LAB'    ? { icon: 'hospital-building',       text: 'Reached Lab, Sample handed over' } :
-            s === 'PROCESSING'          ? { icon: 'flask-outline',           text: 'Processing, Tests underway at lab' } :
-            s === 'REPORT_READY'        ? { icon: 'file-document-check',     text: 'Report Ready, Check your reports tab' } :
-            s === 'COMPLETED'           ? { icon: 'check-circle-outline',    text: 'Completed! Thank you for choosing MedsSeva' } :
-                                          { icon: 'clock-outline',           text: 'Processing your booking...' };
+  const bannerConfig: { icon: string; text: string } =
+            s === 'WAITING_FOR_PARTNER'  ? { icon: 'radar',               text: 'Searching for a nearby partner...' } :
+            s === 'ASSIGNED'             ? { icon: 'account-search',       text: 'Partner found, Confirming assignment...' } :
+            s === 'ACCEPTED'             ? { icon: 'account-check',        text: 'Partner Assigned, Preparing to visit' } :
+            s === 'ON_THE_WAY'           ? { icon: 'motorbike',            text: `On The Way, ${partnerName || 'Partner'} is heading to you` } :
+            s === 'REACHED_LOCATION'     ? { icon: 'map-marker-check',     text: `Arrived: ${partnerName || 'Partner'} is at your location` } :
+            s === 'SAMPLE_COLLECTED'     ? { icon: 'test-tube',            text: 'Sample Collected - Heading to lab' } :
+            s === 'DELIVERING_TO_BRANCH' ? { icon: 'truck-delivery-outline', text: 'Sample en route to the lab branch' } :
+            s === 'DELIVERED_TO_LAB'     ? { icon: 'hospital-building',    text: 'Reached Lab, Sample handed over' } :
+            s === 'PROCESSING'           ? { icon: 'flask-outline',        text: 'Processing, Tests underway at lab' } :
+            s === 'REPORT_READY'         ? { icon: 'file-document-check',  text: 'Report Ready, Check your reports tab' } :
+            s === 'COMPLETED'            ? { icon: 'check-circle-outline', text: 'Completed! Thank you for choosing MedSeva' } :
+                                           { icon: 'clock-outline',        text: 'Booking received, finding a partner...' };
 
           return (
             <View style={[styles.statusBanner, { backgroundColor: bannerColor }]}>
@@ -334,11 +336,35 @@ const [downloading, setDownloading] = useState(false);
               </View>
             </View>
 
-            <Text style={styles.bookingIdText}>
+           <Text style={styles.bookingIdText}>
               Booking Code: {liveBooking?.bookingCode || bookingId?.substring(0, 8).toUpperCase()}
             </Text>
 
-{/* Vertical timeline - driven purely from currentStatusRank, same as horizontal */}
+            {['DELIVERED_TO_LAB', 'PROCESSING', 'REPORT_READY', 'COMPLETED'].includes(liveBooking?.status) &&
+              liveBooking?.collectionMode === 'HOME' &&
+              liveBooking?.assignedPartnerId ? (
+              <TouchableOpacity
+                style={styles.ratingPromptCard}
+                onPress={() =>
+                  router.push({
+                    pathname: `/rating/${bookingId}`,
+                    params: {
+                      bookingCode: liveBooking?.bookingCode || '',
+                      partnerName: liveBooking?.assignedPartner?.user?.name || '',
+                    },
+                  } as any)
+                }
+              >
+                <View style={styles.ratingPromptLeft}>
+                  <MaterialCommunityIcons name="star-outline" size={22} color="#F59E0B" />
+                  <View>
+                    <Text style={styles.ratingPromptTitle}>Rate Your Experience</Text>
+                    <Text style={styles.ratingPromptSub}>How was your sample collection?</Text>
+                  </View>
+                </View>
+                <MaterialCommunityIcons name="chevron-right" size={20} color="#F59E0B" />
+              </TouchableOpacity>
+            ) : null}
             <View style={styles.timeline}>
               {TRACKING_STEPS.map((step, index) => {
                 const isCompleted = currentStatusRank >= step.doneAtRank;
@@ -512,19 +538,18 @@ trackingCard: {
     color: COLORS.textSecondary,
     lineHeight: 16,
   },
- miniStepsRow: {
+  miniStepsRow: {
     flexDirection: 'row',
-    alignItems: 'flex-start',
-    paddingHorizontal: 12,
+    alignItems: 'center',
+    paddingHorizontal: 16,
     paddingBottom: 16,
-    paddingTop: 8,
+    paddingTop: 4,
   },
   miniStep: {
-    flex: 1,
     alignItems: 'center',
-    minWidth: 0,
+    gap: 4,
   },
-  miniStepCircle: {
+miniStepCircle: {
     width: 26,
     height: 26,
     borderRadius: 13,
@@ -538,24 +563,22 @@ trackingCard: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primary,
   },
-  miniStepLabel: {
-    fontSize: 8,
+miniStepLabel: {
+    fontSize: 9,
     fontWeight: '600',
     color: '#94A3B8',
     textAlign: 'center',
-    marginTop: 4,
-    lineHeight: 11,
-    flexWrap: 'wrap',
+    marginTop: 2,
   },
   miniStepLabelActive: {
     color: COLORS.primary,
   },
   miniStepLine: {
-    width: 20,
+    flex: 1,
     height: 2,
     backgroundColor: '#E2E8F0',
-    marginTop: 12,
-    flexShrink: 0,
+    marginBottom: 14,
+    marginHorizontal: 4,
   },
   miniStepLineActive: {
     backgroundColor: COLORS.primary,
@@ -569,11 +592,38 @@ trackingCard: {
     padding: 24,
     ...SHADOWS.soft,
   },
-  bookingIdText: {
+bookingIdText: {
     ...TYPOGRAPHY.subtitle,
     color: COLORS.textDark,
     fontWeight: 'bold',
-    marginBottom: 24,
+    marginBottom: 16,
+  },
+  ratingPromptCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFFBEB',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 20,
+    borderWidth: 1.5,
+    borderColor: '#FDE68A',
+  },
+  ratingPromptLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
+  },
+  ratingPromptTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#92400E',
+    marginBottom: 2,
+  },
+  ratingPromptSub: {
+    fontSize: 12,
+    color: '#B45309',
   },
   timeline: {
     paddingLeft: 8,

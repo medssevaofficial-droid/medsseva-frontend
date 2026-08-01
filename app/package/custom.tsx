@@ -11,7 +11,7 @@ import {
   Platform,
   StatusBar
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import ScreenWrapper from '../../src/components/ScreenWrapper';
 import { useRouter } from 'expo-router';
 import { useDispatch } from 'react-redux';
 import { MaterialCommunityIcons } from '@expo/vector-icons';
@@ -71,8 +71,9 @@ export default function CustomPackageScreen() {
   // 2. Live Search and Filter logic
   const filteredTests = useMemo(() => {
    return displayTests.filter((test: any) => {
+  const categoryName = typeof test.category === 'object' ? test.category?.name : test.category;
       const matchesSearch = test.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                            (test.category && test.category.toLowerCase().includes(searchQuery.toLowerCase()));
+                            (categoryName && categoryName.toLowerCase().includes(searchQuery.toLowerCase()));
       
       const matchesCat = activeCat === 'all' ? true : test.categoryId === activeCat;
       return matchesSearch && matchesCat;
@@ -203,10 +204,10 @@ export default function CustomPackageScreen() {
         </ScrollView>
       </View>
 
-      <ScrollView 
-        style={styles.mainScroll} 
-        showsVerticalScrollIndicator={false}
+  <ScreenWrapper
+        scrollViewStyle={styles.mainScroll}
         contentContainerStyle={{ paddingBottom: 140 }}
+        disableKeyboardDismiss
       >
 
         {/* 4. Recommended Tests Listing Card Wrapper */}
@@ -261,7 +262,7 @@ export default function CustomPackageScreen() {
             )}
           </View>
         </View>
-      </ScrollView>
+     </ScreenWrapper>
 
       {/* 5. Floating Premium Bottom Action Bar */}
       <Animated.View style={[styles.floatingBar, { transform: [{ translateY: slideAnim }] }]}>

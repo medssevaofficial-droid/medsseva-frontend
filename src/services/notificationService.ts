@@ -11,7 +11,6 @@ import api from './api';
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
     shouldPlaySound: true,
     shouldSetBadge: true,
     shouldShowBanner: true,
@@ -104,8 +103,10 @@ export const getDeepLinkRoute = (data: Record<string, string>): string | null =>
     case 'SAMPLE_RECEIVED_IN_LAB':
     case 'PAYMENT_FAILED':
       return '/(tabs)/bookings';
-  case 'PARTNER_ON_THE_WAY':
-      return '/(tabs)/bookings';
+case 'PARTNER_ON_THE_WAY':
+      return data?.bookingId ? `/tracking/${data.bookingId}` : '/(tabs)/bookings';
+    case 'PARTNER_RATING_REQUEST':
+      return data?.bookingId ? `/rating/${data.bookingId}` : '/(tabs)/bookings';
     case 'REPORT_READY':
     case 'REPORT_SENT':
     case 'REPORT_APPROVED':

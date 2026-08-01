@@ -74,13 +74,13 @@ const processBackendBooking = async (paymentData?: any) => {
 
       setIsProcessing(false);
 
-      const newBooking = {
+ const newBooking = {
         id: response.id,
-        bookingCode: response.bookingCode,
+        bookingCode: response.bookingCode,  
         date: booking.selectedDate,
         time: booking.selectedTimeSlot,
         status: response.status || 'PENDING',
-        collectionMode: booking.collectionMode,
+        collectionMode: response.collectionMode || booking.collectionMode,
         tests: cart.items,
         total: response.totalPaid,
         patientName: booking.patientDetails?.name,
